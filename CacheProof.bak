@@ -1,0 +1,34 @@
+
+
+1. When a request is sent, the corresponding state of the sender block becomes intermediate.
+2. An intermediate state becomes a normal state only on receiving an appropriate response.
+3. If a block is in an intermediate state, it does not send any corresponding request.
+4. Parent does not respond to a request for a block in an intermediate (child) state.
+
+4. When a parent sends a response to a child, there is no pending response from the child to the parent for that block.
+   Proof: If a request has been sent, then the parent would be in intermediate (child) state for that block because of 1,2. 
+
+
+1. When a request is sent, the corresponding state of the sender block becomes intermediate.
+2. No requests are sent from an intermediate state.
+
+3. There is at most one outstanding request for a (block, sender, receiver) tuple.
+   Proof: 1,2 
+
+4. An intermediate state can become a normal state only on receiving a response.
+
+5. The only ways by which a child sends a response are either a response to a parent's request or an uninitiated response due to block replacement.
+6. The only way by which a parents sends a response is a response to a child's request.
+
+7. Parent does not respond in an intermediate state.
+
+8. When a parent sends a response to a child, there is no request from the parent to the child for that block.
+   Proof: 2,7
+
+7. Between a (sender, receiver) pair, a response starting before a request reaches before the request.
+8. Parent in an intermediate state for any child does not process any request for that block from any child.
+
+9. Replacement can happen only if the cache is not in any intermediate state, both its own state or any of its children
+
+9. When a parent sends a response, it knows exactly which state the child is in for that block.
+   Proof: By 8, a parent can respond to a request only if it's state for that block is not intermediate for any child.
