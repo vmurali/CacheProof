@@ -370,72 +370,41 @@ $\Rightarrow \Leftarrow$
 
 \end{proof}
 
-
-\begin{theorem}
-If a request is made for $X$ to transition to $y$, then $X$ will eventually reach $y$ if
-\begin{itemize}
-\item In every level there is atleast one buffer from parent to child, one buffer for child to parent req, each exclusive to that level and one overall child to parent resp buffer, i.e., each level has a separate virtual channel or network for each of parent-to-child-mesg, child-to-parent-req and one overall child-to-parent-resp for all levels.
-\item A request is not left to starve if there exists a local state transition involving that request.
-\end{itemize}
-\end{theorem}
-
-\begin{proof}
-Assume initially that there are infinite buffers.
-
-A leaf can always process any request from its parent and send appropriate response. It doesn't generate any new requests to wait on.
-
-A root can always process any request from its children and send appropriate response. It doesn't generate any new requests to wait on.
-
-Any response sent to a node will be consumed by the node.
-
-Assume for induction that any node whose distance from the leaf less than n eventually generates appropriate response on a request. If n is 1, hypothesis holds (the node is the leaf itself). Assume simultaneosly that any node whose distance from the root less than m eventually generates appropriate response on a request. If m is 1, hypothesis holds (the node is the root itself).
-
-Consider a node whose distance from leaf is n and distance from root is m.
-
-Consider a request to this node from its parent. If it ever gets ``processed'', it can at most generate requests to its children, which will send back appropriate responses (due to induction hypothesis) leading to a good state for the node, and this node will respond its parent. If there is a pending request from child which is getting ``processed'', it can either generate requests to its children, which will send back appropriate responses (due to induction hypothesis) or it can generate request to its parent. But the node can respond to a request from its parent even when it has its own request to parent. So the request from parent will eventually be fully processed leading to an appropriate response.
-
-Consider a request to this node from the child. If it only generates requests to children, then they will send back appropriate responses (by induction hypothesis). Otherwise, it can generate request to its parent. But this will also generate appropriate response by induction hypothesis.
-
-Thus any request will generate an appropriate response if we had infinite buffers.
-
-Let there be just one buffer for parent-to-child, one buffer for child-to-parent-req for each level and one buffer for child-to-parent-resp. The responses are always consumed, so just one buffer overall is suffficient. At the leaf level, any request to a leaf will be processed. So one buffer is sufficient from parent to leaf at that level. Similarly, any request to the root will be processed. So one buffer is sufficient from child to root at that level. (This is true as long as the arbiter avoids starvation). Thus, by induction, one can prove.
-\end{proof}
-
-\begin{theorem}
+\begin{lemma}
 At a moment, child-state is x and child is y $\Rightarrow$ y $\le$ x.
 \label{<=}
-\end{theorem}
+\end{lemma}
 
-\begin{proof}
-Initially this is true (all states are invalid).
-
-If only child-state has changed, it can only go up from invalid.
-
-If only child has changed to x, then it can change only due to a x-resp from parent ($\because$ invalid $<$ x). This means child-state also changes. So this is not possible.
-
-If both child and child-state have changed, Lemmas \ref{CRecvPRecvNetwork}, \ref{CRecvPSend<=}, \ref{CSendPRecv<=} and \ref{CSendPSend<=}, examines all scenarios.
-\end{proof}
+%\begin{proof}
+%Initially this is true (all states are invalid).
+%
+%If only child-state has changed, it can only go up from invalid.
+%
+%If only child has changed to x, then it can change only due to a x-resp from parent ($\because$ invalid $<$ x). This means child-state also changes. So this is not possible.
+%
+%If both child and child-state have changed, Lemmas \ref{CRecvPRecvNetwork}, \ref{CRecvPSend<=}, \ref{CSendPRecv<=} and \ref{CSendPSend<=}, examines all scenarios.
+%\end{proof}
 
 \begin{lemma}
 When parent receives z-req, child-state is x and child is y $\Rightarrow$ y = x.
 \label{Req=}
 \end{lemma}
 
-\begin{proof}
-Initially this is true (all states are invalid).
-
-If both child and child-state have changed, Lemmas \ref{CRecvPRecvNetwork}, \ref{CRecvPSendReq}, \ref{CSendPRecvReq} and \ref{CSendPSendReq}, examines all scenarios.
-\end{proof}
+%\begin{proof}
+%Initially this is true (all states are invalid).
+%
+%If both child and child-state have changed, Lemmas \ref{CRecvPRecvNetwork}, \ref{CRecvPSendReq}, \ref{CSendPRecvReq} and \ref{CSendPSendReq}, examines all scenarios.
+%\end{proof}
 
 \begin{lemma}
 When parent receives z-resp, child-state is x and child is y $\Rightarrow$ y = x.
 \label{Resp=}
 \end{lemma}
 
-\begin{proof}
-Initially this is true (all states are invalid).
-
-If both child and child-state have changed, Lemmas \ref{CRecvPRecvNetwork}, \ref{CRecvPSendResp}, \ref{CSendPRecvResp} and \ref{CSendPSendResp}, examines all scenarios.
-\end{proof}
+%\begin{proof}
+%Initially this is true (all states are invalid).
+%
+%If both child and child-state have changed, Lemmas \ref{CRecvPRecvNetwork}, \ref{CRecvPSendResp}, \ref{CSendPRecvResp} and \ref{CSendPSendResp}, examines all scenarios.
+%\end{proof}
 
 \end{document}
