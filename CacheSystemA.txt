@@ -1,0 +1,156 @@
+Cache-coherence for Hierarchical Caches
+
+Cache-coherence is enforced at block level and a block is a set of contiguous addresses.
+
+State of a block in a cache: {M,S,I}
+The states are ordered: M > S > I
+
+Each node maintains the following state for each block:
+------------------------------------------------------
+state    :: State
+         // The state of a block in the node
+dir      :: [State]
+         // One element for each child of the node. It represents
+            the assumed state of the child
+waitP    :: Bool
+         // True iff a request has been sent to the parent and
+            a response has not been received
+dirWaitC :: [Maybe State]
+         // One element for each child of the node. It represents if a
+            request has been sent to set the child to the specified state
+            and a response has not been received
+
+Network:
+--------
+1. One (virtual) FIFO link from parent to child for both requests and responses
+2. One (virtual) FIFO link from child to parent for responses
+3. One (virtual) FIFO link from child to parent for requests
+4. Child to parent responses have higher priority over child to parent requests. The network does not allow requests to overtake responses between a child-to-parent pair 
+
+Notation for the following rules:
+---------------------------------
+
+node is n
+restDirOk(c,y, dir) is a protocol-dependent function checking if the rest of the children is compatible with c being in state y.
+
+Constraints on rules for changing state:
+---------------------------------------
+
+Child sending response to parent:
+---------------------------------
+
+C1) While a node is not waiting for a response, it can drop its state voluntarily; however it cannot drop its state below its children's states 
+
+!n.waitP && y <= max(n.dir) && y < n.state
+__________________________________________
+n.respToParent := y; n.state := y
+
+
+C2) If a node is asked by its parent to upgrade its state, the node drops the request
+
+n.reqFromParent = y && y >= n.state
+___________________________________
+n.reqFromParent.deq
+
+
+C3) If a node is asked by its parent to downgrade, then it can downgrade to even a lower state but not below its children's states
+
+n.reqFromParent = y && y < n.state && y' <= y && y' <= max(n.dir)
+_________________________________________________________________
+n.reqFromParent.deq; n.respToParent := y'; n.state := y'
+
+
+Child sending request to parent:
+--------------------------------
+
+C4) A child sends a request to parent whenever it wants to upgrade
+
+y > n.state && !n.waitP
+___________________________________
+n.waitP := True; n.reqToParent := y
+
+
+Child receiving response from parent:
+-------------------------------------
+
+C5) A child upgrades on receiving a response from parent for its request
+
+n.respFromParent = y [Implicit: y > n.state && n.waitP]
+_______________________________________________________
+n.waitP := False; n.respFromParent.deq; n.state := y
+
+
+Constraints on rules for manipulating directory:
+------------------------------------------------
+------------------------------------------------
+
+Parent receiving request from child:
+------------------------------------
+
+P1) On an upgrade request from a child, a parent responds with an upgrade message, provided its own state is not lower than the upgrade
+
+n.reqFromChild(c) = y && y <= n.state && restDirOk(c, y, n.dir) [Implicit: y > n.dir.c]
+_______________________________________________________________________________________
+n.dir.c := y; n.reqFromChild(c).deq; n.respToChild(c) := y
+
+
+P2) A parent can send a downgrade request to child as long as it has gotten back responses for every request it has sent
+
+y < n.dir.c && n.dirWaitC.c = Nothing
+__________________________________________
+dirWaitC.c := Just y; n.reqToChild(c) := y
+
+
+Parent receiving response from child:
+-------------------------------------
+
+P3) A parent which is not waiting for a downgrade from a child, on receiving a voluntary downgrade from the child, downgrades the child's directory state entry.
+    A parent which is waiting for a downgrade from a child, on receiving a different downgrade from the child (which is higher than the state the parent wants the child to be in), downgrades the child's directory state entry
+
+n.respFromChild(c) = y && (n.dirWaitC.c = Nothing || n.dirWaitC.c = Just y' && y > y') [Implicit: y < n.dir.c]
+______________________________________________________________________________________________________________
+n.dir.c := y; n.respFromChild(c).deq
+
+
+P4) A parent waiting for a downgrade from a child, on receiving the correct downgrade, stops waiting, and downgrades the child's directory state entry
+
+n.respFromChild(c) = y && n.dirWaitC.c = Just y' && y <= y' [Implicit: y < n.dir.c]
+___________________________________________________________________________________
+n.dir.c := y; n.respFromChild(c).deq; n.dirWaitC.c := Nothing
+
+Theorems:
+---------
+1. (n.dir.c = x && c.state = y) => (y <= x)
+
+2. Consider a child c and let p = c.parent. At time t1, c.state changes from y to z and sends response z to p. Let this response be processed by parent at time t2 and let p.dir.c change from x to z at t2. Then, x = y.
+
+3. Consider a child c and let p = c.parent. When p processes a request for z from c, p.dir.c changes from x to z  and sends response z to c, let c.state = y. Then, x = y.
+
+This ensures that
+1. the parent has a conservative estimate of the summary state of the child
+2. when a parent processes a request, the state the parent assumes the child to be in (via it's directory) is the correct state of the child
+3. when a response is sent, the sender knows exactly which state the receiver of the response would be in when it receives the response, hence co-ordinating data transfer correctly
+4. the above rules handle all possible scenarios that might arise
+
+Liveness property:
+------------------
+------------------
+Protocol properties:
+--------------------
+On receiving request x from parent, a node n takes actions to change n.dir to n.dir' such that x >= max(n.dir').
+On receiving request x from child c, parent p (p = c.parent) takes actions to change p.summ to p.summ' such that p.summ' >= x.
+On receiving request x from child c, parent p (p = c.parent) takes actions to change p.dir to p.dir' such that restDirOk(c, x, p.dir')
+
+Buffering properties:
+---------------------
+1. 1 virtual channel between two levels for parent to child messages
+2. 1 virtual channel between two levels for child to parent requests
+3. 1 virtual channel overall for child to parent responses
+4. 1 buffer in each of the virtual channels
+
+Node property:
+--------------
+The internal nodes are such that no request is left to starve.
+
+Theorem: If these properties are obeyed, then the protocol will not deadlock.
+
