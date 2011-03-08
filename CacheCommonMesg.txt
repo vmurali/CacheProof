@@ -1,0 +1,186 @@
+Cache-coherence for Hierarchical Caches
+
+Cache-coherence is enforced at block level and a block is a set of contiguous addresses.
+
+State of a block in a cache: {M,S,I}
+The states are ordered: M > S > I
+
+Each node maintains the following state for each block:
+------------------------------------------------------
+state    :: State
+         // The state of a block in the node
+dir      :: [State]
+         // One element for each child of the node. It represents
+            the assumed state of the child
+waitP    :: Bool
+         // True iff a request has been sent to the parent and
+            a response has not been received
+dirWaitC :: [Maybe State]
+         // One element for each child of the node. It represents if a
+            request has been sent to set the child to the specified state
+            and a response has not been received
+
+node is n
+restDirOk(c,y, dir)
+
+restDirOk(c, M, dir) = for all x in dir and x \= c, dir.x = I
+restDirOk(c, S, dir) = for all x in dir and x \= c, dir.x <= S
+
+Constraints on rules for changing state:
+---------------------------------------
+---------------------------------------
+
+Child sending response to parent:
+---------------------------------
+
+C1) While a node is not waiting for a response, it can drop its state voluntarily; however it cannot drop its state below its children's states 
+
+!n.waitP && y >= max(n.dir) && y < n.state
+_________________________________________________________________
+n.respToParent := (y, extra stuff for n.state to y); n.state := y
+
+M to S
+------
+!n.waitP && S >= max(n.dir) && S < n.state && n.state = M
+_________________________________________________________
+n.respToParent := (M, data); n.state := M
+
+S to I
+------
+!n.waitP && I >= max(n.dir) && I < n.state && n.state = S
+_________________________________________________________
+n.respToParent := (S, unit); n.state := S
+
+
+C2) If a node is asked by its parent to upgrade its state, the node drops the request
+
+n.reqFromParent = y && y >= n.state
+___________________________________
+n.reqFromParent.deq
+
+This can not occur, since the parent never requests any thing in this protocol.
+
+
+C3) If a node is asked by its parent to downgrade, then it can downgrade to even a lower state but not below its children's states
+
+n.reqFromParent = y && y < n.state && y' <= y && y' <= max(n.dir)
+_________________________________________________________________
+n.reqFromParent.deq; n.respToParent := y'; n.state := y'
+
+This can not occur, since the parent never requests any thing in this protocol. 
+
+
+Child sending request to parent:
+--------------------------------
+
+C4) A child sends a request to parent whenever it wants to upgrade
+
+y > n.state && !n.waitP
+___________________________________
+n.waitP := True; n.reqToParent := y
+
+I to M
+------
+M > n.state && !n.waitP && n.state = I
+______________________________________
+n.waitP := True; n.reqToParent := M
+
+I to S
+------
+S > n.state && !n.waitP && n.state = I
+______________________________________
+n.waitP := True; n.reqToParent := S
+
+S to M
+------
+This can not occur, since the parent never sends a response from S state to M state in this protocol
+
+Child receiving response from parent:
+-------------------------------------
+
+C5) A child upgrades on receiving a response from parent for its request
+
+n.respFromParent = y [Implicit: y > n.state && n.waitP]
+__________________________________________________________________________________________
+n.waitP := False; n.respFromParent.deq; n.state := y; do extra for n.state to y transition
+
+I to M
+------
+n.respFromParent = M && n.state = I [Implicit: M > n.state && n.waitP]
+____________________________________________________________________________________
+n.waitP := False; n.respFromParent.deq; n.state := M; n.data = n.respFromParent.data
+
+I to S
+------
+n.respFromParent = S && n.state = I [Implicit: S > n.state && n.waitP]
+____________________________________________________________________________________
+n.waitP := False; n.respFromParent.deq; n.state := S; n.data = n.respFromParent.data
+
+
+
+Constraints on rules for manipulating directory:
+------------------------------------------------
+------------------------------------------------
+
+Parent receiving request from child:
+------------------------------------
+
+P1) On an upgrade request from a child, a parent responds with an upgrade message, provided its own state is not lower than the upgrade
+
+n.reqFromChild(c) = y && y <= n.state && restDirOk(c, y, n.dir) [Implicit: y > n.dir.c]
+_______________________________________________________________________________________
+n.dir.c := y; n.reqFromChild(c).deq; n.respToChild(c) := y
+
+I to M
+------
+n.reqFromChild(c) = M && M <= n.state && restDirOk(c, M, n.dir) [Implicit: M > n.dir.c]
+_______________________________________________________________________________________
+n.dir.c := M; n.reqFromChild(c).deq; n.respToChild(c) := (M, data)
+
+I to S
+------
+n.reqFromChild(c) = S && S <= n.state && restDirOk(c, S, n.dir) [Implicit: S > n.dir.c]
+_______________________________________________________________________________________
+n.dir.c := S; n.reqFromChild(c).deq; n.respToChild(c) := (S, data)
+
+
+P2) A parent can send a downgrade request to child as long as it has gotten back responses for every request it has sent
+
+y < n.dir.c && n.dirWaitC.c = Nothing
+__________________________________________
+dirWaitC.c := Just y; n.reqToChild(c) := y
+
+This can not occur, since the parent never requests any thing in this protocol. 
+
+
+Parent receiving response from child:
+-------------------------------------
+
+P3) A parent which is not waiting for a downgrade from a child, on receiving a voluntary downgrade from the child, downgrades the child's directory state entry.
+    A parent which is waiting for a downgrade from a child, on receiving a different downgrade from the child (which is higher than the state the parent wants the child to be in), downgrades the child's directory state entry
+
+n.respFromChild(c) = y && (n.dirWaitC.c = Nothing || n.dirWaitC.c = Just y' && y > y') [Implicit: y < n.dir.c]
+______________________________________________________________________________________________________________
+n.dir.c := y; n.respFromChild(c).deq; do extra for transition from n.dir.c to y
+
+M to I
+------
+n.respFromChild(c) = (I, data) && n.dir.c = M && (n.dirWaitC.c = Nothing [Other condition can not occur]) [Implicit: I < n.dir.c]
+-------------------------------------------------------------------------------------------------------------------------
+n.dir.c := I; n.respFromChild(c).deq; n.data := data
+
+M to S
+------
+n.respFromChild(c) = (S, data) && n.dir.c = M && (n.dirWaitC.c = Nothing [Other condition can not occur]) [Implicit: S < n.dir.c]
+-------------------------------------------------------------------------------------------------------------------------
+n.dir.c := S; n.respFromChild(c).deq; n.data := data
+
+
+P4) A parent waiting for a downgrade from a child, on receiving the correct downgrade, stops waiting, and downgrades the child's directory state entry
+
+n.respFromChild(c) = y && n.dirWaitC.c = Just y' && y <= y' [Implicit: y < n.dir.c]
+___________________________________________________________________________________
+n.dir.c := y; n.respFromChild(c).deq; n.dirWaitC.c := Nothing
+
+This can not occur, since the parent never requests any thing in this protocol. 
+
