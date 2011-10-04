@@ -17,6 +17,8 @@ Each cache c has the following states:
   c.child[i].reqFrom : The request buffer from the i^th child
   c.child[i].respFrom : The response buffer from the i^th child
 
+  c.token : This specifies which of the transactions to fire - ensure fair arbitration and completion of an existing transaction
+
   It takes indeterminate time for a message to reach from any node to any other node.
   The c.From (which is the same as the c.child[i].To) network has FIFO order.
   The c.respTo (which is the same as c.child[i].respFrom) network has FIFO order.
