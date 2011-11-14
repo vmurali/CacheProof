@@ -1,0 +1,101 @@
+Setup
+
+----------------------------------
+
+Each cache c has the following states:
+  c.state : Denotes the real state of this cache
+  c.child[i].state : Denotes the assumed state of i^th child of this cache
+  c.wait : Denotes a tuple of (response from the parent the cache is waiting for and a child to "process" after the response comes back), or Nothing if cache is not waiting for a response from parent
+  c.child[i].wait : Denotes which response from the i^th child the cache is waiting for, or Nothing if cache is not waiting for a response from the i^th child
+  c.child[i].sendReq : Denotes which request the cache has to send its i^th child, or Nothing if cache is not going to send any request to the i^th child
+
+  c.reqTo : The request buffer to the parent
+  c.respTo : The response buffer to the parent
+  c.from: The buffer from the parent (both request and response)
+
+  c.child[i].to : The buffer to the i^th child (both request and response)
+  c.child[i].reqFrom : The request buffer from the i^th child
+  c.child[i].respFrom : The response buffer from the i^th child
+
+  c.token : This specifies which of the transactions to fire - ensure fair arbitration and completion of an existing transaction
+
+  It takes indeterminate time for a message to reach from any node to any other node.
+  The c.from (which is the same as the c.child[i].To) network has FIFO order.
+  The c.respTo (which is the same as c.child[i].respFrom) network has FIFO order.
+  The c.reqTo (which is the same as c.child[i].reqFrom) network need not have FIFO order.
+
+  In the description, the presence of resources/presence of a message in the FIFO is implicit - the corresponding group of actions (within the if-block) wouldn't fire if the implicit conditions are not met.
+
+----------------------------------
+
+Initialization
+
+----------------------------------
+
+if c is the i^th child of p, c.state = p.child[i].state
+if r is the root of the tree, r.state = Max State
+
+----------------------------------
+
+Action send_resp_to_parent c y :
+  y < c.state -> foreach j in c.child, j.state <= y -> c.respTo.notFull ->
+    c.respTo := y
+    c.state := y
+
+Action send_resp_to_child c n y:
+  y > c.child[n].state -> foreach j in c.child, j <> i -> compatible j.state y -> c.child[n].to.notFull ->
+    c.child[n].to := Resp (c.child[n].state) y
+    c.child[n].state := y
+
+Action receive_resp_from_parent c :
+  c.from.notEmpty -> c.from = Resp x y ->
+    if x <= c.state
+      c.state := y
+    c.from.deq
+    if c.wait <> Nothing && x >= c.wait
+      c.wait := Nothing
+
+Action receive_resp_from_child c n :
+  c.child[n].respFrom.notEmpty ->
+    c.child[n].state := c.child[n].respFrom
+    c.child[n].respFrom.deq
+    if c.child[n].wait <> Nothing && c.child[n].respFrom <= c.child[n].wait
+      c.child[n].wait := Nothing
+
+Action receive_req_from_parent_deq c :
+  c.from.notEmpty -> c.from = Req y -> c.state <= y
+    c.from.deq
+
+Action receive_req_from_parent_process c :
+   (foreach j in c.child, j.wait = Nothing -> j.sendReq = Nothing) ->
+     foreach j in c.child, j.state > y ->
+       j.sendReq := y
+
+Action receive_req_from_child_deq c n :
+  c.child[n].reqFrom.notEmpty -> c.state <= c.child[n].reqFrom -> (foreach j in c.child, j <> n -> compatible j.state c.child[n].reqFrom) ->
+    c.reqFrom.deq
+
+Action receive_req_from_child_proc c n :
+  c.child[n].reqFrom.notEmpty -> c.state <= c.child[n].reqFrom -> ! (foreach j in c.child, j <> n -> compatible j.state c.child[n].reqFrom) -> (foreach j in c.child, j.wait = Nothing -> j.sendReq = Nothing) ->
+   foreach j in c.child, j <> n -> ! compatible j.state c.child[n].reqFrom ->
+     j.sendReq := c.child[n].reqFrom
+
+Action send_req_to_parent c y :
+  c.to.notFull -> c.state < y -> c.wait = Nothing ->
+    c.to := Req y
+    c.wait := y
+
+Action send_req_to_child_voluntary c n y :
+  c.child[n].reqTo.notFull -> c.child[n].state > y -> c.child[n].wait = Nothing -> c.child[n].sendReq = Nothing ->
+    c.child[n].reqTo := y
+    c.child[n].wait := y
+
+Action send_req_to_child_forced c n :
+  c.child[n].reqTo.notFull -> c.child[n].sendReq <> Nothing -> c.child[n].state > c.child[n].sendReq -> c.child[n].wait = Nothing ->
+    c.child[n].reqTo := c.child[n].sendReq
+    c.child[n].wait := c.child[n].sendReq
+    c.child[n].sendReq := Nothing
+
+Action send_req_to_child_done c n :
+  c.child[n].sendReq <> Nothing -> c.child[n].state <= c.child[n].sendReq ->
+    c.child[n].sendReq := Nothing

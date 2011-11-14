@@ -41,13 +41,32 @@ Helper functions
 
 ----------------------------------
 
+Precondition: y < c.state
+Action Send_Response_To_Parent(c, y):
+  c.respTo := y
+  c.state := y
+
+Precondition: y > c.child[n].state
+Action Send_Response_To_Child(c, n, y):
+  c.child[n].To := Resp (c.child[n].state)->y
+  c.child[n].state := y
+
+Precondition: c.From == Resp x->y
+Action Receive_Response_From_Parent(c):
+  if(x <= c.state)
+    c.state := y
+  c.From.deq
+
+Action Receive_Response_From_Child(c, n):
+  c.child[n].state := c.child[n].respFrom
+  c.child[n].respFrom.deq
+
 Bool No_Child_Pending(c) = forall i, c.child[i].wait == Nothing && c.child[i].sendReq == Nothing
 
 Precondition: No_Child_Pending(c)
 Action Downgrade(c, y):
   if(forall i, c.child[i].state <= y)
-    c.respTo := y
-    c.state := y
+    Send_Response_To_Parent(c, y)
   else
     forall i,
       if(c.child[i].state > y)
@@ -56,8 +75,7 @@ Action Downgrade(c, y):
 Precondition: c.wait == Nothing && No_Child_Pending(c)
 Action Upgrade(c, n, y):
   if(c.state >= y && forall i != n, c.child[i].state <= Get_Compatible(y))
-    c.child[n].To := Resp (c.child[n].state)->y
-    c.child[n].state := y
+    Send_Response_To_Child(c, n, y)
   else if(c.state < y)
     c.reqTo := y
     c.wait := (y, n)
@@ -72,16 +90,13 @@ Action Upgrade(c, n, y):
 Behavior(c):
 
 # Receive_Response_From_Child_Rule(n):
-  c.child[n].state := c.child[n].respFrom
-  if(c.child[n].wait != Nothing && c.child[n].wait >= c.child[n].respFrom)
+  if(c.child[n].wait >= c.child[n].respFrom)
     c.child[n].wait := Nothing
-  c.child[n].respFrom.deq
+  Receive_Response_From_Child(c, n)
 
 # Receive_Response_From_Parent_Rule:
-  if(c.From == Resp x->y && c.wait == Nothing)
-    if(x <= c.state)
-      c.state := y
-    c.From.deq
+  if(c.From == Resp _ && c.wait == Nothing)
+    Receive_Response_From_Parent(c)
 
 # Drop_Send_Request(n):
   if(c.child[n].sendReq != Nothing && c.child[n].state <= c.child[n].sendReq)
@@ -122,10 +137,8 @@ Behavior(c):
     else Upgrade(c, n, c.child[n].reqFrom)
 
 # Receive_Response_From_Parent_For_Request_Rule:
-  if(c.wait == (z, n) && c.From == Resp x->y && c.token == Receive_Response_From_Parent_For_Request && No_Child_Pending(c))
-    if(x <= c.state)
-      c.state := y
-    c.From.deq
+  if(c.From == Resp x->y && c.wait == (z, n) && c.token == Receive_Response_From_Parent_For_Request && No_Child_Pending(c))
+    Receive_Response_From_Parent(c)
     if(z <= y)
       c.wait := Nothing
       c.token := Receive_Request_From_Child n
