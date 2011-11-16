@@ -190,8 +190,10 @@ Section Cache.
   Record systemState : Set := mkSystemState
   { child : node
   ; parent : node
-  ; p_to_c_fifo : fifo p_to_c_msg p_to_c_size
-  ; c_to_p_fifo : fifo c_to_p_msg c_to_p_size
+  ; p_to_c_n : nat
+  ; p_to_c_fifo : Fifo p_to_c_msg p_to_c_size p_to_c_n
+  ; c_to_p_n : nat
+  ; c_to_p_fifo : Fifo c_to_p_msg c_to_p_size c_to_p_n
   }.
 
   Variable init_state : Ord.
@@ -206,7 +208,9 @@ Section Cache.
   Definition init_system :=
   {| child := init_node
    ; parent := init_node
+   ; p_to_c_n := 0
    ; p_to_c_fifo := emptyFifo p_to_c_msg p_to_c_size
+   ; c_to_p_n := 0
    ; c_to_p_fifo := emptyFifo c_to_p_msg c_to_p_size
    |}.
 
@@ -234,15 +238,17 @@ Section Cache.
    *)
   Inductive systemStep (time : nat) (ss : systemState) : systemState -> Prop :=
   | SystemStep :
-     forall c' p' 
-            p_to_c_fifo' parent_p_to_c' child_p_to_c'
-            c_to_p_fifo' parent_c_to_p' child_c_to_p',
+     forall (c' p' : node),
        childStep time (child ss) c' ->
        parentStep time (parent ss) p' ->
-       fifoStep (p_to_c_fifo ss) (p_to_c (parent ss)) (p_to_c (child ss))
-                 p_to_c_fifo' parent_p_to_c' child_p_to_c' ->
-       fifoStep (c_to_p_fifo ss) (c_to_p (child ss)) (c_to_p (parent ss))
-                 c_to_p_fifo' child_c_to_p' parent_c_to_p' ->
+       forall p_to_c_n'
+         (p_to_c_fifo' : Fifo p_to_c_msg p_to_c_size p_to_c_n')
+         (parent_p_to_c' child_p_to_c' : option p_to_c_msg),
+           fifoStep (p_to_c_fifo ss) (p_to_c (parent ss)) (p_to_c (child ss)) p_to_c_fifo' parent_p_to_c' child_p_to_c' ->
+       forall c_to_p_n'
+         (c_to_p_fifo' : Fifo c_to_p_msg c_to_p_size c_to_p_n')
+         (parent_c_to_p' child_c_to_p' : option c_to_p_msg),
+           fifoStep (c_to_p_fifo ss ) (c_to_p (child ss)) (c_to_p (parent ss)) c_to_p_fifo' child_c_to_p' parent_c_to_p' ->
          systemStep time ss
            {| child :=
                 {| state := state c'
@@ -256,19 +262,11 @@ Section Cache.
                  ; c_to_p := if option_dec c_to_p_dec (c_to_p (parent ss)) then c_to_p p' else parent_c_to_p'
                  ; change_time := change_time p'
                  |}
+            ; p_to_c_n := p_to_c_n'
             ; p_to_c_fifo := p_to_c_fifo'
+            ; c_to_p_n := c_to_p_n'
             ; c_to_p_fifo := c_to_p_fifo'
             |}.
-
-  Inductive fin : nat -> Set :=
-  | Last : forall n, fin n
-  | Prev : forall n, fin n -> fin (S n).
-
-  Fixpoint getNum n (f : fin n) : nat :=
-    match f with
-    | Last x => x
-    | Prev _ f' => getNum f'
-    end.
 
   (* defining a list of system state transitions *)
   Inductive systemList : nat -> systemState -> Set :=
@@ -276,18 +274,17 @@ Section Cache.
   | Next : forall t ss next_ss, systemList t ss -> systemStep t ss next_ss -> systemList (S t) next_ss.
 
   (* function to get the n^th element of the system state transition list *)
-  Fixpoint get max last_ss (sl : systemList max last_ss) : fin max -> systemState :=
-    match sl in systemList max last_ss return fin max -> systemState with
+  Fixpoint get max last_ss (sl : systemList max last_ss) now : now <= max -> systemState :=
+    match sl in systemList max last_ss return now <= max -> systemState with
     | Init => fun _ => init_system
-    | Next t _ next_ss ss_list _ => fun f =>
-        match f in fin n0 return (fin (pred n0) -> systemState) -> systemState with
-        | Last _ => fun _ => next_ss
-        | Prev _ f' => fun val => val f'
-        end (get ss_list)
+    | Next t _ next_ss ss_list _ => fun pf => match (eq_nat_dec now (S t)) with
+                                              | left _ => next_ss
+                                              | right pf' => get ss_list (leS_neS_le pf pf')
+                                              end
     end.
 
   (* Correctness theorem, as stated in the document *)
-  Theorem correctness max (last_s : systemState) (sl : systemList max last_s) (p c : fin max) : change_time (child (get sl c)) <= getNum p -> change_time (parent (get sl p)) <= getNum c -> state (child (get sl c)) <<= state (parent (get sl p)).
+  Theorem correctness (c p max : nat) (pf_p : p <= max) (pf_c : c <= max) (last_ss : systemState) (sl : systemList max last_ss) : change_time (child (get sl pf_c)) <= p -> change_time (parent (get sl pf_p)) <= c -> state (child (get sl pf_c)) <<= state (parent (get sl pf_p)).
   Admitted.
 
   Lemma p_to_c_m_is_S_t t ss next_ss (st : systemStep t ss next_ss) :
@@ -316,12 +313,23 @@ Section Cache.
     end.
   Qed.
 
-  Lemma get_last n ss (sl : systemList n ss) : get sl (Last n) = ss.
-   destruct sl; reflexivity.
+  Lemma get_l n ss (sl : systemList n ss) next_ss (st : systemStep n ss next_ss) : get (Next sl st) (le_n (S n)) = next_ss.
+   unfold get.
+   fold get.
+   destruct (eq_nat_dec (S n) (S n)).
+   reflexivity.
+   crush.
+  Qed.
+
+  Lemma get_ll n ss (sl : systemList n ss) : get sl (le_n n) = ss.
+   destruct sl.
+   crush.
+   rewrite get_l.
+   reflexivity.
   Qed.
 
   Lemma p_to_c_m_is_le_t t ss (sl : systemList t ss) :
-    match p_to_c (parent (get sl (Last t))) with
+    match p_to_c (parent (get sl (le_n t))) with
     | None => True
     | Some y => p_to_c_time y <= t
     end.
@@ -329,37 +337,126 @@ Section Cache.
     [
     crush
     |
-    simpl;
-    repeat match goal with
-    | [ H : context [get _ _] |- _ ] => rewrite get_last in H
-    | [ H : systemStep _ _ _ |- _ ] => destruct H; destruct (option_dec p_to_c_dec (p_to_c (parent ss)))
+    rewrite get_l;
+    match goal with
+    | [ H : match ?p with Some _ => _ | None => _ end |- _ ] => rewrite get_ll in H
+    end;
+    match goal with
+    | [ s : systemStep _ _ _ |- _ ] => destruct s
+    end;
+    destruct (option_dec p_to_c_dec (p_to_c (parent ss)));
+    match goal with
     | [ H : parentStep ?t ?p ?p' |- _ ] => destruct H
+    end;
+    match goal with
     | [ H : fifoStep (p_to_c_fifo _) _ _ _ _ _ |- _ ] => destruct H; crush
+    end;
+    match goal with
     | [ |- match ?enqVal with Some _ => _ | None => _ end ] => destruct enqVal; crush
     end
     ].
   Qed.
 
-  Lemma p_to_c_m_is_le_n_t t ss (sl : systemList t ss) (f : fin t) :
-    match p_to_c (parent (get sl f)) with
+  Require Import ProofIrrelevance.
+
+  Lemma get_eq n t ss (sl : systemList t ss) next_ss (st : systemStep t ss next_ss) (pf1 : n <= t) (pf2 : n <= S t) : get sl pf1 = get (Next sl st) pf2.
+    unfold get.
+    fold get.
+    destruct (eq_nat_dec n (S t)).
+    crush.
+    f_equal.
+    apply proof_irrelevance.
+  Qed.
+
+  Definition crap n t : n <= S t -> {n < S t} + {n = S t}.
+    Hint Resolve le_lt_eq_dec : cpdt.
+    crush.
+  Qed.
+
+  Lemma p_to_c_m_is_le_n_t t ss (sl : systemList t ss) n (pf : n <= t) :
+    match p_to_c (parent (get sl pf)) with
     | None => True
     | Some y => p_to_c_time y <= t
     end.
-    induction sl;
-    [ crush |
-
-    dep_destruct f;
-    [ apply p_to_c_m_is_le_t |
-    simpl;
-    repeat match goal with
-    | [ H1 : fin ?t, H2 : (forall (f : fin ?t), _) |- _ ] => specialize H2 with H1
-    | [ |- match p_to_c (parent ?p) with Some _ => _ | None => _ end ] => destruct (p_to_c (parent p))
-    | _ => crush
-    end] ].
+    induction sl.
+    destruct n; crush.
+    destruct n.
+    SearchAbout (_ <= _).
+    Print le_S.
+    specialize IHsl with (le_0_n t).
+    assert match p_to_c (parent (get sl (le_0_n t))) with
+         | Some y => p_to_c_time y <= S t
+         | None => True
+         end.
+    destruct (p_to_c (parent (get sl (le_0_n t)))); crush.
+    erewrite get_eq in H.
+    apply H.
+    assert (forall pf : S n <= t,
+         match p_to_c (parent (get sl pf)) with
+         | Some y => p_to_c_time y <= S t
+         | None => True
+         end).
+    intro.
+    specialize IHsl with pf0.
+    destruct (p_to_c (parent (get sl pf0))); crush.
+    assert ({S n < S t} + {S n = S t}) by (apply (crap pf)).
+    destruct H0.
+    assert (S n <= t) by crush.
+    specialize H with H0.
+    erewrite get_eq in H.
+    apply H.
+    assert  match p_to_c (parent (get (Next sl s) (le_n (S t)))) with
+    | Some y => p_to_c_time y <= S t
+    | None => True
+    end by apply p_to_c_m_is_le_t.
+    rewrite <- e in H0.
+    crush.
   Qed.
+    unfold le_n.
+    rewrite pf in e.
+    apply p_to_c_m_is_le_t.
+    decide equality.
+    constructor.
+    destruct pf.
+    auto.
+
+    destruct.
+    erewrite get_eq in H.
+    crush.
+    crush.
+
+    rewrite (le_S t) in IHsl.
+    erewrite get_eq in IHsl.
+    crush.
+    intros.
+    induction sl.
+    destruct n; crush.
+    destruct n.
+    crush.
+    crush.
+    crush.
+    unfold get.
+    fold get.
+    induction n.
+    Lemma zero_le : forall t, 0 <= t.
+      crush.
+    Qed.
+    specialize IHsl with (zero_le t).
+    destruct (p_to_c (parent (get (zero_le t) sl))).
+    destruct (p_to_c (parent (get pf (Next sl s)))).
+    rewrite get_ll.
+(IHsl (zero_le t)).
+    destruct p_to_c (parent (get
+    crush.
+    assert match p_to_c (parent (get (le_n (S t)) (Next sl s))) with
+           | Some y => p_to_c_time y <= S t
+           | None => True
+           end by (apply p_to_c_m_is_le_t).
+     ind
+    rewrite get_l.
     
 
-  (*
+
   Definition deq_time_p_to_c_less (n : nat) (ss : systemState) (sl : systemList n ss) (m : nat) (pf: S m = p_to_c_n (get (le_n n) sl)) : p_to_c_time (first' (p_to_c_fifo (get (le_n n) sl)) pf) <= n.
     destruct (get (le_n n) sl).
     simpl.
@@ -367,21 +464,22 @@ Section Cache.
     destruct (first' p_to_c_fifo0 pf).
   simpl.
   crush.
-  Check deq_time_p_to_c_less.
-  *)
 
-  Lemma change_time_child_less (n : nat) (ss : systemState) (sl : systemList n ss) : change_time (child (get sl (Last n))) <= n.
+  Check deq_time_p_to_c_less.
+
+  Lemma change_time_child_less (n : nat) (ss : systemState) (sl : systemList n ss) (i : nat) (pf_i : i <= n) : change_time (child (get pf_i sl)) <= i.
   Admitted.
 
-  Lemma change_time_parent_less (n : nat) (ss : systemState) (sl : systemList n ss) : change_time (parent (get sl (Last n))) <= n.
+  Lemma change_time_parent_less (n : nat) (ss : systemState) (sl : systemList n ss) (i : nat) (pf_i : i <= n) : change_time (parent (get pf_i sl)) <= i.
   Admitted.
 
   (* Correctness corollary, as stated in the document *)
-  Corollary coherence (n : nat) (ss : systemState) (sl : systemList n ss) : state (child (get sl (Last n))) <<= state (parent (get sl (Last n))).
+  Corollary coherence (n : nat) (ss : systemState) (sl : systemList n ss) (i : nat) (pf_i : i <= n) : state (child (get pf_i sl)) <<= state (parent (get pf_i sl)).
     apply correctness.
     apply change_time_child_less.
     apply change_time_parent_less.
   Qed.
+
 End Cache.
 
 End All.
