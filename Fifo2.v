@@ -80,4 +80,17 @@ Definition deq (f : fifo) m (pf : S m = num f) : fifo :=
    ; bound :=  le_pred_le (bound f)
    |}.
 
+(* a step in a fifo, which contains a source and a sink
+     a) enq: only enqueue from source happens (source changes from Some to None)
+     b) deq: only dequeu from sink (sink changes from None to Some)
+     c) enq-deq parallel composition : explained better in Cache.v. Basically both enq and deq happens.
+          State of the FIFO must be maintained correctly
+     d) nothing : nothing happens, simulates other activities happening in the network
+ *)
+Inductive fifoStep : fifo -> option A -> option A -> fifo -> option A -> option A -> Prop :=
+| Enq : forall enqVal f (notFull : num f < size) deqVal, fifoStep f (Some enqVal) deqVal (enq enqVal f notFull) None deqVal
+| Deq : forall f m (notEmpty: S m = num f) enqVal, fifoStep f enqVal None (deq f notEmpty) enqVal (Some (first f notEmpty))
+| EnqDeq : forall f (notFull : num f < size) m (notEmpty: S m = num f) enqVal, fifoStep f (Some enqVal) None (enq enqVal (deq f notEmpty) (lt_pred_lt notFull)) None (Some (first f notEmpty))
+| NoFifoAction : forall f enqVal deqVal, fifoStep f enqVal deqVal f enqVal deqVal.
+
 End Fifo.

@@ -82,183 +82,95 @@ Qed.
 (* start the environment for the cache node, and parent-child-network system *)
 Section Cache.
 
-  Record p_to_c_msg : Set := mk_p_to_c_msg
-  { p_to_c_prev : Ord
-  ; p_to_c_next : Ord
-  ; p_to_c_time : nat
+  Record p_c_msg : Set := mk_p_c_msg
+  { p_c_prev : Ord
+  ; p_c_next : Ord
+  ; p_c_time : nat
   }.
 
-  Record c_to_p_msg : Set := mk_c_to_p_msg
-  { c_to_p_next : Ord
-  ; c_to_p_time : nat
-  }.
-
-  (* a node defines a child as well as a parent;
-     state denotes the coherence state;
-     p_to_c denotes the response message from parent to child
-       (sent in the case of parent, and received in the case of child)
-     c_to_p denotes the response message from child to parent
-       (sent in the case of child, and received in the case of parent)
-     change_time denotes the time at which a "forced" state change occurs
-       a forced state change occurs when a node changes child because of receiving a message
-   *)
-
-  Record node : Set := mkNode
-  { state : Ord
-  ; p_to_c : option p_to_c_msg
-  ; c_to_p : option c_to_p_msg
-  ; change_time : nat
+  Record c_p_msg : Set := mk_c_p_msg
+  { c_p_next : Ord
+  ; c_p_time : nat
   }.
 
   Section eq_msg_hint.
     Hint Resolve eq_nat_dec.
     Hint Resolve eq_Ord_dec.
 
-    Lemma p_to_c_dec (x y : p_to_c_msg) : {x = y} + {x <> y}.
+    Lemma p_c_dec (x y : p_c_msg) : {x = y} + {x <> y}.
       decide equality.
     Qed.
 
-    Lemma c_to_p_dec (x y : c_to_p_msg) : {x = y} + {x <> y}.
+    Lemma c_p_dec (x y : c_p_msg) : {x = y} + {x <> y}.
       decide equality.
     Qed.
 
   End eq_msg_hint.
   
-  (* a legal step of a child:
-       a) it need not do anything (simulates the rest of the stuff happening in the child node)
-       b) it receives response from parent and if necessary, changes state (and hence changes change_time)
-       c) it sends response to parent, changing state
-   *)
-  Inductive childStep (time : nat) c : node -> Prop :=
-  | CNothing :
-      childStep time c c
-  | CReceive :
-      forall p_to_c_m, p_to_c c = Some p_to_c_m ->
-        childStep time c
-          {| state := if compare_dec (p_to_c_prev (p_to_c_m)) (state c) then p_to_c_next (p_to_c_m) else state c
-           ; p_to_c := None
-           ; c_to_p := c_to_p c
-           ; change_time := if compare_dec (p_to_c_prev (p_to_c_m)) (state c) then p_to_c_time (p_to_c_m) else change_time c
-           |}
-  | CSend :
-      forall new_state, new_state << state c -> c_to_p c = None ->
-        childStep time c
-          {| state := new_state
-           ; p_to_c := p_to_c c
-           ; c_to_p := Some {| c_to_p_next := new_state
-                             ; c_to_p_time := S time
-                             |}
-           ; change_time := change_time c
-           |}.
+  Record node : Set := mkNode
+  { state : Ord
+  ; change_time : nat
+  }.
 
-  (* a legal step of a parent:
-       a) it need not do anything
-       b) it receives response from child and changes state (and hence changes change_time)
-       c) it sends response to child, changing state
-   *)
-  Inductive parentStep (time : nat) c : node -> Prop :=
-  | PNothing :
-      parentStep time c c
-  | PReceive :
-      forall c_to_p_m, c_to_p c = Some c_to_p_m ->
-        parentStep time c
-          {| state := c_to_p_next c_to_p_m
-           ; p_to_c := p_to_c c
-           ; c_to_p := None
-           ; change_time := c_to_p_time c_to_p_m
-           |}
-  | PSend :
-      forall new_state, new_state >> state c -> p_to_c c = None ->
-        parentStep time c
-          {| state := new_state
-           ; p_to_c := Some {| p_to_c_prev := state c
-                             ; p_to_c_next := new_state
-                             ; p_to_c_time := S time
-                             |}
-           ; c_to_p := c_to_p c
-           ; change_time := change_time c
-           |}.
+  Variable p_c_size c_p_size : nat.
 
-  (* network buffer sizes *)
-  Variable p_to_c_size : nat.
-  Variable c_to_p_size : nat.
-
-  (* full system state
-       p_to_c_fifo : fifo from parent to child
-       c_to_p_fifo : fifo from child to parent
-   *)
-  Record systemState : Set := mkSystemState
+  Record system : Set := mkSyste
   { child : node
   ; parent : node
-  ; p_to_c_fifo : fifo p_to_c_msg p_to_c_size
-  ; c_to_p_fifo : fifo c_to_p_msg c_to_p_size
+  ; p_c : fifo p_c_msg p_c_size
+  ; c_p : fifo c_p_msg c_p_size
   }.
+
+  Print enq.
+
+  (* parent, child *)
+  Inductive systemStep (time : nat) (s : system) : system -> Prop :=
+  | Nothing : systemStep time s s
+  | Enq_p_c : forall (x : Ord) (notFull : num (p_c s) < p_c_size), x >> state (child s) -> systemStep time s
+      {| child := child s
+       ; parent := {| state := x; change_time := change_time (parent s) |}
+       ; p_c := (enq {| p_c_prev := state (child s)
+                      ; p_c_next := x
+                      ; p_c_time := S time
+                      |} (p_c s) notFull)
+       ; c_p := c_p s
+       |}
+  | Enq_c_p : forall (x : Ord) (notFull : num (c_p s) < c_p_size), x << state (child s) -> systemStep time s
+      {| child := {| state := x; change_time := change_time (child s) |}
+       ; parent := parent s
+       ; p_c := p_c s
+       ; c_p := (enq {| c_p_next := x
+                      ; c_p_time := S time
+                      |} (c_p s) notFull)
+       |}
+  | Deq_p_c : forall m (notEmpty : S m = num (p_c s)), systemStep time s
+      {| child := if compare_dec (p_c_next (first (p_c s) notEmpty)) (state (child s))
+                    then {| state := p_c_next (first (p_c s) notEmpty); change_time := p_c_time (first (p_c s) notEmpty) |}
+                    else child s
+       ; parent := parent s
+       ; p_c := deq (p_c s) notEmpty
+       ; c_p := c_p s
+       |}
+  | Deq_c_p : forall m (notEmpty : S m = num (c_p s)), systemStep time s
+      {| child := child s
+       ; parent := {| state := c_p_next (first (c_p s) notEmpty); change_time := c_p_time (first (c_p s) notEmpty) |}
+       ; p_c := p_c s
+       ; c_p := deq (c_p s) notEmpty
+       |}.
 
   Variable init_state : Ord.
 
   Definition init_node :=
   {| state := init_state
-   ; p_to_c := None
-   ; c_to_p := None
    ; change_time := 0
    |}.
 
   Definition init_system :=
   {| child := init_node
    ; parent := init_node
-   ; p_to_c_fifo := emptyFifo p_to_c_msg p_to_c_size
-   ; c_to_p_fifo := emptyFifo c_to_p_msg c_to_p_size
+   ; p_c := emptyFifo p_c_msg p_c_size
+   ; c_p := emptyFifo c_p_msg c_p_size
    |}.
-
-  (* a full system step. Contains 4 mini-steps:
-       a) child transition
-       b) parent transition
-       c) p_to_c fifo transition (based on old values of message states)
-       d) c_to_p fifo transition (based on old values of message states)
-
-     The notion where I change state based on old values is called parallel composition in hardware.
-     A small example would be swapping two numbers in parallel:
-       x := y (parallel compose) y := x
-     There is no direct sequential counterpart to this operation.
-
-     In this particular example, the message at the node is being modified by two entities:
-       a) the node itself (it makes a Some-message into a None)
-       b) the fifo network (it makes a None into a Some-message)
-
-     In order to simulate a parallel composition because of this interaction correctly,
-     I should figure out the effect (got from higher level knowledge - I can be sure that
-     the message is None if the fifo network enqueues it, and hence the node could not have
-     processed a some message - which means I can discard the message update done by the node)
-
-     This reasoning shows up in the if-then-else clause in updating the message of the nodes
-   *)
-  Inductive systemStep (time : nat) (ss : systemState) : systemState -> Prop :=
-  | SystemStep :
-     forall c' p' 
-            p_to_c_fifo' parent_p_to_c' child_p_to_c'
-            c_to_p_fifo' parent_c_to_p' child_c_to_p',
-       childStep time (child ss) c' ->
-       parentStep time (parent ss) p' ->
-       fifoStep (p_to_c_fifo ss) (p_to_c (parent ss)) (p_to_c (child ss))
-                 p_to_c_fifo' parent_p_to_c' child_p_to_c' ->
-       fifoStep (c_to_p_fifo ss) (c_to_p (child ss)) (c_to_p (parent ss))
-                 c_to_p_fifo' child_c_to_p' parent_c_to_p' ->
-         systemStep time ss
-           {| child :=
-                {| state := state c'
-                 ; p_to_c := if option_dec p_to_c_dec (p_to_c (child ss)) then p_to_c c' else child_p_to_c'
-                 ; c_to_p := if option_dec c_to_p_dec (c_to_p (child ss)) then child_c_to_p' else c_to_p c'
-                 ; change_time := change_time c'
-                 |}
-            ; parent :=
-                {| state := state p'
-                 ; p_to_c := if option_dec p_to_c_dec (p_to_c (parent ss)) then parent_p_to_c' else p_to_c p'
-                 ; c_to_p := if option_dec c_to_p_dec (c_to_p (parent ss)) then c_to_p p' else parent_c_to_p'
-                 ; change_time := change_time p'
-                 |}
-            ; p_to_c_fifo := p_to_c_fifo'
-            ; c_to_p_fifo := c_to_p_fifo'
-            |}.
 
   Inductive fin : nat -> Set :=
   | Last : forall n, fin n
@@ -271,113 +183,33 @@ Section Cache.
     end.
 
   (* defining a list of system state transitions *)
-  Inductive systemList : nat -> systemState -> Set :=
+  Inductive systemList : nat -> system -> Set :=
   | Init : systemList 0 init_system
   | Next : forall t ss next_ss, systemList t ss -> systemStep t ss next_ss -> systemList (S t) next_ss.
 
   (* function to get the n^th element of the system state transition list *)
-  Fixpoint get max last_ss (sl : systemList max last_ss) : fin max -> systemState :=
-    match sl in systemList max last_ss return fin max -> systemState with
+  Fixpoint get max last_ss (sl : systemList max last_ss) : fin max -> system :=
+    match sl in systemList max last_ss return fin max -> system with
     | Init => fun _ => init_system
     | Next t _ next_ss ss_list _ => fun f =>
-        match f in fin n0 return (fin (pred n0) -> systemState) -> systemState with
+        match f in fin n0 return (fin (pred n0) -> system) -> system with
         | Last _ => fun _ => next_ss
         | Prev _ f' => fun val => val f'
         end (get ss_list)
     end.
 
   (* Correctness theorem, as stated in the document *)
-  Theorem correctness max (last_s : systemState) (sl : systemList max last_s) (p c : fin max) : change_time (child (get sl c)) <= getNum p -> change_time (parent (get sl p)) <= getNum c -> state (child (get sl c)) <<= state (parent (get sl p)).
+  Theorem correctness max (last_s : system) (sl : systemList max last_s) (p c : fin max) : change_time (child (get sl c)) <= getNum p -> change_time (parent (get sl p)) <= getNum c -> state (child (get sl c)) <<= state (parent (get sl p)).
   Admitted.
 
-  Lemma p_to_c_m_is_S_t t ss next_ss (st : systemStep t ss next_ss) :
-    match p_to_c (parent ss) with
-    | None => match p_to_c (parent next_ss) with
-              | None => True
-              | Some y => p_to_c_time y = S t
-              end
-    | Some z => match p_to_c (parent next_ss) with
-                | None => True
-                | Some y => y = z
-                end
-    end.
-    destruct st; destruct (option_dec p_to_c_dec (p_to_c (parent ss)));
-    match goal with
-    | [ H : parentStep ?t ?p ?p' |- _ ] => destruct H
-    end;
-    match goal with
-    | [ H : fifoStep (p_to_c_fifo _) _ _ _ _ _ |- _ ] => destruct H
-    end;
-    match goal with
-    | [ |- True ] => apply I
-    | [ |- match ?enqVal with Some _ => _ | None => _ end ] => destruct enqVal; reflexivity
-    | [ |- ?enqVal = ?enqVal] => reflexivity
-    | _ => crush
-    end.
-  Qed.
-
-  Lemma get_last n ss (sl : systemList n ss) : get sl (Last n) = ss.
-   destruct sl; reflexivity.
-  Qed.
-
-  Lemma p_to_c_m_is_le_t t ss (sl : systemList t ss) :
-    match p_to_c (parent (get sl (Last t))) with
-    | None => True
-    | Some y => p_to_c_time y <= t
-    end.
-    induction sl;
-    [
-    crush
-    |
-    simpl;
-    repeat match goal with
-    | [ H : context [get _ _] |- _ ] => rewrite get_last in H
-    | [ H : systemStep _ _ _ |- _ ] => destruct H; destruct (option_dec p_to_c_dec (p_to_c (parent ss)))
-    | [ H : parentStep ?t ?p ?p' |- _ ] => destruct H
-    | [ H : fifoStep (p_to_c_fifo _) _ _ _ _ _ |- _ ] => destruct H; crush
-    | [ |- match ?enqVal with Some _ => _ | None => _ end ] => destruct enqVal; crush
-    end
-    ].
-  Qed.
-
-  Lemma p_to_c_m_is_le_n_t t ss (sl : systemList t ss) (f : fin t) :
-    match p_to_c (parent (get sl f)) with
-    | None => True
-    | Some y => p_to_c_time y <= t
-    end.
-    induction sl;
-    [ crush |
-
-    dep_destruct f;
-    [ apply p_to_c_m_is_le_t |
-    simpl;
-    repeat match goal with
-    | [ H1 : fin ?t, H2 : (forall (f : fin ?t), _) |- _ ] => specialize H2 with H1
-    | [ |- match p_to_c (parent ?p) with Some _ => _ | None => _ end ] => destruct (p_to_c (parent p))
-    | _ => crush
-    end] ].
-  Qed.
-    
-
-  (*
-  Definition deq_time_p_to_c_less (n : nat) (ss : systemState) (sl : systemList n ss) (m : nat) (pf: S m = p_to_c_n (get (le_n n) sl)) : p_to_c_time (first' (p_to_c_fifo (get (le_n n) sl)) pf) <= n.
-    destruct (get (le_n n) sl).
-    simpl.
-    simpl in pf.
-    destruct (first' p_to_c_fifo0 pf).
-  simpl.
-  crush.
-  Check deq_time_p_to_c_less.
-  *)
-
-  Lemma change_time_child_less (n : nat) (ss : systemState) (sl : systemList n ss) : change_time (child (get sl (Last n))) <= n.
+  Lemma change_time_child_less (n : nat) (ss : system) (sl : systemList n ss) : change_time (child (get sl (Last n))) <= n.
   Admitted.
 
-  Lemma change_time_parent_less (n : nat) (ss : systemState) (sl : systemList n ss) : change_time (parent (get sl (Last n))) <= n.
+  Lemma change_time_parent_less (n : nat) (ss : system) (sl : systemList n ss) : change_time (parent (get sl (Last n))) <= n.
   Admitted.
 
   (* Correctness corollary, as stated in the document *)
-  Corollary coherence (n : nat) (ss : systemState) (sl : systemList n ss) : state (child (get sl (Last n))) <<= state (parent (get sl (Last n))).
+  Corollary coherence (n : nat) (ss : system) (sl : systemList n ss) : state (child (get sl (Last n))) <<= state (parent (get sl (Last n))).
     apply correctness.
     apply change_time_child_less.
     apply change_time_parent_less.
@@ -385,3 +217,46 @@ Section Cache.
 End Cache.
 
 End All.
+
+
+  Print not.
+
+  Variable A : Set.
+  Variable Q : A -> Prop.
+  Variable R : A -> Prop.
+
+(*  Definition exists_neg : forall i, ~ (Q i) -> ~ (exists j, Q j).
+   intros.
+   unfold not.
+   destruct 1.
+   crush.
+
+  Lemma stuff : forall i, Q i -> ~ (R i) -> ~ (exists j, Q j /\ R j).
+    intros.
+    unfold not.
+    destruct 1.
+    intros.
+    unfold not in H.
+    destruct H.
+*)
+  Locate "exists".
+
+  Print exists_neg'.
+
+  Print exists_neg'.
+  Print ex.
+    intros.
+
+  
+
+  Lemma stuff : forall k, (k > 0 -> (forall i, i < k -> ~ (P i)) -> ~ (P k)) ->
+                forall n, (n > 0 -> (P n -> exists j, j < n /\ P j)).
+
+
+  Lemma stuff : forall k, (k > 0 -> ((forall i, i < k -> (P i -> False)) -> (P k -> False))) -> (forall n > 0, P k -> exists i, i < k -> P i).
+
+  Lemma stuff : (forall k, P k -> exists i, i < k -> P i) -> (P 0 -> False) -> forall n, P n -> False.
+    intros.
+  Admitted.
+End proof.
+
