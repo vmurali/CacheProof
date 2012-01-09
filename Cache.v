@@ -1,5 +1,61 @@
 Set Implicit Arguments.
 
+(*
+Load FirstOrder.
+Require Import CpdtTactics.
+Section stuff.
+Variable P : nat -> Prop.
+
+Hypothesis dec : forall x, {P x} + {~ P x}.
+
+Lemma yyy : forall x, {forall i, i < x -> ~ P i} + {exists i, i < x /\ P i}.
+  induction x.
+  left; crush.
+  destruct (dec x).
+  destruct IHx.
+  right; exists x; crush.
+  right; exists x; crush.
+  destruct IHx.
+  left.
+  intros.
+  assert ({i <> x} + {i = x}) by decide equality.
+  assert ({i < x} + {i = x}) by crush.
+  destruct H1.
+  apply (n0 i l).
+  crush.
+  right.
+  destruct e.
+  exists x0.
+  crush.
+Qed.
+
+Lemma xxx : forall x, (forall i, i < x -> P i -> exists z, z <= i /\ ((forall y, y < z -> ~ P y) /\ P z))
+              -> (P x -> exists z, z <= x /\ ((forall y, y < z -> ~ P y) /\ P z)).
+  intros.
+  assert ({forall i, i < x -> ~ P i} + {exists i, i < x /\ P i}) by (apply yyy).
+  destruct H1.
+  exists x.
+  crush.
+  destruct e.
+  destruct H1.
+  specialize (H x0 H1 H2).
+  destruct H.
+  exists x1.
+  crush.
+Qed.
+
+Definition xx : forall x, P x -> exists z, z <= x /\ ((forall y, y < z -> ~ P y) /\ P z) := strong_ind (fun x => P x -> exists z, z <= x /\ ((forall y, y < z -> ~ P y) /\ P z)) xxx.
+
+Lemma stuff : (exists x, P x) -> exists z, ((forall y, y < z -> ~ P y) /\ P z).
+  intros.
+  destruct H.
+  assert (exists z, z <= x /\ ((forall y, y < z -> ~ P y) /\ P z)) by (apply (xx H)).
+  destruct H0.
+  exists x0.
+  crush.
+Qed.
+*)
+
 Axiom cheat : forall t, t.
 
 Require Import CpdtTactics.
@@ -109,7 +165,7 @@ Section Cache.
   
   Record node : Set := mkNode
   { state : Ord
-  ; change_time : nat
+  ; origin : nat
   }.
 
   Variable p_c_size c_p_size : nat.
@@ -128,24 +184,24 @@ Section Cache.
   | Nothing : systemStep time s s
   | Enq_p_c : forall (x : Ord) (notFull : num (p_c s) < p_c_size), x >> state (child s) -> systemStep time s
       {| child := child s
-       ; parent := {| state := x; change_time := change_time (parent s) |}
+       ; parent := {| state := x; origin := origin (parent s) |}
        ; p_c := (enq {| p_c_prev := state (child s)
                       ; p_c_next := x
-                      ; p_c_time := S time
+                      ; p_c_time := time
                       |} (p_c s) notFull)
        ; c_p := c_p s
        |}
   | Enq_c_p : forall (x : Ord) (notFull : num (c_p s) < c_p_size), x << state (child s) -> systemStep time s
-      {| child := {| state := x; change_time := change_time (child s) |}
+      {| child := {| state := x; origin := origin (child s) |}
        ; parent := parent s
        ; p_c := p_c s
        ; c_p := (enq {| c_p_next := x
-                      ; c_p_time := S time
+                      ; c_p_time := time
                       |} (c_p s) notFull)
        |}
   | Deq_p_c : forall m (notEmpty : S m = num (p_c s)), systemStep time s
       {| child := if compare_dec (p_c_next (first (p_c s) notEmpty)) (state (child s))
-                    then {| state := p_c_next (first (p_c s) notEmpty); change_time := p_c_time (first (p_c s) notEmpty) |}
+                    then {| state := p_c_next (first (p_c s) notEmpty); origin := p_c_time (first (p_c s) notEmpty) |}
                     else child s
        ; parent := parent s
        ; p_c := deq (p_c s) notEmpty
@@ -153,7 +209,7 @@ Section Cache.
        |}
   | Deq_c_p : forall m (notEmpty : S m = num (c_p s)), systemStep time s
       {| child := child s
-       ; parent := {| state := c_p_next (first (c_p s) notEmpty); change_time := c_p_time (first (c_p s) notEmpty) |}
+       ; parent := {| state := c_p_next (first (c_p s) notEmpty); origin := c_p_time (first (c_p s) notEmpty) |}
        ; p_c := p_c s
        ; c_p := deq (c_p s) notEmpty
        |}.
@@ -162,7 +218,7 @@ Section Cache.
 
   Definition init_node :=
   {| state := init_state
-   ; change_time := 0
+   ; origin := 0
    |}.
 
   Definition init_system :=
@@ -172,32 +228,49 @@ Section Cache.
    ; c_p := emptyFifo c_p_msg c_p_size
    |}.
 
-  Inductive fin : nat -> Set :=
-  | Last : forall n, fin n
-  | Prev : forall n, fin n -> fin (S n).
-
-  Fixpoint getNum n (f : fin n) : nat :=
-    match f with
-    | Last x => x
-    | Prev _ f' => getNum f'
-    end.
-
   (* defining a list of system state transitions *)
   Inductive systemList : nat -> system -> Set :=
   | Init : systemList 0 init_system
-  | Next : forall t ss next_ss, systemList t ss -> systemStep t ss next_ss -> systemList (S t) next_ss.
+  | Next : forall t ss next_ss, systemList t ss -> systemStep (S t) ss next_ss -> systemList (S t) next_ss.
+
+  Inductive fin : nat -> nat -> Set :=
+  | Last : forall n, fin n n
+  | Prev : forall n c, fin n c -> fin (S n) c.
+
+  Record systemStepRec := mkSystemStepRec
+  { time : nat
+  ; curr_s : system
+  ; next_s : system
+  ; step : systemStep time curr_s next_s
+  }.
 
   (* function to get the n^th element of the system state transition list *)
-  Fixpoint get max last_ss (sl : systemList max last_ss) : fin max -> system :=
-    match sl in systemList max last_ss return fin max -> system with
-    | Init => fun _ => init_system
-    | Next t _ next_ss ss_list _ => fun f =>
-        match f in fin n0 return (fin (pred n0) -> system) -> system with
-        | Last _ => fun _ => next_ss
-        | Prev _ f' => fun val => val f'
-        end (get ss_list)
+  Fixpoint nth max last_ss (sl : systemList max last_ss) : forall c, fin max c -> systemStepRec :=
+    match sl in systemList max last_ss return forall c, fin max c -> systemStepRec with
+    | Init => fun _ _ => {| time := 0
+                          ; curr_s := init_system
+                          ; next_s := init_system
+                          ; step := Nothing 0 init_system
+                          |}
+    | Next t ss next_ss ss_list step' => fun _ f =>
+        match f in fin n0 c0 return (forall c, fin (pred n0) c -> systemStepRec) -> systemStepRec with
+        | Last _ => fun _ => {| next_s := next_ss
+                              ; time := S t
+                              ; curr_s := ss
+                              ; step := step'
+                              |}
+        | Prev _ c' f' => fun val => val c' f'
+        end (nth ss_list)
     end.
 
+  Lemma message_passed max (last_s : system) (sl : systemList max last_s) p c (pFin : fin max p) (cFin : fin max c) (bad_hyp : state (child (next_s (nth sl cFin))) >> state (parent (next_s (nth sl pFin)))) : origin (child (next_s (nth sl cFin))) <> 0 \/ origin (parent (next_s (nth sl pFin))) <> 0.
+  Admitted.
+
+  Theorem start max (last_s : system) (sl : systemList max last_s) p c (pFin : fin max p) (cFin : fin max c) (p_not_0 : p <> 0) (c_not_0 : c <> 0) (c_less : origin (child (next_s (nth sl cFin))) <= p) (p_less : origin (parent (next_s (nth sl pFin))) <= c) (bad_hyp : state (child (next_s (nth sl cFin))) >> state (parent (next_s (nth sl pFin)))) : (exists p', exists c', forall (pFin' : fin max p') (cFin' : fin max c'), p' < p /\ c' < c /\ origin (parent (next_s (nth sl pFin'))) <= c' /\ origin (child (next_s (nth sl cFin'))) <= p' /\ state (child (next_s (nth sl cFin'))) >> state (parent (next_s (nth sl pFin')))).
+  
+  intros.
+
+  (*
   (* Correctness theorem, as stated in the document *)
   Theorem correctness max (last_s : system) (sl : systemList max last_s) (p c : fin max) : change_time (child (get sl c)) <= getNum p -> change_time (parent (get sl p)) <= getNum c -> state (child (get sl c)) <<= state (parent (get sl p)).
   Admitted.
@@ -214,49 +287,9 @@ Section Cache.
     apply change_time_child_less.
     apply change_time_parent_less.
   Qed.
+  *)
+
+  
 End Cache.
 
 End All.
-
-
-  Print not.
-
-  Variable A : Set.
-  Variable Q : A -> Prop.
-  Variable R : A -> Prop.
-
-(*  Definition exists_neg : forall i, ~ (Q i) -> ~ (exists j, Q j).
-   intros.
-   unfold not.
-   destruct 1.
-   crush.
-
-  Lemma stuff : forall i, Q i -> ~ (R i) -> ~ (exists j, Q j /\ R j).
-    intros.
-    unfold not.
-    destruct 1.
-    intros.
-    unfold not in H.
-    destruct H.
-*)
-  Locate "exists".
-
-  Print exists_neg'.
-
-  Print exists_neg'.
-  Print ex.
-    intros.
-
-  
-
-  Lemma stuff : forall k, (k > 0 -> (forall i, i < k -> ~ (P i)) -> ~ (P k)) ->
-                forall n, (n > 0 -> (P n -> exists j, j < n /\ P j)).
-
-
-  Lemma stuff : forall k, (k > 0 -> ((forall i, i < k -> (P i -> False)) -> (P k -> False))) -> (forall n > 0, P k -> exists i, i < k -> P i).
-
-  Lemma stuff : (forall k, P k -> exists i, i < k -> P i) -> (P 0 -> False) -> forall n, P n -> False.
-    intros.
-  Admitted.
-End proof.
-
