@@ -373,7 +373,7 @@ Section classic.
 
         assert (sCTc1GtNsCTc1: state c tc1 > nextState c tc1) by (assert (fst m > snd m) by (apply (sendChild m tc1); crush); crush).
 
-        clear sCTc1EqFstM nsCTc1EqSndM nsCTcminGTNsPTp1 nsPTp1EqSndM nsCTc1LtNsCTcmin.
+        clear nsPTpminGeNsPTp1 sCTc1EqFstM nsCTc1EqSndM nsCTcminGTNsPTp1 nsPTp1EqSndM nsCTc1LtNsCTcmin.
 
         pose proof (minExists dec exCRecv) as exCRecvMin.
         assert (exCRecvUseful: exists t, t <= tcmin /\ exists m, recvm c m t /\ fst m <= state c t) by
@@ -390,6 +390,7 @@ Section classic.
         assert (fstSndPN: state p tp2 = fst n /\ nextState p tp2 = snd n) by (apply sendCommon; crush).
         destruct fstSndPN as [fstPN sndPN].
         assert (sPTp2LeScTc2: state p tp2 <= state c tc2) by crush.
+
         destruct tc2.
         crush.
         assert (tc1LeTc2: tc1 <= tc2) by crush.
@@ -401,7 +402,8 @@ Section classic.
         pose proof (noRecvChild2 tc1LeTc2 noCRecv) as nsCtc2LeNsCTc1.
         assert (sCTc1GtSPTp2: state c tc1 > state p tp2) by (generalize sCTc1GtNsCTc1 sPTp2LeScTc2 nsCtc2LeNsCTc1; clear; unfold nextState in *; crush).
         clear noCRecvGTTc1'.
-(*        clear nsPTpminGeNsPTp1 fstPN sndPN *)
+        clear sCTc1GtNsCTc1 fstPN sndPN sPTp2LeScTc2 nsCtc2LeNsCTc1.
+
         assert (tp1LeTp2OrNot: tp2 < tp1 \/ tp1 <= tp2) by (clear; crush).
         destruct tp1LeTp2OrNot as [tp2LtTp1 | tp2GeTp1].
         Focus 2.
