@@ -466,22 +466,52 @@ Section classic.
         crush.
 
         destruct tp2.
-        pose proof @zeroRecvChild.
         assert (tc1LeSTc2: tc1 <= S tc2) by crush.
         pose proof (zeroRecvChild pSendN cRecvN tc1 tc1LeSTc2) as contra1.
         clear tc1LeSTc2.
         crush.
 
-        assert (noRecvGtTp2: forall y, S tp2 <= y <= tpmin -> forall m, ~ recvm p m y) by
-          (intros; assert (hyp: S tp1 <= y <= tpmin) by crush; generalize hyp noRecvGTTp1; clear; firstorder).
-        assert (tc2LtTcmin: S tc2 <= tcmin) by crush.
-        pose proof (@childRecvNoParentRecv).
-(*        pose proof (childRecvNoParentRecv pRecvCSend cRecvPSend tc2LtTcmin (conj cRecvN fstN) noCRecv pSendN noRecvGtTp2).*)
-        destruct tp2 as [tp2Eq0 | tp2].
-        assert (tc1LeSTc2: tc1 <= S tc2) by crush.
-        pose proof (zeroRecvChild pSendN cRecvN tc1 tc1LeSTc2) as sCTc1LeSC0.
+        destruct tc1.
+        assert (sTp2LeTp1: S tp2 <= tp1) by crush.
+        pose proof (zeroRecvParent sendmCMTc1 recvmPMTp1 (S tp2) sTp2LeTp1) as contra2.
+        clear sTp2LeTp1.
         crush.
-      Admitted.
+
+        destruct tp1.
+        crush.
+
+        assert (hyp1: forall k t1 t2, recvm p k t1 -> sendm c k t2 -> t1 <= tp2 -> t2 <= tc1).
+        intros.
+        assert (big: (t1 < S tp1 -> t2 < S tc1) /\ (t2 < S tc1 -> t1 < S tp1)) by (apply (fifo cp m (S tc1) (S tp1) recvmPMTp1 sendmCMTc1 k); crush).
+        destruct big as [useful junk]; clear junk.
+        assert (lt1: tc1 < S tp1) by crush.
+        assert (lt2: t1 < S tp1) by crush.
+        clear lt1.
+        specialize (useful lt2).
+        crush.
+
+        assert (hyp2: forall k t1 t2, recvm c k t1 -> sendm p k t2 -> t1 <= tc1 -> t2 <= tp2).
+        intros.
+        assert (big: (t1 < S tc2 -> t2 < S tp2) /\ (t2 < S tp2 -> t1 < S tc2)) by (apply (fifo pc n (S tp2) (S tc2) cRecvN pSendN k); crush).
+        destruct big as [useful junk]; clear junk.
+        assert (lt1: tc1 < S tc2) by crush.
+        assert (lt2: t1 < S tc2) by crush.
+        clear lt1.
+        specialize (useful lt2).
+        crush.
+
+        assert (basic: tp2 < tpmin) by crush.
+
+        clear tp1LeTpmin m recvmPMTp1 noRecvGTTp1 tc1LeTp1 sendmCMTc1 tc1LeTcmin tc1LtTc2LeTcmin exCRecv n cRecvN fstN tp2LeTc2 pSendN tc1LeTc2 noCRecv tp2LtTp1.
+
+        clear tp1 tc2.
+
+        assert (exists x y, x < tpmin /\ (forall m t1 t2, recvm p m t1 -> sendm c m t2 -> t1 <= x -> t2 <= y) /\ (forall m t1 t2, recvm c m t1 -> sendm p m t2 -> t1 <= y -> t2 <= x) /\ nextState c y > nextState p x) by (exists tp2; exists tc1; crush).
+
+        crush.
+      Qed.
     End message.
   End fifo.
 End classic.
+
+About strongLess.
