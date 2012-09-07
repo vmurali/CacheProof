@@ -111,10 +111,6 @@ Section classic.
 
       Hypothesis sendChild: forall m t, sendm c m t -> fst m > snd m.
 
-      Hypothesis enqImpDeq: forall s m t, enq s m t -> exists t', deq s m t'.
-
-      Hypothesis noSimultaneous: forall pt m n t, ~ (sendm pt m t /\ recvm pt n t).
-
       Section noRecvParent.
         Context {ti : nat}.
 
@@ -410,8 +406,6 @@ Section classic.
 
         pose proof (minExists dec exCRecv) as exCRecvMin.
 
-(*        assert (exCRecvUseful: exists t, t <= tcmin /\ exists m, recvm c m t /\ fst m <= state c t) by
-          (destruct exCRecv as [t hyp]; assert (t <= tcmin) by crush; generalize hyp; clear; firstorder). *)
         clear exCRecv.
         destruct exCRecvMin as [tc2 rest].
         destruct rest as [rest noCRecvGTTc1'].
@@ -443,7 +437,6 @@ Section classic.
         destruct tp1LeTp2OrNot as [tp1LeTp2 | tp2LtTp1].
         assert (tc2LtTcmin: S tc2 <= tcmin) by crush.
         pose proof (@maxExistsPower dec (fun t => exists m, recvm c m t /\ fst m <= state c t) tcmin (S tc2) tc2LtTcmin exCRecv) as exCRecvMax.
-        (* clear exCRecvUseful. *)
         destruct exCRecvMax as [tc3 rest].
         destruct rest as [tc2LtTc3LeTcmin rest].
         destruct rest as [exCRecvTc3 noCRecvGtTc3].
@@ -510,8 +503,56 @@ Section classic.
 
         crush.
       Qed.
+
+      Theorem conservative'':
+        forall t, ~ (nextState c t > nextState p t).
+      Proof.
+        intro t.
+        apply strongLess.
+        intro.
+        intro.
+        intro.
+        intro recv.
+        intro send.
+        intro le.
+        pose proof (deqImpEnq cp m t1 recv) as exEnq.
+        destruct exEnq as [t' rest].
+        destruct rest as [le2 enq].
+        pose proof (uniqueEnq cp m m t2 t' send enq).
+        destruct H as [useful junk].
+        crush.
+        intro.
+        intro.
+        intro.
+        intro recv.
+        intro send.
+        intro le.
+        pose proof (deqImpEnq pc m t1 recv) as exEnq.
+        destruct exEnq as [t' rest].
+        destruct rest as [le2 enq].
+        pose proof (uniqueEnq pc m m t2 t' send enq).
+        destruct H as [useful junk].
+        crush.
+      Qed.
+
+      Theorem conservative':
+        forall t, ~ state c t > state p t.
+      Proof.
+        intro.
+        destruct t.
+        unfold not; crush.
+        apply (conservative'' t).
+      Qed.
+
+      Theorem conservative:
+        forall t, state c t <= state p t.
+      Proof.
+        intro.
+        pose proof (conservative' t).
+        crush.
+      Qed.
     End message.
   End fifo.
 End classic.
 
-About strongLess.
+Check conservative.
