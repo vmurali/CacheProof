@@ -12,48 +12,38 @@ Section classical.
       forall y, y <= x -> ~ P y.
     Proof.
       induction x.
-      destruct (dec (P 0)).
+      destruct (dec (P 0)) as [P0 | notP0].
       left; exists 0; crush.
-      right; crush; assert (y = 0); crush.
-      destruct IHx.
+      right; intros y le; assert (y = 0); crush.
+      destruct IHx as [ex | notEx].
       left; assumption.
-      destruct (dec (P (S x))).
-      left.
-      exists (S x).      
-      crush.
-      apply (H y); crush.
-      right.
-      intros.
-      assert (y <= x \/ y = S x) by crush.
-      crush.
+      destruct (dec (P (S x))) as [PSx | notPSx].
+      left; exists (S x); constructor; [assumption | intros y lt; assert (y <= x) by crush; firstorder].
+      right; intros; assert (y <= x \/ y = S x) by crush; crush; firstorder.
+    Qed.
+
+    Theorem minExists (ex: exists x, P x) : (exists x, P x /\ forall y, y < x -> ~ P y).
+    Proof.
+      destruct ex as [x Px].
+      pose proof (leastOrNone x) as exOrNot.
+      destruct exOrNot.
+      assumption.
+      assert (eq: x <= x) by crush.
       firstorder.
     Qed.
 
-    Theorem minExists : (exists x, P x) -> (exists x, P x /\ forall y, y < x -> ~ P y).
+    Theorem minExistsPower {x} (Px: P x): (exists y, y <= x /\ P y /\ forall z, z < y -> ~ P z).
     Proof.
-      intros.
-      destruct H.
-      pose proof (leastOrNone x).
-      destruct H0.
+      assert (ex: exists x, P x) by firstorder.
+      pose proof (minExists ex) as exMin.
+      clear ex.
+      destruct exMin as [t rest].
+      destruct rest as [Pt notBelow].
+      exists t.
+      crush.
+      destruct (dec (t <= x)).
       assumption.
-      assert (x <= x) by crush.
-      specialize (H0 x H1).
-      crush.
-    Qed.
-
-    Theorem minExistsPower {x}: P x -> (exists y, y <= x /\ P y /\ forall z, z < y -> ~ P z).
-    Proof.
-      intros.
-      assert (exists x, P x) by (exists x; crush).
-      pose proof (minExists H0).
-      clear H0.
-      destruct H1.
-      destruct H0.
-      exists x0.
-      crush.
-      destruct (dec (x0 <= x)).
-      crush.
-      assert (x < x0) by crush.
+      assert (x < t) by crush.
       firstorder.
     Qed.
   End minExists.
@@ -135,25 +125,11 @@ Section classical.
       
   End doubleMinExists.
 
-  Section notExistForallNot.
-    Context {P Q R: nat -> nat -> Prop}.
-    Lemma notExistForallNot : (~ exists x y, P x y /\ Q x y /\ R x y) -> forall x y, P x y -> Q x y -> ~ R x y.
-    Proof.
-      intros.
-      destruct (dec (exists x y, P x y /\ Q x y /\ R x y)).
-      crush.
-      firstorder.
-    Qed.
- End notExistForallNot.
-
-  Section notForallNotImpExists.
-    Context {P Q: nat -> Prop}.
-    Lemma notForallNotImpExists: ~ (forall x, P x -> ~ Q x) -> exists x, P x /\ Q x.
-    Proof.
-      intros.
-      destruct (dec (exists x, P x /\ Q x)).
-      crush.
-      firstorder.
-    Qed.
-  End notForallNotImpExists.
+  Lemma notExistForallNot {P Q R: nat -> nat -> Prop} : (~ exists x y, P x y /\ Q x y /\ R x y) -> forall x y, P x y -> Q x y -> ~ R x y.
+  Proof.
+    intros.
+    destruct (dec (exists x y, P x y /\ Q x y /\ R x y)).
+    crush.
+    firstorder.
+  Qed.
 End classical.
