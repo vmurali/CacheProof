@@ -1,4 +1,5 @@
 Require Import CpdtTactics.
+Load Fifo.
 Load Useful.
 
 Module Classical.
@@ -425,17 +426,3 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
   Definition recv := recv.
   Definition send := send.
 End GetResp.
-
-Module Type m := FifoHighLevel RespMesg.
-
-Module Type FifoMidLevel (mesg: Mesg).
-  Import mesg.
-
-  Parameter available: mesg -> nat -> Prop.
-  Parameter space: nat -> Prop.
-  Parameter enq: mesg -> nat -> Prop.
-  Parameter deq: mesg -> nat -> Prop.
-
-  Axiom 
-
-End FifoMidLevel.
