@@ -5,87 +5,6 @@ Module Classical.
   Hypothesis dec: forall P: Prop, P \/ ~ P.
 End Classical.
 
-Module Type Mesg.
-  Parameter mesg: Type.
-End Mesg.
-
-Module Type FifoHighLevelBasic (mesg: Mesg).
-  Import mesg.
-
-  Axiom enq: mesg -> nat -> Prop.
-
-  Axiom deq: mesg -> nat -> Prop.
-
-  Axiom uniqueEnq1: forall {m n t1 t2}, enq m t1 -> enq n t2 -> m = n -> t1 = t2.
-
-  Axiom uniqueEnq2: forall {m n t1 t2}, enq m t1 -> enq n t2 -> t1 = t2 -> m = n.
-
-  Axiom uniqueDeq1: forall {m n t1 t2}, deq m t1 -> deq n t2 -> m = n -> t1 = t2.
-
-  Axiom uniqueDeq2: forall {m n t1 t2}, deq m t1 -> deq n t2 -> t1 = t2 -> m = n.
-
-  Axiom deqImpEnq: forall {m t}, deq m t -> exists t', t' <= t /\ enq m t'.
-
-  Axiom fifo1: 
-      forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> te' < te -> td' < td.
-
-  Axiom fifo2:
-      forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> td' < td -> te' < te.
-End FifoHighLevelBasic.
-
-Module Type FifoHighLevel (mesg: Mesg).
-  Import mesg.
-
-  Declare Module f : FifoHighLevelBasic mesg.
-  Import f.
-
-  Axiom fifo1':
-    forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> te' <= te -> td' <= td.
-
-  Axiom fifo2':
-    forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> td' <= td -> te' <= te.
-
-  Axiom enq0First: forall {m t}, enq m 0 -> deq m t -> forall t', t' < t -> forall m', deq m' t' -> False.
-End FifoHighLevel.
-
-Module GetFifoHighLevel (m: FifoHighLevelBasic) (mesg: Mesg) : FifoHighLevel mesg.
-  Module f := m mesg.
-  Import f.
-
-  Theorem fifo1' {m te td} (enqM: enq m te) (deqM: deq m td) {m' te' td'} (enqM': enq m' te') (deqM': deq m' td'): te' <= te -> td' <= td.
-  Proof.
-    intro te'LeTe.
-    assert (cases: te' = te \/ te' < te) by crush.
-    destruct cases as [te'EqTe | te'LtTe].
-    assert (m' = m) by (apply (uniqueEnq2 enqM' enqM); crush).
-    assert (td' = td) by (apply (uniqueDeq1 deqM' deqM); crush).
-    crush.
-    assert (td' < td) by (apply (fifo1 enqM deqM enqM' deqM'); crush).
-    crush.
-  Qed.
-
-  Theorem fifo2' {m te td} (enqM: enq m te) (deqM: deq m td) {m' te' td'} (enqM': enq m' te') (deqM': deq m' td'): td' <= td -> te' <= te.
-  Proof.
-    intro td'LeTe.
-    assert (cases: td' = td \/ td' < td) by crush.
-    destruct cases as [td'EqTd | td'LtTd].
-    assert (m' = m) by (apply (uniqueDeq2 deqM' deqM); crush).
-    assert (te' = te) by (apply (uniqueEnq1 enqM' enqM); crush).
-    crush.
-    assert (te' < te) by (apply (fifo2 enqM deqM enqM' deqM'); crush).
-    crush.
-  Qed.
-
-  Theorem enq0First {m t} (enq0: enq m 0) (deqT: deq m t) t' (lt: t' < t) m' (deqM': deq m' t'): False.
-  Proof.
-    pose proof (deqImpEnq deqM') as exEnq.
-    destruct exEnq as [t'' rest].
-    destruct rest as [leEnq enqM'].
-    pose proof (fifo2 enq0 deqT enqM' deqM' lt).
-    crush.
-  Qed.
-End GetFifoHighLevel.
-
 Inductive Point := p | c.
 Definition State := nat.
 
@@ -93,8 +12,7 @@ Module RespMesg <: Mesg.
   Definition mesg := (State * State)%type.
 End RespMesg.
 
-Module Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
-  Import Classical.
+Module Type RespAxioms (pc cp: FifoHighLevel RespMesg).
   Import RespMesg.
 
   Definition send pt m t :=
@@ -126,6 +44,21 @@ Module Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
   Axiom sendParent: forall {m t}, send p m t -> fst m < snd m.
 
   Axiom sendChild: forall {m t}, send c m t -> fst m > snd m.
+End RespAxioms.
+
+Module Type Resp (pc cp: FifoHighLevel RespMesg).
+  Import RespMesg.
+  Parameter state: Point -> nat -> State.
+  Parameter nextState: Point -> nat -> State.
+  Parameter send: Point -> mesg -> nat -> Prop.
+  Parameter recv: Point -> mesg -> nat -> Prop.
+  Axiom conservative: forall t, state c t <= state p t.
+End Resp.
+
+Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp pc cp.
+  Import Classical.
+  Import axioms.
+  Import RespMesg.
 
   Section noRecvParent.
     Context {ti : nat}.
@@ -293,7 +226,7 @@ Module Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
       (forall m t1 t2, recv c m t1 -> send p m t2 -> t1 <= tc -> t2 <= tp) ->
       ~ (nextState c tc > nextState p tp).
   Proof.
-    apply (notExistForallNot dec).
+    apply notExistForallNot.
     unfold not.
     intros exStmt.
 
@@ -486,4 +419,23 @@ Module Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     pose proof (conservative' t).
     crush.
   Qed.
-End Resp.
+
+  Definition state := state.
+  Definition nextState := nextState.
+  Definition recv := recv.
+  Definition send := send.
+End GetResp.
+
+Module Type m := FifoHighLevel RespMesg.
+
+Module Type FifoMidLevel (mesg: Mesg).
+  Import mesg.
+
+  Parameter available: mesg -> nat -> Prop.
+  Parameter space: nat -> Prop.
+  Parameter enq: mesg -> nat -> Prop.
+  Parameter deq: mesg -> nat -> Prop.
+
+  Axiom 
+
+End FifoMidLevel.
