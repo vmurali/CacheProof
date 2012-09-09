@@ -1,17 +1,11 @@
 Require Import CpdtTactics.
-Load Fifo.
 Load Useful.
+Load DataTypes.
+Load Fifo.
 
 Module Classical.
   Hypothesis dec: forall P: Prop, P \/ ~ P.
 End Classical.
-
-Inductive Point := p | c.
-Definition State := nat.
-
-Module RespMesg <: Mesg.
-  Definition mesg := (State * State)%type.
-End RespMesg.
 
 Module Type RespAxioms (pc cp: FifoHighLevel RespMesg).
   Import RespMesg.
