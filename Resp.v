@@ -7,6 +7,10 @@ Module Classical.
   Hypothesis dec: forall P: Prop, P \/ ~ P.
 End Classical.
 
+Module RespMesg <: Mesg.
+  Definition mesg := (State * State)%type.
+End RespMesg.
+
 Module Type RespAxioms (pc cp: FifoHighLevel RespMesg).
   Import RespMesg.
 

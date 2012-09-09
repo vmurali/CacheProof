@@ -1,5 +1,8 @@
 Require Import CpdtTactics.
-Load Mesg.
+
+Module Type Mesg.
+  Parameter mesg: Type.
+End Mesg.
 
 Module Type FifoHighLevelBasic (mesg: Mesg).
   Import mesg.
