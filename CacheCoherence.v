@@ -9,14 +9,12 @@ Module Type Mesg.
   Parameter mesg: Type.
 End Mesg.
 
-Module Type FifoHighLevel (mesg: Mesg).
+Module Type FifoHighLevelBasic (mesg: Mesg).
   Import mesg.
 
-  Inductive enq : mesg -> nat -> Prop :=
-    enq_intro : forall m t, enq m t.
+  Axiom enq: mesg -> nat -> Prop.
 
-  Inductive deq : mesg -> nat -> Prop :=
-    deq_intro : forall m t, deq m t.
+  Axiom deq: mesg -> nat -> Prop.
 
   Axiom uniqueEnq1: forall {m n t1 t2}, enq m t1 -> enq n t2 -> m = n -> t1 = t2.
 
@@ -33,6 +31,26 @@ Module Type FifoHighLevel (mesg: Mesg).
 
   Axiom fifo2:
       forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> td' < td -> te' < te.
+End FifoHighLevelBasic.
+
+Module Type FifoHighLevel (mesg: Mesg).
+  Import mesg.
+
+  Declare Module f : FifoHighLevelBasic mesg.
+  Import f.
+
+  Axiom fifo1':
+    forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> te' <= te -> td' <= td.
+
+  Axiom fifo2':
+    forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> td' <= td -> te' <= te.
+
+  Axiom enq0First: forall {m t}, enq m 0 -> deq m t -> forall t', t' < t -> forall m', deq m' t' -> False.
+End FifoHighLevel.
+
+Module GetFifoHighLevel (m: FifoHighLevelBasic) (mesg: Mesg) : FifoHighLevel mesg.
+  Module f := m mesg.
+  Import f.
 
   Theorem fifo1' {m te td} (enqM: enq m te) (deqM: deq m td) {m' te' td'} (enqM': enq m' te') (deqM': deq m' td'): te' <= te -> td' <= td.
   Proof.
@@ -46,16 +64,15 @@ Module Type FifoHighLevel (mesg: Mesg).
     crush.
   Qed.
 
-  Theorem fifo2':
-    forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> td' <= td -> te' <= te.
+  Theorem fifo2' {m te td} (enqM: enq m te) (deqM: deq m td) {m' te' td'} (enqM': enq m' te') (deqM': deq m' td'): td' <= td -> te' <= te.
   Proof.
-    intros.
+    intro td'LeTe.
     assert (cases: td' = td \/ td' < td) by crush.
     destruct cases as [td'EqTd | td'LtTd].
-    assert (m = m') by (apply (uniqueDeq2 H0 H2); crush).
-    assert (te' = te) by (apply (uniqueEnq1 H1 H); crush).
+    assert (m' = m) by (apply (uniqueDeq2 deqM' deqM); crush).
+    assert (te' = te) by (apply (uniqueEnq1 enqM' enqM); crush).
     crush.
-    assert (te' < te) by (apply (fifo2 H H0 H1 H2); crush).
+    assert (te' < te) by (apply (fifo2 enqM deqM enqM' deqM'); crush).
     crush.
   Qed.
 
@@ -67,7 +84,7 @@ Module Type FifoHighLevel (mesg: Mesg).
     pose proof (fifo2 enq0 deqT enqM' deqM' lt).
     crush.
   Qed.
-End FifoHighLevel.
+End GetFifoHighLevel.
 
 Inductive Point := p | c.
 Definition State := nat.
@@ -76,20 +93,20 @@ Module RespMesg <: Mesg.
   Definition mesg := (State * State)%type.
 End RespMesg.
 
-Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
+Module Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
   Import Classical.
   Import RespMesg.
 
   Definition send pt m t :=
     match pt with
-      | p => pc.enq m t
-      | c => cp.enq m t
+      | p => pc.f.enq m t
+      | c => cp.f.enq m t
     end.
   
   Definition recv pt m t :=
     match pt with
-      | p => cp.deq m t
-      | c => pc.deq m t
+      | p => cp.f.deq m t
+      | c => pc.f.deq m t
     end.
 
   Parameter state: Point -> nat -> State.
@@ -313,7 +330,7 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     destruct rest as [tcmaxLeTcmin rest].
     destruct rest as [cRecvMax noCRecv].
     destruct cRecvMax as [m childRecvCond].
-    assert (exTpmax: exists tpmax, tpmax <= tcmax /\ send p m tpmax) by (apply pc.deqImpEnq; crush).
+    assert (exTpmax: exists tpmax, tpmax <= tcmax /\ send p m tpmax) by (apply pc.f.deqImpEnq; crush).
     destruct exTpmax as [tpmax rest].
     destruct rest as [useless sendPMTpmax].
     clear useless.
@@ -333,7 +350,7 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     assert (noRecvGTTp1: forall y, S tp1 <= y <= tpmin -> forall m, ~ recv p m y) by (generalize noRecvGTTp1'; clear; firstorder).
     clear noRecvGTTp1'.
     assert (nsPTpminGeNsPTp1: nextState p tpmin >= nextState p tp1) by (apply noRecvParent2; crush).
-    assert (exRest: exists tc1, tc1 <= tp1 /\ send c m tc1) by (apply cp.deqImpEnq; crush).
+    assert (exRest: exists tc1, tc1 <= tp1 /\ send c m tc1) by (apply cp.f.deqImpEnq; crush).
     destruct exRest as [tc1 rest].
     destruct rest as [tc1LeTp1 sendmCMTc1].
 
@@ -358,7 +375,7 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     generalize exCRecv; intro rest.
     destruct rest as [n rest].
     destruct rest as [cRecvN fstN].
-    assert (exPSend: exists tp2, tp2 <= tc2 /\ send p n tp2) by (apply pc.deqImpEnq; crush).
+    assert (exPSend: exists tp2, tp2 <= tc2 /\ send p n tp2) by (apply pc.f.deqImpEnq; crush).
     destruct exPSend as [tp2 rest].
     destruct rest as [tp2LeTc2 pSendN].
     assert (fstSndPN: state p tp2 = fst n /\ nextState p tp2 = snd n) by (apply sendCommon; crush).
@@ -389,7 +406,7 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     generalize cRecvTc3Fst; intro hyp.
     destruct hyp as [cRecvTc3 fstTc3].
     assert (tc2LtTc3: S tc2 <= tc3) by crush.
-    assert (exPRecvTp3: exists tp3, tp3 <= tc3 /\ send p n' tp3) by (apply pc.deqImpEnq; crush).
+    assert (exPRecvTp3: exists tp3, tp3 <= tc3 /\ send p n' tp3) by (apply pc.f.deqImpEnq; crush).
     destruct exPRecvTp3 as [tp3 rest].
     destruct rest as [junk pSendX].
     clear junk.
@@ -418,24 +435,13 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     destruct tp1.
     crush.
 
-    assert (hyp1: forall k t1 t2, recv p k t1 -> send c k t2 -> t1 <= tp2 -> t2 <= tc1).
-    intros.
-    pose proof @cp.fifo1.
-    assert (useful: t1 < S tp1 -> t2 < S tc1) by (apply (@cp.fifo2 m (S tc1) (S tp1) sendmCMTc1 recvmPMTp1 k); crush).
-    assert (lt1: tc1 < S tp1) by crush.
-    assert (lt2: t1 < S tp1) by crush.
-    clear lt1.
-    specialize (useful lt2).
-    crush.
+    assert (hyp1: forall k t1 t2, recv p k t1 -> send c k t2 -> t1 <= tp2 -> t2 <= tc1) by (
+      intros; assert (useful: t1 < S tp1 -> t2 < S tc1) by (apply (@cp.f.fifo2 m (S tc1) (S tp1) sendmCMTc1 recvmPMTp1 k); crush);
+          assert (lt: t1 < S tp1) by crush; specialize (useful lt); crush).
 
-    assert (hyp2: forall k t1 t2, recv c k t1 -> send p k t2 -> t1 <= tc1 -> t2 <= tp2).
-    intros.
-    assert (useful: t1 < S tc2 -> t2 < S tp2) by (apply (@pc.fifo2 n (S tp2) (S tc2)pSendN cRecvN k); crush).
-    assert (lt1: tc1 < S tc2) by crush.
-    assert (lt2: t1 < S tc2) by crush.
-    clear lt1.
-    specialize (useful lt2).
-    crush.
+    assert (hyp2: forall k t1 t2, recv c k t1 -> send p k t2 -> t1 <= tc1 -> t2 <= tp2) by (
+      intros; assert (useful: t1 < S tc2 -> t2 < S tp2) by (apply (@pc.f.fifo2 n (S tp2) (S tc2)pSendN cRecvN k); crush);
+        assert (lt: t1 < S tc2) by crush; specialize (useful lt); crush).
 
     assert (basic: tp2 < tpmin) by crush.
 
@@ -452,27 +458,17 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     ~ (nextState c t > nextState p t).
   Proof.
     apply strongLess.
-    intro.
-    intro.
-    intro.
-    intro recv.
-    intro send.
-    intro le.
-    pose proof (cp.deqImpEnq recv) as exEnq.
+    intros m t1 t2 recv send le.
+    pose proof (cp.f.deqImpEnq recv) as exEnq.
     destruct exEnq as [t' rest].
     destruct rest as [le2 enq].
-    pose proof (cp.uniqueEnq1 send enq) as useful.
+    pose proof (cp.f.uniqueEnq1 send enq) as useful.
     crush.
-    intro.
-    intro.
-    intro.
-    intro recv.
-    intro send.
-    intro le.
-    pose proof (pc.deqImpEnq recv) as exEnq.
+    intros m t1 t2 recv send le.
+    pose proof (pc.f.deqImpEnq recv) as exEnq.
     destruct exEnq as [t' rest].
     destruct rest as [le2 enq].
-    pose proof (pc.uniqueEnq1 send enq).
+    pose proof (pc.f.uniqueEnq1 send enq).
     crush.
   Qed.
 
@@ -481,7 +477,7 @@ Module Type Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
   Proof.
     destruct t.
     unfold not; pose proof init; crush.
-    apply (@conservative'' t).
+    apply (conservative'' t).
   Qed.
 
   Theorem conservative t:
