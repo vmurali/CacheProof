@@ -296,20 +296,20 @@ Module Resp (pc: FifoHighLevel RespMesg) (cp: FifoHighLevel RespMesg).
     apply (notExistForallNot dec).
     unfold not.
     intros exStmt.
-    pose proof (minExists2 dec exStmt) as exMin.
+
+
+    pose proof (minExists dec exStmt) as exMin.
     clear exStmt.
     destruct exMin as [tpmin exMin].
-    destruct exMin as [tcmin exMin].
-    destruct exMin as [ex min].
-    destruct min as [tpminHyp' tcminHyp'].
-    destruct ex as [pRecvCSend rest].
+    destruct exMin as [hyps tpminHyp'].
+    destruct hyps as [tcmin exMin].
+    destruct exMin as [pRecvCSend rest].
     destruct rest as [cRecvPSend wrongState].
     assert (tpminHyp: ~ exists x y, x < tpmin /\
       (forall m t1 t2, recv p m t1 -> send c m t2 -> t1 <= x -> t2 <= y) /\
       (forall m t1 t2, recv c m t1 -> send p m t2 -> t1 <= y -> t2 <= x) /\
       nextState c y > nextState p x) by firstorder.
     clear tpminHyp'.
-    clear tcminHyp'.
     destruct (dec (forall t, 0 <= t <= tpmin -> forall m, ~ recv p m t)) as [pNotRecv | pRecv'].
     destruct (dec (forall t, 0 <= t <= tcmin -> forall m, ~ (recv c m t /\ fst m <= state c t))) as [cNotRecv | cRecv'].
     assert (zeroLeTpmin: 0 <= tpmin) by crush.

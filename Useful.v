@@ -50,86 +50,49 @@ Section classical.
 
   Section maxExists.
     Context {P : nat -> Prop}.
-    Theorem maxExists : forall {max}, (exists x, x <= max /\ P x) -> (exists x, x <= max /\ P x /\ forall y, S x <= y <= max -> ~ P y).
+    Theorem maxExists {max} (exPx: exists x, x <= max /\ P x): exists x, x <= max /\ P x /\ forall y, S x <= y <= max -> ~ P y.
     Proof.
-      intros.
-      destruct H.
-      destruct H.
+      destruct exPx as [x rest].
+      destruct rest as [xLeMax Px].
       pose (fun x => P (max - x)) as Q.
       pose (max - x) as diff.
-      assert (max - (max - x) = x) by crush.
-      assert (Q diff).
-      unfold Q.
-      unfold diff.
+      assert (xEq: max - (max - x) = x) by crush.
+      assert (Qdiff: Q diff) by (unfold Q; unfold diff; crush).
+      assert (exQdiff: exists d, Q d) by (exists diff; crush).
+      pose proof (minExists exQdiff) as qMin.
+      destruct qMin as [y rest].
+      destruct rest as [leDiff noLower].
+      exists (max - y).
+      constructor.
       crush.
-      assert (exists d, Q d /\ forall y, y < d -> ~ Q y).
-      assert (exists diff, Q diff) by (exists diff; crush).
-      apply minExists; crush.
-      destruct H3.
-      destruct H3.
-      exists (max - x0).
+      constructor.
       crush.
-      specialize (H4 (max -y)).
-      assert (max - y < x0) by crush.
-      specialize (H4 H5).
-      unfold Q in H4.
-      assert (max - (max - y) = y) by crush.
-      rewrite H9 in H4.
+      intros y0 complx.
+      assert (lt: max - y0 < y) by crush.
+      unfold Q in noLower.
+      specialize (noLower (max - y0) lt).
+      assert (eq: max - (max - y0) = y0) by (assert (e: y0 <= max) by crush; generalize e; clear; crush).
+      rewrite eq in noLower.
       crush.
-    Qed.
+  Qed.
 
-    Theorem maxExistsPower {max x}: x <= max -> P x -> (exists y, x <= y <= max /\ P y /\ forall z, S y <= z <= max -> ~ P z).
+    Theorem maxExistsPower {max x} (xLeMax: x <= max) (Px: P x) : (exists y, x <= y <= max /\ P y /\ forall z, S y <= z <= max -> ~ P z).
     Proof.
-      intros.
-      assert (exists x, x <= max /\ P x) by (exists x; crush).
-      pose proof (maxExists H1).
-      destruct H2.
-      destruct H2.
-      destruct H3.
-      exists x0.
-      destruct (dec (x <= x0)).
+      assert (exX: exists x, x <= max /\ P x) by firstorder.
+      pose proof (maxExists exX) as maxExX.
+      destruct maxExX as [t rest].
+      destruct rest as [tLeMax rest].
+      destruct rest as [Pt noLower].
+      exists t.
+      destruct (dec (x <= t)) as [xLeT | xGtT].
       crush.
-      assert (S x0 <= x <= max) by crush.
+      assert (hyp: S t <= x <= max) by crush.
       firstorder.
     Qed.
   End maxExists.
 
-  Section doubleMinExists.
-    Context {Q : nat -> nat -> Prop}.
-    Variable exi : exists x y, Q x y.
-
-    Definition temp :
-      exists xmin, (exists ymin, Q xmin ymin /\ forall y', y' < ymin -> ~ (Q xmin y')) /\
-        forall x', x' < xmin -> ~ (exists y, Q x' y) :=
-          let simp := minExists exi in
-            match simp with
-              | ex_intro x p_m => match p_m with
-                                    | conj a b => ex_intro
-                                      (fun xmin => (exists ymin, Q xmin ymin /\ forall y', y' < ymin -> ~ (Q xmin y')) /\ forall x', x' < xmin -> ~ (exists y, Q x' y))
-                                      x (conj (minExists a) b)
-                                  end
-            end.
-
-    Theorem minExists2 :
-      exists xmin ymin, Q xmin ymin /\ (forall x', x' < xmin -> ~ (exists y, Q x' y)) /\
-        forall y', y' < ymin -> ~ (Q xmin y').
-    Proof.
-      pose proof temp.
-      destruct H.
-      destruct H.
-      destruct H.
-      exists x.
-      exists x0.
-      crush.
-    Qed.
-      
-  End doubleMinExists.
-
   Lemma notExistForallNot {P Q R: nat -> nat -> Prop} : (~ exists x y, P x y /\ Q x y /\ R x y) -> forall x y, P x y -> Q x y -> ~ R x y.
   Proof.
-    intros.
-    destruct (dec (exists x y, P x y /\ Q x y /\ R x y)).
-    crush.
     firstorder.
   Qed.
 End classical.
