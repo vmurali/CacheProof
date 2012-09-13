@@ -58,6 +58,7 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
   Import Classical.
   Import axioms.
   Import RespMesg.
+  Import Datatypes.
 
   Section noRecvParent.
     Context {ti : nat}.
@@ -68,8 +69,7 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
       destruct eqOrNot as [eq | notEq].
       crush.
       pose proof (stateChange notEq) as exMsg.
-      destruct exMsg as [m sendOrRecv].
-      destruct sendOrRecv as [sendM | recvM].
+      destruct exMsg as [m [sendM | recvM]].
       pose proof (sendCommon sendM) as rel1.
       pose proof (sendParent sendM) as rel2.
       assert (state p t < nextState p t) by crush.
@@ -135,8 +135,7 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
       destruct eqOrNot as [eq | notEq].
       crush.
       pose proof (stateChange notEq) as exMsg.
-      destruct exMsg as [m rest].
-      destruct rest as [sendM | recvM].
+      destruct exMsg as [m [sendM | recvM]].
       pose proof (sendCommon sendM) as rel1.
       pose proof (sendChild sendM) as rel2.
       assert (state c t > nextState c t) by crush.
@@ -232,11 +231,7 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
 
     pose proof (minExists dec exStmt) as exMin.
     clear exStmt.
-    destruct exMin as [tpmin exMin].
-    destruct exMin as [hyps tpminHyp'].
-    destruct hyps as [tcmin exMin].
-    destruct exMin as [pRecvCSend rest].
-    destruct rest as [cRecvPSend wrongState].
+    destruct exMin as [tpmin [[tcmin [pRecvCSend [cRecvPSend wrongState]]] tpminHyp']].
     assert (tpminHyp: ~ exists x y, x < tpmin /\
       (forall m t1 t2, recv p m t1 -> send c m t2 -> t1 <= x -> t2 <= y) /\
       (forall m t1 t2, recv c m t1 -> send p m t2 -> t1 <= y -> t2 <= x) /\
@@ -258,13 +253,9 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     clear tcRecv rest.
     pose proof (maxExists dec cRecv) as cRecvMax.
     clear cRecv.
-    destruct cRecvMax as [tcmax rest].
-    destruct rest as [tcmaxLeTcmin rest].
-    destruct rest as [cRecvMax noCRecv].
-    destruct cRecvMax as [m childRecvCond].
+    destruct cRecvMax as [tcmax [tcmaxLeTcmin [[m childRecvCond] noCRecv]]].
     assert (exTpmax: exists tpmax, tpmax <= tcmax /\ send p m tpmax) by (apply pc.f.deqImpEnq; crush).
-    destruct exTpmax as [tpmax rest].
-    destruct rest as [useless sendPMTpmax].
+    destruct exTpmax as [tpmax [useless sendPMTpmax]].
     clear useless.
     assert (pNotRecvGtTpmax: forall t, S tpmax <= t <= tpmin -> forall m, ~ recv p m t) by
       (intros; assert (0 <= t <= tpmin) by crush; apply pNotRecv; crush).
@@ -275,16 +266,12 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     clear pRecv''.
     pose proof (maxExists dec exPRecv) as exPRecvMax.
     clear exPRecv.
-    destruct exPRecvMax as [tp1 rest].
-    destruct rest as [tp1LeTpmin rest].
-    destruct rest as [exM noRecvGTTp1'].
-    destruct exM as [m recvmPMTp1].
+    destruct exPRecvMax as [tp1 [tp1LeTpmin [[m recvmPMTp1] noRecvGTTp1']]].
     assert (noRecvGTTp1: forall y, S tp1 <= y <= tpmin -> forall m, ~ recv p m y) by (generalize noRecvGTTp1'; clear; firstorder).
     clear noRecvGTTp1'.
     assert (nsPTpminGeNsPTp1: nextState p tpmin >= nextState p tp1) by (apply noRecvParent2; crush).
     assert (exRest: exists tc1, tc1 <= tp1 /\ send c m tc1) by (apply cp.f.deqImpEnq; crush).
-    destruct exRest as [tc1 rest].
-    destruct rest as [tc1LeTp1 sendmCMTc1].
+    destruct exRest as [tc1 [tc1LeTp1 sendmCMTc1]].
 
     assert (rest: state c tc1 = fst m /\ nextState c tc1 = snd m) by (apply sendCommon; crush).
     destruct rest as [sCTc1EqFstM nsCTc1EqSndM].
@@ -301,15 +288,11 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     pose proof (minExists dec exCRecv) as exCRecvMin.
 
     clear exCRecv.
-    destruct exCRecvMin as [tc2 rest].
-    destruct rest as [rest noCRecvGTTc1'].
-    destruct rest as [tc1LtTc2LeTcmin exCRecv].
+    destruct exCRecvMin as [tc2 [[tc1LtTc2LeTcmin exCRecv] noCRecvGTTc1']].
     generalize exCRecv; intro rest.
-    destruct rest as [n rest].
-    destruct rest as [cRecvN fstN].
+    destruct rest as [n [cRecvN fstN]].
     assert (exPSend: exists tp2, tp2 <= tc2 /\ send p n tp2) by (apply pc.f.deqImpEnq; crush).
-    destruct exPSend as [tp2 rest].
-    destruct rest as [tp2LeTc2 pSendN].
+    destruct exPSend as [tp2 [tp2LeTc2 pSendN]].
     assert (fstSndPN: state p tp2 = fst n /\ nextState p tp2 = snd n) by (apply sendCommon; crush).
     destruct fstSndPN as [fstPN sndPN].
     assert (sPTp2LeScTc2: state p tp2 <= state c tc2) by crush.
@@ -331,16 +314,13 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     destruct tp1LeTp2OrNot as [tp1LeTp2 | tp2LtTp1].
     assert (tc2LtTcmin: S tc2 <= tcmin) by crush.
     pose proof (@maxExistsPower dec (fun t => exists m, recv c m t /\ fst m <= state c t) tcmin (S tc2) tc2LtTcmin exCRecv) as exCRecvMax.
-    destruct exCRecvMax as [tc3 rest].
-    destruct rest as [tc2LtTc3LeTcmin rest].
-    destruct rest as [exCRecvTc3 noCRecvGtTc3].
+    destruct exCRecvMax as [tc3 [tc2LtTc3LeTcmin [exCRecvTc3 noCRecvGtTc3]]].
     destruct exCRecvTc3 as [n' cRecvTc3Fst].
     generalize cRecvTc3Fst; intro hyp.
     destruct hyp as [cRecvTc3 fstTc3].
     assert (tc2LtTc3: S tc2 <= tc3) by crush.
     assert (exPRecvTp3: exists tp3, tp3 <= tc3 /\ send p n' tp3) by (apply pc.f.deqImpEnq; crush).
-    destruct exPRecvTp3 as [tp3 rest].
-    destruct rest as [junk pSendX].
+    destruct exPRecvTp3 as [tp3 [junk pSendX]].
     clear junk.
     pose proof (pc.fifo2' pSendX cRecvTc3 pSendN cRecvN) as impTp2LeTp3.
     specialize (impTp2LeTp3 tc2LtTc3).
@@ -392,14 +372,12 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     apply strongLess.
     intros m t1 t2 recv send le.
     pose proof (cp.f.deqImpEnq recv) as exEnq.
-    destruct exEnq as [t' rest].
-    destruct rest as [le2 enq].
+    destruct exEnq as [t' [le2 enq]].
     pose proof (cp.f.uniqueEnq1 send enq) as useful.
     crush.
     intros m t1 t2 recv send le.
     pose proof (pc.f.deqImpEnq recv) as exEnq.
-    destruct exEnq as [t' rest].
-    destruct rest as [le2 enq].
+    destruct exEnq as [t' [le2 enq]].
     pose proof (pc.f.uniqueEnq1 send enq).
     crush.
   Qed.
@@ -418,6 +396,15 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     pose proof (conservative' t).
     crush.
   Qed.
+
+  Lemma cSendNoRecv {m} {t} {n} {t1} {t2} (csendm: send c m t) (psendn: send p n t1) (crecvn: recv c n t2)
+    (le: t <= t2) (norecvp: forall t', t' <= t1 -> ~ recv p m t') (fstLe: fst n <= state c t2) : False.
+  Proof.
+    assert (ex: exists t1 t2 n, send p n t1 /\ recv c n t2 /\ t <= t2 /\ (forall t', t' <= t1 -> ~ recv p m t') /\ fst n <= state c t2) by (exists t1; exists t2; exists n; crush).
+    pose proof (minExists dec ex) as minEx.
+    clear ex n t1 t2 psendn crecvn le norecvp fstLe.
+    destruct minEx as [t1 [[t2 [n [psendn [crecvn [le [norecvp fstLe]]]]]] noExists]].
+
 
   Definition state := state.
   Definition nextState := nextState.

@@ -106,6 +106,8 @@ Module Type FifoMidLevelBasic (mesg: Mesg).
 
   Axiom deqImpEvenSpace: forall {m t}, deq m t -> exists t', t' >= t /\ space t'.
 
+  Axiom neverAvailImpEvenSpace: forall {t}, (forall t', t' >= t -> forall m, ~ available m t) -> (exists t', t' >= t /\ space t').
+
   Axiom available2ImpNotDeq: forall {m t}, available m t -> available m (S t) -> ~ deq m t.
   Axiom availableNotDeqImpAvail: forall {m t}, available m t -> ~ deq m t -> available m (S t).
 
