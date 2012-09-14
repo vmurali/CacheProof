@@ -3,10 +3,6 @@ Load Useful.
 Load DataTypes.
 Load Fifo.
 
-Module Classical.
-  Hypothesis dec: forall P: Prop, P \/ ~ P.
-End Classical.
-
 Module RespMesg <: Mesg.
   Definition mesg := (State * State)%type.
 End RespMesg.
@@ -43,6 +39,8 @@ Module Type RespAxioms (pc cp: FifoHighLevel RespMesg).
   Axiom sendParent: forall {m t}, send p m t -> fst m < snd m.
 
   Axiom sendChild: forall {m t}, send c m t -> fst m > snd m.
+
+  Axiom noSendRecv: forall {pt m n t}, ~ (send pt m t /\ recv pt n t).
 End RespAxioms.
 
 Module Type Resp (pc cp: FifoHighLevel RespMesg).
@@ -77,29 +75,41 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
       specialize (noRecv m recvM); crush.
     Qed.
 
-    Lemma noRecvParent' {td} (noRecv : forall t, ti <= t <= ti + td -> forall m, ~ recv p m t):
-      nextState p (ti + td) >= state p ti.
+    Lemma noRecvParent' {td} (noRecv : forall t, ti <= t < ti + td -> forall m, ~ recv p m t):
+      state p (ti + td) >= state p ti.
     Proof.
       induction td.
-      assert (noRecvTi: forall m, ~ recv p m ti) by (unfold not; intro m; intro recvM; assert (cond: ti <= ti <= ti + 0) by crush; specialize (noRecv ti cond m); crush).
-      assert (nextState p ti >= state p ti) by (apply (noRecvParentNow noRecvTi)).
-      assert (ti + 0 = ti) by crush.
+      assert (ti + 0 = ti) by crush; crush.
+      assert (indNoRecv: forall t, ti <= t < ti + td -> forall m, ~ recv p m t) by (
+      intros t cond; assert (ti <= t < ti + S td) by crush; firstorder).
+      specialize (IHtd indNoRecv); clear indNoRecv.
+      assert (hyp: ti <= ti + td < ti + S td) by crush.
+      assert (ge: nextState p (ti + td) >= state p (ti + td)) by (apply (@noRecvParentNow (ti + td)); firstorder); unfold nextState in ge.
+      assert (eq: state p (S (ti + td)) = state p (ti + S td)) by crush.
       crush.
-      assert (indNoRecv: forall t, ti <= t <= ti + td -> forall m, ~ recv p m t) by (
-        intro t; intro cond; intro m; assert (cond': ti <= t <= ti + S td) by crush; apply (noRecv t cond' m)).
-      specialize (IHtd indNoRecv).
-      clear indNoRecv.
-      assert (noRecvNow: forall m, ~ recv p m (ti + S td)) by (
-        intros; assert (cond: ti <= ti + S td <= ti + S td) by crush; apply (noRecv (ti + S td) cond m)).
-      pose proof (noRecvParentNow noRecvNow) as stateRel.
-      assert (state p (ti + S td) = nextState p (ti + td)) by (unfold nextState; crush).
+    Qed.
+
+    Lemma noRecvParent0 {tf} (tiLeTf: ti < tf) (noRecv: forall t, ti <= t < tf -> forall m, ~ recv p m t): state p tf >= state p ti.
+      pose proof (@noRecvParent' (tf - ti)) as noRecvParentInst.
+      assert (rew: ti + (tf - ti) = tf) by crush.
+      rewrite rew in noRecvParentInst.
+      firstorder.
+    Qed.
+
+    Lemma noRecvParent0' {tf} (tiLeTf: ti <= tf) (noRecv:forall t, ti <= t < tf -> forall m, ~ recv p m t): state p tf >= state p ti.
+      assert (eqOrNot: ti = tf \/ ti <> tf) by decide equality.
+      destruct eqOrNot as [eq|notEq].
       crush.
+      assert (lt: ti < tf) by crush.
+      apply noRecvParent0; crush.
     Qed.
 
     Lemma noRecvParent1 {tf} (tiLeTf: ti <= tf) (noRecv: forall t, ti <= t <= tf -> forall m, ~ recv p m t): nextState p tf >= state p ti.
     Proof.
-      pose proof (@noRecvParent' (tf - ti)) as noRecvParentInst.      assert (rew: ti + (tf - ti) = tf) by crush.
-      rewrite rew in noRecvParentInst.
+      pose proof (@noRecvParent0 (S tf)) as init.
+      assert (hyp1: ti < S tf) by crush.
+      assert (hyp2: forall t, ti <= t < S tf -> forall m, ~ recv p m t) by
+        (intros t cond; assert (h: ti <= t <= tf) by crush; specialize (noRecv t h); crush).
       firstorder.
     Qed.
   End noRecvParent.
@@ -148,30 +158,41 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
       crush.
     Qed.
 
-    Lemma noRecvChild' {td} (noRecv: forall t, ti <= t <= ti + td -> forall m, ~ (recv c m t /\ fst m <= state c t)):
-      nextState c (ti + td) <= state c ti.
+    Lemma noRecvChild' {td} (noRecv: forall t, ti <= t < ti + td -> forall m, ~ (recv c m t /\ fst m <= state c t)):
+      state c (ti + td) <= state c ti.
     Proof.
       induction td.
-      assert (noRecvTi: forall m, ~ (recv c m ti /\ fst m <= state c ti)) by (unfold not; intro m; intro recvM; assert (cond: ti <= ti <= ti + 0) by crush; specialize (noRecv ti cond m recvM); crush).
-      assert (nextState c ti <= state c ti) by (apply (noRecvChildNow noRecvTi)).
-      assert (ti + 0 = ti) by crush.
+      assert (ti + 0 = ti) by crush; crush.
+      assert (indNoRecv: forall t, ti <= t < ti + td -> forall m, ~ (recv c m t /\ fst m <= state c t)) by (
+      intros t cond; assert (ti <= t < ti + S td) by crush; firstorder).
+      specialize (IHtd indNoRecv); clear indNoRecv.
+      assert (hyp: ti <= ti + td < ti + S td) by crush.
+      assert (ge: nextState c (ti + td) <= state c (ti + td)) by (apply (@noRecvChildNow (ti + td)); firstorder); unfold nextState in ge.
+      assert (eq: state c (S (ti + td)) = state c (ti + S td)) by crush.
       crush.
-      assert (indNoRecv: forall t, ti <= t <= ti + td -> forall m, ~ (recv c m t /\ fst m <= state c t)) by (
-        intro t; intro cond; intro m; assert (cond': ti <= t <= ti + S td) by crush; apply (noRecv t cond' m)).
-      specialize (IHtd indNoRecv).
-      clear indNoRecv.
-      assert (noRecvNow: forall m, ~ (recv c m (ti + S td) /\ fst m <= state c (ti + S td))) by (
-        intros; assert (cond: ti <= ti + S td <= ti + S td) by crush; apply (noRecv (ti + S td) cond m)).
-      pose proof (noRecvChildNow noRecvNow) as stateRel.
-      assert (state c (ti + S td) = nextState c (ti + td)) by (unfold nextState; crush).
+    Qed.
+
+    Lemma noRecvChild0 {tf} (tiLeTf: ti < tf) (noRecv: forall t, ti <= t < tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): state c tf <= state c ti.
+      pose proof (@noRecvChild' (tf - ti)) as noRecvChildInst.
+      assert (rew: ti + (tf - ti) = tf) by crush.
+      rewrite rew in noRecvChildInst.
+      firstorder.
+    Qed.
+
+    Lemma noRecvChild0' {tf} (tiLeTf: ti <= tf) (noRecv:forall t, ti <= t < tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): state c tf <= state c ti.
+      assert (eqOrNot: ti = tf \/ ti <> tf) by decide equality.
+      destruct eqOrNot as [eq|notEq].
       crush.
+      assert (lt: ti < tf) by crush.
+      apply noRecvChild0; crush.
     Qed.
 
     Lemma noRecvChild1 {tf} (tiLeTf: ti <= tf) (noRecv: forall t, ti <= t <= tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): nextState c tf <= state c ti.
     Proof.
-      pose proof (@noRecvChild' (tf - ti)) as noRecvChildInst.
-      assert (rew: ti + (tf - ti) = tf) by crush.
-      rewrite rew in noRecvChildInst.
+      pose proof (@noRecvChild0 (S tf)) as init.
+      assert (hyp1: ti < S tf) by crush.
+      assert (hyp2: forall t, ti <= t < S tf -> forall m, ~ (recv c m t /\ fst m <= state c t)) by
+        (intros t cond; assert (h: ti <= t <= tf) by crush; specialize (noRecv t h); crush).
       firstorder.
     Qed.
   End noRecvChild.
@@ -348,11 +369,11 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     crush.
 
     assert (hyp1: forall k t1 t2, recv p k t1 -> send c k t2 -> t1 <= tp2 -> t2 <= tc1) by (
-      intros; assert (useful: t1 < S tp1 -> t2 < S tc1) by (apply (@cp.f.fifo2 m (S tc1) (S tp1) sendmCMTc1 recvmPMTp1 k); crush);
+      intros; assert (useful: t1 < S tp1 -> t2 < S tc1) by (apply (@cp.fifo2 m (S tc1) (S tp1) sendmCMTc1 recvmPMTp1 k); crush);
           assert (lt: t1 < S tp1) by crush; specialize (useful lt); crush).
 
     assert (hyp2: forall k t1 t2, recv c k t1 -> send p k t2 -> t1 <= tc1 -> t2 <= tp2) by (
-      intros; assert (useful: t1 < S tc2 -> t2 < S tp2) by (apply (@pc.f.fifo2 n (S tp2) (S tc2)pSendN cRecvN k); crush);
+      intros; assert (useful: t1 < S tc2 -> t2 < S tp2) by (apply (@pc.fifo2 n (S tp2) (S tc2)pSendN cRecvN k); crush);
         assert (lt: t1 < S tc2) by crush; specialize (useful lt); crush).
 
     assert (basic: tp2 < tpmin) by crush.
@@ -364,6 +385,46 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     assert (exists x y, x < tpmin /\ (forall m t1 t2, recv p m t1 -> send c m t2 -> t1 <= x -> t2 <= y) /\ (forall m t1 t2, recv c m t1 -> send p m t2 -> t1 <= y -> t2 <= x) /\ nextState c y > nextState p x) by (exists tp2; exists tc1; crush).
 
     crush.
+  Qed.
+
+  Theorem strongLess':
+    forall tp tc,
+      (forall m t1 t2, recv p m t1 -> send c m t2 -> t1 < tp -> t2 < tc) ->
+      (forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp) ->
+      ~ (state c tc > state p tp).
+  Proof.
+    unfold not.
+    intros tp tc hyp1 hyp2 contra.
+    destruct tc.
+    destruct tp.
+    pose proof init; crush.
+    destruct (dec (exists m t1, t1 < S tp /\ recv p m t1)) as [ex|notEx].
+    destruct ex as [m [t1 [lt recvm]]].
+    pose proof (cp.f.deqImpEnq recvm) as sendm.
+    destruct sendm as [t2 [le sendm]].
+    specialize (hyp1 m t1 t2 recvm sendm lt).
+    crush.
+    assert (noRecv: forall t1, 0 <= t1 < S tp -> forall m, ~ recv p m t1) by (generalize notEx; clear; intros; assert (t1 < S tp) by crush; firstorder).
+    assert (zl: 0 < S tp) by crush.
+    pose proof (noRecvParent0 zl noRecv) as contra2.
+    rewrite init in contra2.
+    crush.
+    destruct tp.
+    destruct (dec (exists m t1, t1 < S tc /\ (recv c m t1 /\ fst m <= state c t1))) as [ex|notEx].
+    destruct ex as [m [t1 [lt [recvm _]]]].
+    pose proof (pc.f.deqImpEnq recvm) as sendm.
+    destruct sendm as [t2 [le sendm]].
+    specialize (hyp2 m t1 t2 recvm sendm lt).
+    crush.
+    assert (noRecv: forall t1, 0 <= t1 < S tc -> forall m, ~ (recv c m t1 /\ fst m <= state c t1)) by
+      (generalize notEx; clear; intros; assert (t1 < S tc) by crush; firstorder).
+    assert (zl: 0 < S tc) by crush.
+    pose proof (noRecvChild0 zl noRecv) as contra2.
+    rewrite <- init in contra2.
+    crush.
+    assert (hyp1': forall m t1 t2, recv p m t1 -> send c m t2 -> t1 <= tp -> t2 <= tc) by (generalize hyp1; clear; intros; assert (t1 < S tp) by crush; assert (t2 < S tc) by firstorder; crush).
+    assert (hyp2': forall m t1 t2, recv c m t1 -> send p m t2 -> t1 <= tc -> t2 <= tp) by (generalize hyp2; clear; intros; assert (t1 < S tc) by crush; assert (t2 < S tp) by firstorder; crush).
+    pose proof (strongLess tp tc hyp1' hyp2') as final; unfold nextState in final; crush.
   Qed.
 
   Theorem conservative'' t:
@@ -397,14 +458,6 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     crush.
   Qed.
 
-  About noRecvChild2.
-
-  Lemma noRecvChild3 {ti tf} (le: ti <= tf) (noRecv: forall t, S ti <= t < tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): state c tf <= nextState c ti.
-  Proof.
-    destruct tf.
-    assert (ti0: ti = 0) by crush; rewrite ti0 in *.
-    assert (state c 0 > state)
-
   Lemma cSendNoRecv {m} {t} {n} {t1} {t2} (csendm: send c m t) (psendn: send p n t1) (crecvn: recv c n t2)
     (le: t <= t2) (norecvp: forall t', t' <= t1 -> ~ recv p m t') (fstLe: fst n <= state c t2) : False.
   Proof.
@@ -415,16 +468,37 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     assert (noRecv: forall t2', S t <= t2' < t2 -> forall n', ~ (recv c n' t2' /\ fst n' <= state c t2')) by (
       unfold not; intros t2' cond n' [crecvn' fstLeN'];
         destruct (pc.f.deqImpEnq crecvn') as [t1' [_ psendn']];
-          assert (lt: t1' < t1) by (apply (pc.f.fifo2 psendn crecvn psendn' crecvn'); crush);
+          assert (lt: t1' < t1) by (apply (pc.fifo2 psendn crecvn psendn' crecvn'); crush);
             assert (hyp: forall t', t' <= t1' -> ~ recv p m t') by (generalize norecvp lt; clear; intros; crush; firstorder); firstorder ).
-    unfold lt in noRecv.
-    assert (exists t2' n', send p n' t1' /\ recv c n' t2' /\ t <= t2' /\ (forall t', t' <= t1' -> ~ recv p m t') /\ fst n' <= state c t2').
-    exists t2'; exists n'; crush.
-    exists t''; exists q; unfold send in *; crush.
-    crush.
-    
-
- by (exists t2; exists n; crush).
+    assert (eqOrNot: t = t2 \/ t <> t2) by decide equality.
+    destruct eqOrNot as [eq|notEq].
+    rewrite <- eq in crecvn; pose proof (noSendRecv (conj csendm crecvn)); crush.
+    assert (StLeT2: S t <= t2) by crush.
+    assert (stateLe: state c t2 <= state c (S t)) by (apply noRecvChild0'; crush).
+    assert (pState: state p t1 = fst n) by (pose proof (sendCommon psendn); crush).
+    assert (cState: state c t > state c (S t)) by (
+      pose proof (sendChild csendm); pose proof (sendCommon csendm); unfold nextState in *; crush).
+    assert (contra: state c t > state p t1) by crush.
+    assert (hyp1: forall m tr ts, recv c m tr -> send p m ts -> tr < t -> ts < t1) by (
+      intros m' tr ts Recv Send le'; pose proof (pc.fifo2 psendn crecvn Send Recv); assert (tr < t2) by crush; firstorder). 
+    assert (hyp2: forall m tr ts, recv p m tr -> send c m ts -> tr < t1 -> ts < t) by (
+      intros m' tr ts Recv Send le';
+        assert (unique: ts = t -> m' = m) by (apply cp.f.uniqueEnq2; crush);
+          assert (m'EqM: m' = m -> recv p m tr) by crush;
+            assert (tsEqt: ts = t -> recv p m tr) by crush; clear unique m'EqM;
+              assert (trLeT1: tr <= t1) by crush;
+                pose proof (norecvp tr trLeT1) as norecvp2; clear trLeT1;
+                  assert (rew1: (~ t <= ts) -> ts < t) by crush;
+                    apply rew1; unfold not; intro tLeTs; clear rew1;
+                      assert (eqOrNot: ts = t \/ ts <> t) by decide equality;
+                        destruct eqOrNot as [eq|notEq']; [
+                          apply (norecvp2 (tsEqt eq)) |
+                            assert (lt: t < ts) by crush;
+                              pose proof (cp.f.fifo Send Recv csendm lt) as fifo;
+                                destruct fifo as [td' [precvm cond]]; assert (cond2: td' <= t1) by crush;
+                                  specialize (norecvp td' cond2 precvm); crush]).
+    apply (strongLess' t1 t hyp2 hyp1 contra).
+  Qed.
 
   Definition state := state.
   Definition nextState := nextState.
