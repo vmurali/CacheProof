@@ -397,6 +397,14 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     crush.
   Qed.
 
+  About noRecvChild2.
+
+  Lemma noRecvChild3 {ti tf} (le: ti <= tf) (noRecv: forall t, S ti <= t < tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): state c tf <= nextState c ti.
+  Proof.
+    destruct tf.
+    assert (ti0: ti = 0) by crush; rewrite ti0 in *.
+    assert (state c 0 > state)
+
   Lemma cSendNoRecv {m} {t} {n} {t1} {t2} (csendm: send c m t) (psendn: send p n t1) (crecvn: recv c n t2)
     (le: t <= t2) (norecvp: forall t', t' <= t1 -> ~ recv p m t') (fstLe: fst n <= state c t2) : False.
   Proof.
@@ -404,7 +412,19 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     pose proof (minExists dec ex) as minEx.
     clear ex n t1 t2 psendn crecvn le norecvp fstLe.
     destruct minEx as [t1 [[t2 [n [psendn [crecvn [le [norecvp fstLe]]]]]] noExists]].
+    assert (noRecv: forall t2', S t <= t2' < t2 -> forall n', ~ (recv c n' t2' /\ fst n' <= state c t2')) by (
+      unfold not; intros t2' cond n' [crecvn' fstLeN'];
+        destruct (pc.f.deqImpEnq crecvn') as [t1' [_ psendn']];
+          assert (lt: t1' < t1) by (apply (pc.f.fifo2 psendn crecvn psendn' crecvn'); crush);
+            assert (hyp: forall t', t' <= t1' -> ~ recv p m t') by (generalize norecvp lt; clear; intros; crush; firstorder); firstorder ).
+    unfold lt in noRecv.
+    assert (exists t2' n', send p n' t1' /\ recv c n' t2' /\ t <= t2' /\ (forall t', t' <= t1' -> ~ recv p m t') /\ fst n' <= state c t2').
+    exists t2'; exists n'; crush.
+    exists t''; exists q; unfold send in *; crush.
+    crush.
+    
 
+ by (exists t2; exists n; crush).
 
   Definition state := state.
   Definition nextState := nextState.
