@@ -46,6 +46,8 @@ Module Type FifoHighLevel (mesg: Mesg).
     forall {m te td}, enq m te -> deq m td -> forall {m' te' td'}, enq m' te' -> deq m' td' -> td' <= td -> te' <= te.
 
   Axiom enq0First: forall {m t}, enq m 0 -> deq m t -> forall t', t' < t -> forall m', deq m' t' -> False.
+
+  Axiom deqEnqLess: forall {m t1 t2}, enq m t1 -> deq m t2 -> t1 <= t2.
 End FifoHighLevel.
 
 Module GetFifoHighLevel (m: FifoHighLevelBasic) (mesg: Mesg) : FifoHighLevel mesg.
@@ -102,6 +104,14 @@ Module GetFifoHighLevel (m: FifoHighLevelBasic) (mesg: Mesg) : FifoHighLevel mes
     destruct exEnq as [t'' rest].
     destruct rest as [leEnq enqM'].
     pose proof (fifo2 enq0 deqT enqM' deqM' lt).
+    crush.
+  Qed.
+
+  Theorem deqEnqLess {m t1 t2} (enq: enq m t1) (deq: deq m t2): t1 <= t2.
+  Proof.
+    destruct (deqImpEnq deq) as [t2' [cond enq']].
+    assert (mEq: m = m) by crush.
+    pose proof (uniqueEnq1 enq enq' mEq) as t2Eq.
     crush.
   Qed.
 End GetFifoHighLevel.

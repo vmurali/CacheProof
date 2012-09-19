@@ -74,6 +74,24 @@ Section classical.
       assert (eq: max - (max - y0) = y0) by (assert (e: y0 <= max) by crush; generalize e; clear; crush).
       rewrite eq in noLower.
       crush.
+    Qed.
+
+    Theorem maxExists' {max} (exPx: exists x, x < max /\ P x): exists x, x < max /\ P x /\ forall y, x < y < max -> ~ P y.
+    Proof.
+      destruct max.
+      destruct exPx as [x [contra _]].
+      crush.
+      assert (exPx': exists x, x <= max /\ P x) by (destruct exPx as [x [cond Px]]; exists x; crush).
+      pose proof (maxExists exPx') as this.
+      destruct this as [x [cond1 [Px forally]]].
+      exists x.
+      constructor.
+      crush.
+      constructor.
+      crush.
+      intros y cond.
+      assert (S x <= y <= max) by crush.
+      firstorder.
   Qed.
 
     Theorem maxExistsPower {max x} (xLeMax: x <= max) (Px: P x) : (exists y, x <= y <= max /\ P y /\ forall z, S y <= z <= max -> ~ P z).
