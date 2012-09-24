@@ -105,13 +105,6 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
       firstorder.
     Qed.
 
-    Lemma noRecvParent0' {tf} (tiLeTf: ti <= tf) (noRecv:forall t, ti <= t < tf -> forall m, ~ recv p m t): state p tf >= state p ti.
-      assert (eqOrNot: ti = tf \/ ti <> tf) by decide equality.
-      destruct eqOrNot as [eq|notEq].
-      crush.
-      apply noRecvParent0; crush.
-    Qed.
-
     Lemma noRecvParent1 {tf} (tiLeTf: ti <= tf) (noRecv: forall t, ti <= t <= tf -> forall m, ~ recv p m t): nextState p tf >= state p ti.
     Proof.
       pose proof (@noRecvParent0 (S tf)) as init.
@@ -198,14 +191,6 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
       assert (rew: ti + (tf - ti) = tf) by crush.
       rewrite rew in noRecvChildInst.
       firstorder.
-    Qed.
-
-    Lemma noRecvChild0' {tf} (tiLeTf: ti <= tf) (noRecv:forall t, ti <= t < tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): state c tf <= state c ti.
-      assert (eqOrNot: ti = tf \/ ti <> tf) by decide equality.
-      destruct eqOrNot as [eq|notEq].
-      crush.
-      assert (lt: ti < tf) by crush.
-      apply noRecvChild0; crush.
     Qed.
 
     Lemma noRecvChild1 {tf} (tiLeTf: ti <= tf) (noRecv: forall t, ti <= t <= tf -> forall m, ~ (recv c m t /\ fst m <= state c t)): nextState c tf <= state c ti.
@@ -557,7 +542,7 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     destruct eqOrNot as [eq|notEq].
     rewrite <- eq in crecvn; pose proof (noSendRecv csendm crecvn); crush.
     assert (StLeT2: S t <= t2) by crush.
-    assert (stateLe: state c t2 <= state c (S t)) by (apply noRecvChild0'; crush).
+    assert (stateLe: state c t2 <= state c (S t)) by (apply noRecvChild0; crush).
     assert (pState: state p t1 = fst n) by (pose proof (sendCommon psendn); crush).
     assert (cState: state c t > state c (S t)) by (
       pose proof (sendChild csendm); pose proof (sendCommon csendm); unfold nextState in *; crush).
@@ -703,6 +688,11 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     crush.
   Qed.
 
+  Definition state := state.
+  Definition nextState := nextState.
+  Definition recv := recv.
+  Definition send := send.
+
   Lemma noPendingEqual {tp tc}
     (hyp1: forall m t1 t2, recv p m t1 -> send c m t2 -> t1 < tp -> t2 < tc)
     (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp)
@@ -710,80 +700,226 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     (csendRecv: forall m t1, send c m t1 -> t1 < tc -> exists t2, t2 < tp /\ recv p m t2):
     state c tc = state p tp.
   Proof.
-    assert (le: state c tc <= state p tp) by (pose proof (strongLess' tp tc hyp1 hyp2) as help; generalize help; clear; crush).
-    assert (eqOrNot: state c tc = state p tp \/ state c tc <> state p tp) by decide equality.
-    destruct eqOrNot as [eq|notEq].
-    assumption.
-    assert (stateLt: state c tc < state p tp) by (pose proof (Compare_dec.le_lt_eq_dec (state c tc) (state p tp)); crush); clear le notEq.
-    elimtype False.
-    destruct (dec (~ ((exists t, t < tc /\ exists m, send c m t) \/ exists t, t < tc /\ exists m, recv c m t /\ fst m <= state c t))) as [nothing'|something].
-    assert (nothing: forall t, 0 <= t < tc -> (forall m, ~ send c m t) /\ (forall m, ~ (recv c m t /\ fst m <= state c t))) by (intros t tLtTc; assert (lt: t < tc) by crush; constructor; unfold not; intros m somem; generalize nothing' lt somem; clear; firstorder); clear nothing'.
-    assert (obv: 0 <= tc) by crush.
-    pose proof (noRecvSendChild obv nothing) as noChange; clear obv.
-    assert (noRecvParent: forall t, t < tp -> forall m, ~ recv p m t) by (
-      unfold not; intros t cond;
-        intros m recvm;
-          assert (sendm: exists t', t' <= t /\ send c m t') by (apply cp.f.deqImpEnq; crush);
-            destruct sendm as [t' [_ sendm]];
-              pose proof (hyp1 m t t' recvm sendm cond) as t'LtTc;
-                assert (obv: 0 <= t' < tc) by crush;
-                  generalize nothing obv sendm; clear; firstorder).
-    assert (noSendParent: forall t, t < tp -> forall m, ~ send p m t).
-    unfold not; intros t cond m sendm.
-    pose proof (psendRecv m t sendm cond) as exRecvm.
-    destruct exRecvm as [t' [cond2 recvm]].
-    assert (tpGe0: 0 <= tp) by crush.
-    pose proof (noRecvParent0 tpGe0 noRecvParent) as stateGe.
-    
-    asser
-    intros m [recvm condm]; generalize nothing tLtTc recvm
-    
+    destruct (dec (exists t, S t <= tp /\ ((exists m, send p m t) \/ (exists m, recv p m t)))) as [something|nothing].
+    destruct (maxExists' dec something) as [t [tLtTp_ [sendOrRecv nothingLater]]]; clear something.
+    assert (tLtTp: S t <= tp) by crush; clear tLtTp_.
+    assert (noSendRecvLater: forall y, S t <= y < tp -> (forall m, ~ send p m y) /\ forall m, ~ recv p m y) by (generalize nothingLater; clear; firstorder); clear nothingLater.
+    destruct sendOrRecv as [[m sendm]|[m recvm]].
+    destruct (psendRecv m t sendm tLtTp) as [t' [t'LtTc_ recvm]].
+    assert (t'LtTc: S t' <= tc) by crush; clear t'LtTc_.
+    assert (cnorecv: forall y, S t' <= y < tc -> forall m, ~ recv c m y) by (
+      unfold not; intros y [cond1 cond2] n recvn;
+        destruct (pc.f.deqImpEnq recvn) as [y' [_ sendn]];
+          pose proof (hyp2 n y y' recvn sendn cond2) as y'LtTp;
+            pose proof (pc.fifo2 sendn recvn sendm recvm cond1) as tLty';
+              generalize y'LtTp tLty' sendn noSendRecvLater; clear; firstorder;
+                destruct something as [t [tLtTp sendOrRecv]]).
+    assert (cnosend: forall y, S t' <= y < tc -> forall m, ~ send c m y) by (
+      unfold not; intros y [cond1 cond2 n sendn];
+        pose proof (csendRecv n y sendn cond2) as [y' [y'LtTp recvn]];
+          pose proof (pc.deqEnqLess sendm recvm) as tLeT';
+            pose proof (cp.deqEnqLess sendn recvn) as yLeY';
+              assert (tLtY': t < y') by crush;
+                generalize noSendRecvLater tLtY' y'LtTp recvn; clear; firstorder).
+    assert (nocross: forall ts, ts < t' -> forall m, send c m ts -> exists tr, tr < t /\ recv p m tr) by (
+      intros ts cond n sendn;
+        assert (cond1: ts < tc) by crush;
+          destruct (csendRecv n ts sendn cond1) as [tr [cond2 recvn]]; clear cond1;
+            assert (tGeTr: ~ t < tr) by (generalize noSendRecvLater recvn cond2; clear; firstorder);
+              assert (eqOrNot: t = tr \/ t <> tr) by decide equality;
+                destruct eqOrNot as [eq|notEq]; [
+                  rewrite <- eq in recvn;
+                    pose proof (noSendRecv sendm recvn); crush|
+                      assert (trLtT: tr < t) by crush;
+                        exists tr; crush]).
+    pose proof (cRecvNoIntersect sendm recvm nocross) as fstM'; clear nocross.
+    assert (fstM: fst m <= state c t') by (apply (Compare_dec.not_gt (fst m) (state c t') fstM')); clear fstM'.
+    pose proof (recvChildChange recvm fstM) as nextC.
+    pose proof (sendCommon sendm) as [_ nextP].
+    assert (noSendRecvC: forall y, S t' <= y < tc -> (forall m, ~ send c m y) /\ (forall m, ~ (recv c m y /\ fst m <= state c y))) by (generalize cnorecv cnosend; clear; firstorder).
+    pose proof (noRecvSendParent tLtTp noSendRecvLater) as eqP.
+    pose proof (noRecvSendChild t'LtTc noSendRecvC) as eqC.
+    unfold state in *; unfold axioms.nextState in *.
+    crush.
+    pose proof (cp.f.deqImpEnq recvm) as [t' [_ sendm]].
+    assert (nocsend: forall y, S t' <= y < tc -> forall m, ~ send c m y) by (
+      unfold not; intros y [cond1 cond2] n sendn;
+        pose proof (csendRecv n y sendn cond2) as [y' [cond3 recvn]];
+          pose proof (cp.fifo1 sendn recvn sendm recvm cond1) as cond4;
+            generalize noSendRecvLater recvn cond3 cond4; clear; firstorder).
+    assert (nocrecv: forall y, S t' <= y < tc -> forall m, ~ (recv c m y /\ fst m <= state c y)) by (
+      unfold not; intros y [cond1 cond2] n [recvn fstn];
+        pose proof (pc.f.deqImpEnq recvn) as [y' [_ sendn]];
+          pose proof (hyp2 n y y' recvn sendn cond2) as cond3;
+            assert (cond4': ~ S t <= y') by (generalize noSendRecvLater cond3 sendn; clear; firstorder);
+              assert (cond4'': y' <= t) by crush; clear cond4';
+                assert (eqOrNot: y' = t \/ y' <> t) by decide equality;
+                  destruct eqOrNot as [eq|notEq]; [
+                    rewrite eq in sendn;
+                      apply (@noSendRecv p n m t sendn recvm) |
+                        assert (cond4: y' < t) by crush; clear cond3 cond4'' notEq;
+                          pose proof @cRecvIntersect;
+                            assert (tempCond: t' <= y) by crush;
+                              assert (noRecvBefore: forall k, k <= y' -> ~ recv p m k) by (
+                                unfold not; intros k cond5 recvk;
+                                  assert (mEq: m = m) by crush;
+                                    pose proof (cp.f.uniqueDeq1 recvm recvk mEq) as rew;
+                                      rewrite <- rew in cond5; crush);
+                              apply (cRecvIntersect sendm sendn recvn tempCond noRecvBefore fstn)]).
+    pose proof (hyp1 m t t' recvm sendm tLtTp) as t'LtTc_.
+    assert (t'LtTc: S t' <= tc) by crush; clear t'LtTc_.
+    assert (noSendRecv: forall y, S t' <= y < tc -> (forall m, ~ send c m y) /\ forall m, ~ (recv c m y /\ fst m <= state c y)) by (generalize nocsend nocrecv; clear; firstorder).
+    pose proof (noRecvSendParent tLtTp noSendRecvLater) as ceq.
+    pose proof (noRecvSendChild t'LtTc noSendRecv) as peq.
+    pose proof (@sendCommon c m t' sendm) as [_ ct'].
+    pose proof (recvParent recvm) as pt.
+    unfold axioms.nextState in *.
+    unfold state.
+    crush.
+    assert (nop: forall t, 0 <= t < tp -> (forall m, ~ send p m t) /\ forall m, ~ recv p m t) by (
+      intros t cond; assert (cond2: S t <= tp) by crush; firstorder).
+    clear nothing.
+    assert (p0: 0 <= tp) by crush.
+    assert (nop1: forall t, t < tp -> (forall m, ~ send p m t) /\ forall m, ~ recv p m t) by (intros y cond2; assert (cond3: 0 <= y < tp) by crush; generalize cond3 nop; clear; firstorder).
+    assert (cnorecv: forall t, 0 <= t < tc -> forall m, ~ send c m t) by (
+      unfold not; intros t [_ cond] m sendm;
+        pose proof (csendRecv m t sendm cond) as [t' [cond1 recvm]];
+          generalize nop1 recvm cond1; clear; firstorder).
+    assert (cnosend: forall t, 0 <= t < tc -> forall m, ~ recv c m t) by (
+      unfold not; intros t [_ cond] m recvm;
+        pose proof (pc.f.deqImpEnq recvm) as [t' [_ sendm]];
+          pose proof (hyp2 m t t' recvm sendm cond) as cond2;
+            generalize nop1 cond2 sendm; clear; firstorder).
+    assert (noc: forall t, 0 <= t < tc -> (forall m, ~ send c m t) /\ forall m, ~ (recv c m t /\ fst m <= state c t)) by (generalize cnorecv cnosend; clear; firstorder).
+    assert (c0: 0 <= tc) by crush.
+    pose proof (noRecvSendParent p0 nop) as peq.
+    pose proof (noRecvSendChild c0 noc) as ceq.
+    unfold state.
+    pose proof init as init.
+    crush.
+  Qed.
 
-    destruct (dec (exists m t1, S t1 <= tc /\ send c m t1 /\ forall t, S t1 <= t < tc -> (forall m, ~ send c m t) /\ (forall m, ~ (recv c m t /\ fst m <= state c t)))) as [lastSend | lastRecvOrNone].
-    destruct lastSend as [m [t1 [t1LtTc [sendm lastSend]]]].
-    pose proof (noRecvSendChild t1LtTc lastSend) as eq.
-    assert (t1LtTc': t1 < tc) by crush.
-    assert (exRecv: exists t2, t2 < tp /\ recv p m t2) by (generalize csendRecv sendm t1LtTc'; clear; firstorder).
-    destruct exRecv as [t2 [t2LtTp recvm]].
-    assert (noParentRecvLater: forall t, S t2 <= t < tp -> forall m, ~ recv p m t) by (
-      unfold not;
-        intros t leLt m' recvm';
-          assert (exSendM': exists t', t' <= t /\ send c m' t') by (apply cp.f.deqImpEnq; crush);
-            destruct exSendM' as [t' [_ sendm']];
-              assert (t'LtTc: t' < tc) by (apply (hyp1 m' t t'); crush);
-                assert (t1LtT': t1 < t') by (assert (t2 < t) by crush; apply (cp.fifo2 sendm' recvm' sendm recvm); crush);
-                  assert (leLt': S t1 <= t' < tc) by crush;
-                    generalize leLt' lastSend sendm'; clear; firstorder;
-                      assert (t2LtT: t2 < t) by crush).
-    assert (noParentSendLaterEx: ~ exists t, S t2 <= t < tp /\ exists m, send p m t).
-    unfold not.
-    intros ex.
-    pose proof (minExists dec ex) as exMin; clear ex.
-    destruct exMin as [t [[t2LtTLtTp [m' sendm']] lastParentSend]].
-    assert (noParentSend: forall y, S t2 <= y < t -> forall m, ~ send p m y) by (
-      unfold not; intros y t2LtYLtT m'' sendm'';
-        assert (yLtT: y < t) by crush;
-          assert (t2LtYLtTp: S t2 <= y < tp) by crush;
-            generalize yLtT t2LtYLtTp lastParentSend sendm''; clear; firstorder).
-    assert (noParentRecv: forall y, S t2 <= y < t -> forall m, ~ recv p m y) by (
-      intros y t2LtYLtT; assert (t2LtYLtTp: S t2 <= y < tp) by crush; generalize noParentRecvLater t2LtYLtTp; clear; firstorder).
-    assert (noParentChange: forall y, S t2 <= y < t -> (forall m, ~ send p m y) /\ (forall m, ~ recv p m y)) by (generalize noParentSend noParentRecv; clear; firstorder); clear noParentSend noParentRecv.
-    assert (t2LtT: S t2 <= t) by crush.
-    pose proof (noRecvSendParent t2LtT noParentChange) as sameState.
-    destruct ex as [t [t2LtTLtTp [m' sendm']]].
-    
-    intros t t2LtTLtTp m' sendm'.
-    assert (exists 
-    send p m' t.
-    pose proof @pc.fifo2.
-    
-    About pc.fifo1.
-Qed
-    About cSendNoRecv.
-    About strongLess'.
-*)
-  Definition state := state.
-  Definition nextState := nextState.
-  Definition recv := recv.
-  Definition send := send.
+  Theorem creqLemma {tp} {tc}
+    (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp)
+    (psendRecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2)
+    (csendRecv: forall m t1, send c m t1 -> t1 < tc -> exists t2, t2 < tp /\ recv p m t2):
+    state p tp <= state c tc.
+  Proof.
+    assert (maxtc: exists tc', tc' <= tp /\ (forall m t1, send c m t1 -> t1 < tc' -> exists t2, t2 < tp /\ recv p m t2) /\ forall m t1 t2, recv p m t1 -> send c m t2 -> t1 < tp -> t2 < tc') by (
+      destruct (dec (exists t, t < tp /\ exists m, recv p m t)) as [recvm' | norecvm]; [
+        pose proof (maxExists' dec recvm') as [t [tLtTp [[m recvm] norecvlater]]]; clear recvm';
+          pose proof (cp.f.deqImpEnq recvm) as [t' [t'LeT sendm]];
+            exists (S t');
+              constructor; [
+                crush |
+                  constructor; [
+                    intros n t1 sendn cond;
+                      assert (eqOrNot: t1 = t' \/ t1 <> t') by decide equality;
+                        destruct eqOrNot as [eq | notEq]; [
+                          pose proof (cp.f.uniqueEnq2 sendn sendm eq) as nEqM;
+                            rewrite nEqM;
+                              exists t; crush |
+                                assert (t1LtT': t1 < t') by crush; clear cond notEq;
+                                  pose proof (cp.f.fifo sendm recvm sendn t1LtT') as [t2 [recvn cond]];
+                                    assert (t2LtTp: t2 < tp) by crush; firstorder] |
+                        intros n t1 t2 recvn sendn cond1;
+                          assert (t2LeT': t2 > t' -> False) by (
+                            intros cond2;
+                              pose proof (cp.fifo1 sendn recvn sendm recvm cond2) as tLtT1;
+                                generalize norecvlater tLtT1 cond1 recvn; clear; firstorder;
+                                  clear recvm'); crush]] |
+              exists 0;
+                constructor; [
+                  crush |
+                    constructor;
+                      intros m' t1 contra; crush;
+                        firstorder]]).
+    destruct maxtc as [tc' [tc'LeTp [csendRecv' hyp1']]].
+    assert (leOrLt: tc' <= tc \/ tc < tc') by (pose proof (Compare_dec.le_lt_dec tc' tc); crush).
+    destruct leOrLt as [le|lt].
+    assert (hyp1: forall m t1 t2, recv p m t1 -> send c m t2 -> t1 < tp -> t2 < tc) by (intros m t1 t2 recvm sendm cond; specialize (hyp1' m t1 t2 recvm sendm cond); crush).
+    pose proof (noPendingEqual hyp1 hyp2 psendRecv csendRecv); crush.
+    assert (psendRecv': forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc' /\ recv c m t2) by (intros m t1 sendm cond; specialize (psendRecv m t1 sendm cond); destruct psendRecv as [t2 [cond2 recvm]]; assert (t2 < tc') by crush; firstorder).
+    assert (hyp2': forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc' -> t2 < tp) by (
+      intros m t1 t2 recvm sendm t1LtTc';
+        pose proof (pc.deqEnqLess sendm recvm) as t2LeT1;
+          crush).
+    assert (cNoRecv: forall t, tc <= t < tc' -> forall m, ~ (recv c m t /\ fst m <= state c t)) by (
+      unfold not; intros t [cond1 cond2] m [recvm _];
+        pose proof (pc.f.deqImpEnq recvm) as [t' [_ sendm]];
+          specialize (hyp2' m t t' recvm sendm cond2);
+            specialize (psendRecv m t' sendm hyp2');
+              destruct psendRecv as [t2 [cond3 recvm']];
+                assert (mEq: m = m) by crush;
+                  pose proof (pc.f.uniqueDeq1 recvm recvm' mEq) as rew;
+                    rewrite <- rew in cond3;
+                      crush).
+    assert (cond: tc <= tc') by crush.
+    pose proof (noRecvChild0 cond cNoRecv) as cLess.
+    pose proof (noPendingEqual hyp1' hyp2' psendRecv' csendRecv') as eq.
+    unfold state in *.
+    crush.
+  Qed.
+
+  Theorem preqLemma {tp} {tc}
+    (hyp1: forall m t1 t2, recv p m t1 -> send c m t2 -> t1 < tp -> t2 < tc)
+    (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp)
+    (psendrecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2)
+    (stateLt: state c tc < state p tp):
+    exists t, t < tc /\ exists m, send c m t /\ snd m = state c tc /\ forall t', t' < tp -> ~ recv p m t'.
+  Proof.
+    pose proof (noPendingEqual hyp1 hyp2 psendrecv) as csendRecvImpStateEq.
+    assert (neq: state c tc <> state p tp) by crush.
+    assert (noRecvEarly': ~ forall m t1, send c m t1 -> t1 < tc -> exists t2, t2 < tp /\ recv p m t2) by firstorder.
+    assert (imp: (~ exists t, t < tc /\ exists m, send c m t /\ forall t', t' < tp -> ~ recv p m t') -> forall m t1, send c m t1 -> t1 < tc -> exists t2, t2 < tp /\ recv p m t2) by (
+      intros contra m;
+        destruct (dec (exists t2, t2 < tp /\ recv p m t2)) as [easy|hard]; [
+          firstorder |
+            assert (fo: forall t', t' < tp -> ~ recv p m t') by (generalize hard; clear; firstorder);
+              generalize contra fo; clear; firstorder]).
+    assert (opp: ~ ~ exists t, t < tc /\ exists m, send c m t /\ forall t', t' < tp -> ~ recv p m t') by (generalize noRecvEarly' imp; clear; firstorder).
+    assert (noRecvEarly: exists t, t < tc /\ exists m, send c m t /\ forall t', t' < tp -> ~ recv p m t') by (
+      destruct (dec (exists t, t < tc /\ exists m, send c m t /\ forall t', t' < tp -> ~ recv p m t')); crush).
+    clear noRecvEarly' imp opp.
+    destruct (maxExists' dec noRecvEarly) as [t [tLtTc [[m [sendm noRecvBefore]] rest]]].
+    exists t.
+    constructor.
+    assumption.
+    exists m.
+    constructor.
+    assumption.
+    constructor.
+    Focus 2.
+    assumption.
+    clear neq noRecvEarly.
+    clear csendRecvImpStateEq.
+    assert (cnorecv: forall y, t < y < tc -> forall m, ~ (recv c m y /\ fst m <= state c y)).
+    unfold not; intros y [cond1 cond2] n [recvn fstn].
+    pose proof (pc.f.deqImpEnq recvn) as [y' [_ sendn]].
+    assert (cond3: t <= y) by crush.
+    pose proof @cRecvIntersect.
+    pose proof (hyp2 n y y' recvn sendn cond2) as cond4.
+    assert (noRecvBefore': forall t', t' <= y' -> ~ recv p m t') by (intros t' cond5; assert (cond6: t' < tp) by crush; apply (noRecvBefore t' cond6)).
+    apply (cRecvIntersect sendm sendn recvn cond3 noRecvBefore' fstn).
+    assert (cnosend: forall y, t < y < tc -> forall m, ~ send c m y) by (
+      unfold not; intros y cond n sendn;
+        specialize (rest y cond);
+          destruct (dec (forall t', t' < tp -> ~ recv p n t')) as [noRecv | recvsth]; [
+            generalize rest sendn noRecv; clear; firstorder |
+              assert (imp: (~ exists t', t' < tp /\ recv p n t') -> forall t', t' < tp -> ~ recv p n t') by (clear; firstorder);
+                assert (db: ~ ~ exists t', t' < tp /\ recv p n t') by (generalize recvsth imp; clear; firstorder);
+                  assert (exSth: exists t', t' < tp /\ recv p n t') by (generalize (dec (exists t', t' < tp /\ recv p n t')) db; clear; firstorder);
+                    clear db imp recvsth;
+                      destruct exSth as [y' [cond2 recvn]];
+                        destruct cond as [cond3 cond4];
+                          pose proof (cp.f.fifo sendn recvn sendm cond3) as [t' [recvm cond5]];
+                            assert (cond6: t' < tp) by crush;
+    apply (noRecvBefore t' cond6 recvm)]).
+    assert (tLtTc_: S t <= tc) by crush.
+    assert (not: forall y, S t <= y < tc -> (forall m, ~ send c m y) /\ forall m, ~ (recv c m y /\ fst m <= state c y)) by (generalize cnorecv cnosend; clear; firstorder).
+    pose proof (noRecvSendChild tLtTc_ not) as ceq.
+    pose proof (sendCommon sendm) as [_ sndm].
+    unfold state; unfold axioms.nextState; crush.
+  Qed.
+
 End GetResp.
