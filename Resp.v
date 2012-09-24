@@ -861,7 +861,7 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     crush.
   Qed.
 
-  Theorem preqLemma {tp} {tc}
+  Theorem preqLemma' {tp} {tc}
     (hyp1: forall m t1 t2, recv p m t1 -> send c m t2 -> t1 < tp -> t2 < tc)
     (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp)
     (psendrecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2)
@@ -922,4 +922,15 @@ Module GetResp (pc cp: FifoHighLevel RespMesg) (axioms: RespAxioms pc cp) : Resp
     unfold state; unfold axioms.nextState; crush.
   Qed.
 
+  Theorem preqLemma {tp} {tc}
+    (le: tp <= tc)
+    (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp)
+    (psendrecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2)
+    (stateLt: state c tc < state p tp):
+    exists t, t < tc /\ exists m, send c m t /\ snd m = state c tc /\ forall t', t' < tp -> ~ recv p m t'.
+  Proof.
+    apply preqLemma'; crush.
+    pose proof (cp.deqEnqLess H0 H).
+    crush.
+  Qed.
 End GetResp.
