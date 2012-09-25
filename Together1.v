@@ -67,13 +67,47 @@ Module Type RespAxioms (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg)
 
   Axiom noSendRecv: forall {pt m n t}, send pt m t -> recv pt n t -> False.
 
-  Axiom recvrChildResp: forall {r t}, recvr c r t -> r < state c t -> send c (state c t, r) t.
+  Parameter wait: Point -> nat -> Prop.
+  Definition nextWait pt t := wait pt (S t).
 
-  Axiom recvrChildNoResp: forall {r t}, recvr c r t -> r >= state c t -> forall m, ~ send c m t.
+  Parameter waitState: Point -> nat -> State.
+  Definition nextWaitState pt t := waitState pt (S t).
 
-  Axiom sendrParent: forall {r t}, sendr p r t -> r < state p t.
+  Axiom sendrParentReq: forall {r t}, sendr p r t -> r < state p t.
 
-  Axiom sendrChild: forall {r t}, sendr c r t -> r > state p t.
+  Axiom sendrChildReq: forall {r t}, sendr c r t -> r > state p t.
+
+  Axiom sendrWait: forall {pt r t}, sendr pt r t -> ~ wait pt t /\ nextWait pt t /\ nextWaitState pt t = r.
+
+  Axiom waitSendr: forall {pt t}, ~ wait pt t -> nextWait pt t -> exists r, sendr pt r t.
+
+  Axiom waitStateSendr: forall {pt t}, waitState pt t <> nextWaitState pt t -> exists r, sendr pt r t.
+
+  Axiom recvPWait: forall {m t}, recv p m t -> snd m <= waitState p t -> ~ nextWait p t.
+
+  Axiom recvCWait: forall {m t}, recv c m t -> snd m >= waitState c t -> ~ nextWait p t.
+
+  Axiom waitNotWait: forall {pt t}, wait pt t -> ~ nextWait pt t -> exists m, recv pt m t.
+
+  Axiom waitPRecv: forall {t m}, wait p t -> ~ nextWait p t -> recv p m t -> snd m <= waitState p t.
+
+  Axiom waitCRecv: forall {t m}, wait c t -> ~ nextWait c t -> recv c m t -> snd m >= waitState c t.
+
+  Axiom pRecvrSend: forall {r t}, recvr p r t -> r > state p t -> exists m, send p m t /\ fst m = state p t /\ snd m >= r.
+
+  Axiom pRecvrNoSend: forall {r t}, recvr p r t -> forall m, send p m t -> r > state p t.
+
+  Axiom cRecvrSend: forall {r t}, recvr c r t -> r < state c t -> exists m, send c m t /\ fst m = state c t /\ snd m <= r.
+
+  Axiom cRecvrNoSend: forall {r t}, recvr c r t -> forall m, send c m t -> r < state c t.
+
+  Axiom pSendRecvr: forall {m t}, send p m t -> exists r, recvr p r t.
+
+  Axiom cSendWaitRecvr: forall {m t}, send c m t -> wait c t -> exists r, recvr p r t.
+
+  Axiom noOvertake: forall {r tr1 tr2 m tm1}, sendr c r tr1 -> recvr p r tr2 -> send c m tm1 -> tm1 < tr1 -> exists tm2, recv p m tm2.
+
+  Axiom noSendrRecv: forall {pt r m t}, sendr pt r t -> recv pt m t -> False.
 End RespAxioms.
 
 Module Type Resp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: FifoHighLevel CpReqMesg).
@@ -966,9 +1000,9 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
     crush.
   Qed.
 
-  Definition recvrCSend {r t} := (@recvrChildResp r t).
+  Definition cRecvrSend {r t} := @cRecvrSend r t.
 
-  Theorem recvrCNoSend {r tc tp}
+  Theorem cRecvrNoSend {r tc tp}
     (recvr: recvr c r tc)
     (sendr: sendr p r tp)
     (ge: r >= state c tc):
@@ -978,9 +1012,65 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
     assert (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp) by (intros m t1 t2 recvm sendm; pose proof (pc.fifo2 sendr recvr sendm recvm); crush).
     assert (psendrecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2) by(
       intros m t1 sendm cond; pose proof (pc.f.fifo sendr recvr sendm cond); firstorder).
-    pose proof (sendrParent sendr) as lt.
+    pose proof (sendrParentReq sendr) as lt.
     assert (stateLt: state c tc < state p tp) by crush.
     apply (preqLemma tpLeTc hyp2 psendrecv stateLt).
+  Qed.
+
+  Theorem waitNoWait' {pt t1 td}
+    (waitT1: wait pt t1)
+    (notWaitT2: ~ wait pt (t1 + td)):
+    exists t, t1 <= t < t1 + td /\ exists m, recv pt m t.
+  Proof.
+    induction td.
+    assert (t1 + 0 = t1) by crush; crush.
+    assert (rew: t1 + S td = S (t1 + td)) by crush; rewrite rew in notWaitT2; clear rew.
+    destruct (dec (wait pt (t1 + td))) as [waiting|notWait].
+    pose proof (waitNotWait waiting notWaitT2) as ex.
+    assert (cond: t1 <= t1 + td < t1 + S td) by crush.
+    firstorder.
+    firstorder.
+  Qed.
+
+  Theorem waitNoWait {pt t1 t2}
+    (t1LeT2: t1 <= t2)
+    (waitT1: wait pt t1)
+    (notWaitT2: ~ wait pt t2):
+    exists t, t1 <= t < t2 /\ exists m, recv pt m t.
+  Proof.
+    remember (t2 - t1) as td.
+    assert (rew: t2 = t1 + td) by crush.
+    rewrite rew in *.
+    apply (waitNoWait' waitT1 notWaitT2).
+  Qed.
+
+  Theorem pRespOnlyForReq {r tr1 tr2 m tm1 tm2}
+    (sendrr: sendr c r tr1)
+    (recvrr: recvr p r tr2)
+    (sendm: send p m tm1)
+    (recvm: recv c m tm2)
+    (tr1LtTm1: tr1 < tm2)
+    (tm2LtTr2: tm1 < tr2):
+    False.
+  Proof.
+    assert (ex: exists tr1 r tr2 m tm1 tm2, sendr c r tr1 /\ recvr p r tr2 /\ send p m tm1 /\ recv c m tm2 /\ tr1 < tm2 /\ tm1 < tr2) by (exists tr1; exists r; exists tr2; exists m; exists tm1; exists tm2; crush).
+    clear r tr1 tr2 m tm1 tm2 sendrr recvrr sendm recvm tr1LtTm1 tm2LtTr2.
+    pose proof (minExists dec ex) as [tr1 [[r [tr2 [m [tm1 [tm2 [sendrr [recvrr [sendm [recvm [tr1LtTm1 tm2LtTr2]]]]]]]]]] min]]; clear ex.
+    pose proof (cpr.deqEnqLess sendrr recvrr) as tr1LeTr2.
+    pose proof (sendrWait sendrr) as [notWaitTr1 _].
+    pose proof (pSendRecvr sendm) as [rm recvrm].
+    pose proof (cpr.f.deqImpEnq recvrm) as [t [tLeTm1 sendrm]].
+    assert (waitT: wait c (S t)) by (apply (@sendrWait c rm); crush).
+    pose proof (cpr.fifo2 sendrr recvrr sendrm recvrm tm2LtTr2) as tLtTr1'.
+    assert (tLtTr1: S t <= tr1) by crush.
+    pose proof (waitNoWait tLtTr1 waitT notWaitTr1) as [t' [[cond1' cond2] [n recvn]]].
+    assert (tLtT': t < t') by crush; clear cond1'.
+    assert (t'LtTm2: t' < tm2) by crush; clear cond2.
+    pose proof (pc.f.deqImpEnq recvn) as [t'' [_ sendn]].
+    pose proof (pc.fifo2 sendm recvm sendn recvn t'LtTm2) as t''LtTm1.
+    specialize (min t tLtTr1').
+    assert (ex: exists r tr2 m tm1 tm2, sendr c r t /\ recvr p r tr2 /\ send p m tm1 /\ recv c m tm2 /\ t < tm2 /\ tm1 < tr2) by (exists rm; exists tm1; exists n; exists t''; exists t'; crush).
+    crush.
   Qed.
 
   Definition state := state.
