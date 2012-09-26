@@ -75,7 +75,7 @@ Module Type RespAxioms (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg)
 
   Axiom sendrParentReq: forall {r t}, sendr p r t -> r < state p t.
 
-  Axiom sendrChildReq: forall {r t}, sendr c r t -> r > state p t.
+  Axiom sendrChildReq: forall {r t}, sendr c r t -> r > state c t.
 
   Axiom sendrWait: forall {pt r t}, sendr pt r t -> ~ wait pt t /\ nextWait pt t /\ nextWaitState pt t = r.
 
@@ -93,21 +93,25 @@ Module Type RespAxioms (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg)
 
   Axiom waitCRecv: forall {t m}, wait c t -> ~ nextWait c t -> recv c m t -> snd m >= waitState c t.
 
-  Axiom pRecvrSend: forall {r t}, recvr p r t -> r > state p t -> exists m, send p m t /\ fst m = state p t /\ snd m >= r.
+  Axiom pRecvrSend: forall {r t}, recvr p r t -> r > state p t -> exists m, send p m t /\ snd m >= r.
 
-  Axiom pRecvrNoSend: forall {r t}, recvr p r t -> forall m, send p m t -> r > state p t.
+  Axiom pRecvrNoSend: forall {r t}, recvr p r t -> forall {m}, send p m t -> r > state p t.
 
-  Axiom cRecvrSend: forall {r t}, recvr c r t -> r < state c t -> exists m, send c m t /\ fst m = state c t /\ snd m <= r.
+  Axiom cRecvrSend: forall {r t}, recvr c r t -> r < state c t -> exists m, send c m t /\ snd m <= r.
 
-  Axiom cRecvrNoSend: forall {r t}, recvr c r t -> forall m, send c m t -> r < state c t.
+  Axiom cRecvrNoSend: forall {r t}, recvr c r t -> forall {m}, send c m t -> r < state c t.
 
   Axiom pSendRecvr: forall {m t}, send p m t -> exists r, recvr p r t.
 
-  Axiom cSendWaitRecvr: forall {m t}, send c m t -> wait c t -> exists r, recvr p r t.
+  Axiom cSendWaitRecvr: forall {m t}, send c m t -> wait c t -> exists r, recvr c r t.
 
-  Axiom noOvertake: forall {r tr1 tr2 m tm1}, sendr c r tr1 -> recvr p r tr2 -> send c m tm1 -> tm1 < tr1 -> exists tm2, recv p m tm2.
+  Axiom noOvertake: forall {r tr1 tr2 m tm1}, sendr c r tr1 -> recvr p r tr2 -> send c m tm1 -> tm1 < tr1 -> exists tm2, tm2 < tr2 /\ recv p m tm2.
 
   Axiom noSendrRecv: forall {pt r m t}, sendr pt r t -> recv pt m t -> False.
+
+  Axiom noSendrSend: forall {r m t}, sendr c r t -> send c m t -> False.
+
+  Axiom pRecvrNoWait: forall {r t}, recvr p r t -> ~ wait p t.
 End RespAxioms.
 
 Module Type Resp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: FifoHighLevel CpReqMesg).
@@ -121,7 +125,14 @@ Module Type Resp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr:
   Parameter recv: Point -> (State * State)%type -> nat -> Prop.
   Parameter sendr: Point -> State -> nat -> Prop.
   Parameter recvr: Point -> State -> nat -> Prop.
+
   Axiom conservative: forall t, state c t <= state p t.
+  Axiom cRecvCStateLt: forall m t, recv c m t -> fst m <= state c t.
+  Axiom pRecvrPStateLt: forall r t, recvr p r t -> r > state p t.
+  Axiom cRecvrSend: forall {r t}, recvr c r t -> r < state c t -> exists m, send c m t /\ snd m <= r.
+  Axiom cRecvrAlreadySent: forall r tc tp, recvr c r tc -> sendr p r tp -> r >= state c tc ->
+    exists t, t < tc /\ exists m, send c m t /\ snd m = state c tc /\ forall t', t' < tp -> ~ recv p m t'.
+  Axiom pRecvrAlwaysSend: forall r t, recvr p r t -> exists m, send p m t /\ snd m >= r.
 End Resp.
 
 Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: FifoHighLevel CpReqMesg) (axioms: RespAxioms pc cp cpr) : Resp pc cp cpr.
@@ -866,7 +877,7 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
     crush.
   Qed.
 
-  Theorem creqLemma {tp} {tc}
+  Theorem creqLemma' {tp} {tc}
     (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp)
     (psendRecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2)
     (csendRecv: forall m t1, send c m t1 -> t1 < tc -> exists t2, t2 < tp /\ recv p m t2):
@@ -925,6 +936,19 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
     pose proof (noRecvChild0 cond cNoRecv) as cLess.
     pose proof (noPendingEqual hyp1' hyp2' psendRecv' csendRecv') as eq.
     crush.
+  Qed.
+
+  Theorem creqLemma {tp} {tc}
+    (le: tc <= tp)
+    (psendRecv: forall m t1, send p m t1 -> t1 < tp -> exists t2, t2 < tc /\ recv c m t2)
+    (csendRecv: forall m t1, send c m t1 -> t1 < tc -> exists t2, t2 < tp /\ recv p m t2):
+    state p tp <= state c tc.
+  Proof.
+    assert (hyp2: forall m t1 t2, recv c m t1 -> send p m t2 -> t1 < tc -> t2 < tp) by (
+      intros m t1 t2 recvm sendm t1LtTc;
+        pose proof (pc.deqEnqLess sendm recvm) as t2LeT1;
+          crush).
+    apply (creqLemma' hyp2 psendRecv csendRecv).
   Qed.
 
   Theorem preqLemma' {tp} {tc}
@@ -1002,7 +1026,7 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
 
   Definition cRecvrSend {r t} := @cRecvrSend r t.
 
-  Theorem cRecvrNoSend {r tc tp}
+  Theorem cRecvrAlreadySent {r tc tp}
     (recvr: recvr c r tc)
     (sendr: sendr p r tp)
     (ge: r >= state c tc):
@@ -1044,6 +1068,125 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
     apply (waitNoWait' waitT1 notWaitT2).
   Qed.
 
+  Theorem pWaitState0 {pt t1 td}
+    (nosendr: forall t, t1 <= t < t1 + td -> forall r, ~ sendr pt r t):
+    waitState pt t1 = waitState pt (t1 + td).
+  Proof.
+    induction td.
+    assert (t1 + 0 = t1) by crush; crush.
+    assert (nosendr1: forall t, t1 <= t < t1 + td -> forall r, ~ sendr pt r t) by (intros t cond; assert (cond2: t1 <= t < t1 + S td) by crush; generalize cond2 nosendr; clear; firstorder).
+    specialize (IHtd nosendr1).
+    assert (nosendr2: forall r, ~ sendr pt r (t1 + td)) by (assert (t1 <= t1 + td < t1 + S td) by crush; firstorder).
+    assert (contra: (~ waitState pt (t1 + td) = nextWaitState pt (t1 + td)) -> False ) by (
+      intros wait1;
+        pose proof (waitStateSendr wait1) as stuff; generalize stuff nosendr2; clear; firstorder).
+    destruct (dec (waitState pt (t1 + td) = nextWaitState pt (t1 + td))) as [tough|easy].
+    assert (stuff: t1 + S td = S (t1 + td)) by crush.
+    rewrite stuff.
+    unfold nextWaitState in tough.
+    crush.
+    crush.
+  Qed.
+
+  Theorem pWaitState1 {pt t1 t2}
+    (le: t1 <= t2)
+    (nosendr: forall t, t1 <= t < t2 -> forall r, ~ sendr pt r t):
+    waitState pt t1 = waitState pt t2.
+  Proof.
+    remember (t2 - t1) as td.
+    assert (rew: t2 = t1 + td) by crush.
+    rewrite rew in *.
+    apply (pWaitState0 nosendr).
+  Qed.
+
+  Theorem pWaitNoWait0 {pt t1 td}
+    (waitT1: wait pt t1)
+    (notWaitT2: ~ wait pt (t1 + td))
+    (noChange: forall t, t1 <= t < t1 + td -> ~ (wait pt t /\ ~ nextWait pt t)):
+    False.
+  Proof.
+    induction td.
+    assert (t1 + 0 = t1) by crush; crush.
+    destruct (dec (wait pt (t1 + td))) as [waiting | notWaiting].
+    assert (le: t1 <= t1 + td < t1 + S td) by crush.
+    specialize (noChange (t1 + td) le).
+    unfold nextWait in *.
+    assert (rew: t1 + S td = S (t1 + td)) by crush.
+    rewrite rew in notWaitT2.
+    firstorder.
+    assert (no: forall t, t1 <= t < t1 + td -> ~ (wait pt t /\ ~ nextWait pt t)) by (
+      intros t cond; assert (cond2: t1 <= t < t1 + S td) by crush; apply (noChange t cond2)).
+    firstorder.
+  Qed.
+
+  Theorem pWaitNoWait1 {pt t1 td}
+    (waitT1: wait pt t1)
+    (notWaitT2: ~ wait pt (t1 + td)):
+    exists t, t1 <= t < t1 + td /\ wait pt t /\ ~ nextWait pt t.
+  Proof.
+    pose proof (pWaitNoWait0 waitT1 notWaitT2) as waits.
+    assert (imp: (~ exists t, t1 <= t < t1 + td /\ wait pt t /\ ~ nextWait pt t) -> forall t, t1 <= t < t1 + td -> ~ (wait pt t /\ ~ nextWait pt t)) by (
+      unfold not; intros ex t cond waitDbl;
+        firstorder).
+    assert (imp': ~ ~ exists t, t1 <= t < t1 + td /\ wait pt t /\ ~ nextWait pt t) by firstorder.
+    destruct (dec (exists t, t1 <= t < t1 + td /\ wait pt t /\ ~ nextWait pt t)); firstorder.
+  Qed.
+
+  Theorem pWaitNoWait2 {t1 td}
+    (waitT1: wait p t1)
+    (notWaitT2: ~ wait p (t1 + td)):
+    exists t, t1 <= t < t1 + td /\ exists m, recv p m t /\ snd m <= waitState p t.
+  Proof.
+    pose proof (pWaitNoWait1 waitT1 notWaitT2) as [t [cond [wait1 wait2]]].
+    pose proof (waitNotWait wait1 wait2) as [m recvm].
+    pose proof (waitPRecv wait1 wait2 recvm) as last.
+    firstorder.
+  Qed.
+
+  Theorem pWaitNoWait3 {t1 t2}
+    (le: t1 <= t2)
+    (waitT1: wait p t1)
+    (notWaitT2: ~ wait p t2):
+    exists t, t1 <= t < t2 /\ exists m, recv p m t /\ snd m <= waitState p t.
+  Proof.
+    remember (t2 - t1) as td.
+    assert (rew: t2 = t1 + td) by crush.
+    rewrite rew in *.
+    apply (pWaitNoWait2 waitT1 notWaitT2).
+  Qed.
+
+  Theorem pWaitNoWait4 {r t1 t2}
+    (le: S t1 <= t2)
+    (sendrr: sendr p r t1)
+    (notWaitT2: ~ wait p t2):
+    exists t, S t1 <= t < t2 /\ exists m, recv p m t /\ snd m <= r.
+  Proof.
+    pose proof (sendrWait sendrr) as [_ [waitT1 waitr]].
+    pose proof (pWaitNoWait3 le waitT1 notWaitT2) as ex.
+    pose proof (minExists dec ex) as [t [[[t1LtT tLtT2] [m [recvm sndm]]] min]].
+    assert (ws: forall x, S t1 <= x < t -> wait p x) by (
+      intros x [t1LtX xLtT];
+        destruct (dec (wait p x)) as [waiting|notWait]; [
+          crush |
+            pose proof (pWaitNoWait3 t1LtX waitT1 notWait) as [t' [[tLtT' t'LtX] [n [recvn sndn]]]];
+              assert (t'LtT: t' < t) by crush;
+                assert (t'LtT2: t' < t2) by crush;
+                  generalize min tLtT' t'LtT t'LtT2 sndn recvn; clear; firstorder]).
+    assert (nosendr: forall x, S t1 <= x < t -> forall r, ~ sendr p r x) by (
+      unfold not; intros x cond rm sendrm;
+        pose proof (sendrWait sendrm) as [noWait _];
+          firstorder).
+    pose proof (pWaitState1 t1LtT nosendr) as seq.
+    exists t.
+    constructor.
+    crush.
+    exists m.
+    constructor.
+    crush.
+    unfold nextWaitState in waitr.
+    crush.
+  Qed.
+
   Theorem pRespOnlyForReq {r tr1 tr2 m tm1 tm2}
     (sendrr: sendr c r tr1)
     (recvrr: recvr p r tr2)
@@ -1071,6 +1214,143 @@ Module GetResp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: F
     specialize (min t tLtTr1').
     assert (ex: exists r tr2 m tm1 tm2, sendr c r t /\ recvr p r tr2 /\ send p m tm1 /\ recv c m tm2 /\ t < tm2 /\ tm1 < tr2) by (exists rm; exists tm1; exists n; exists t''; exists t'; crush).
     crush.
+  Qed.
+
+  Theorem pRecvrPStateLt {r t}
+    (recvrr: recvr p r t):
+    r > state p t.
+  Proof.
+    pose proof (cpr.f.deqImpEnq recvrr) as [t' [le sendr']].
+    assert (csendRecv: forall m t1, send c m t1 -> t1 < t' -> exists t2, t2 < t /\ recv p m t2) by ( intros m t1 sendm;  apply (noOvertake sendr' recvrr sendm)).
+    assert (psendRecv: forall m t1, send p m t1 -> t1 < t -> exists t2, t2 < t' /\ recv c m t2).
+    intros m t1 sendm t1LtT.
+    assert (sendrr: sendr c r t') by crush.
+    pose proof (sendrWait sendrr) as [notWaitT' _]; clear sendr'.
+    pose proof (pSendRecvr sendm) as [rm recvrm].
+    pose proof (cpr.f.deqImpEnq recvrm) as [tx [txLeT1 sendrm']].
+    assert (sendrm: sendr c rm tx) by crush.
+    pose proof (sendrWait sendrm) as [_ [nextWaitTx _]]; clear sendrm'; unfold nextWait in *.
+    pose proof (cpr.fifo2 sendrr recvrr sendrm recvrm t1LtT) as txLtT'_.
+    assert (txLtT': S tx <= t') by crush; clear txLtT'_.
+    pose proof (waitNoWait txLtT' nextWaitTx notWaitT') as [ty [[cond1 cond2] [n recvn]]].
+    destruct (dec (exists t2, t2 < t' /\ recv c m t2)) as [easy|hard].
+    crush.
+    pose proof (pc.f.deqImpEnq recvn) as [tz [_ sendn']].
+    assert (sendn: send p n tz) by crush; clear sendn'.
+    assert (stuff: t1 < tz \/ t1 = tz \/ tz < t1) by (pose proof Compare_dec.lt_eq_lt_dec t1 tz as stuff'; generalize stuff'; crush).
+    destruct stuff as [t1LtTz| [t1EqTz|tzLtT1]].
+    pose proof (pc.f.fifo sendn recvn sendm t1LtTz) as [t2 [recvm t2LtTy]].
+    assert (t2LtT': t2 < t') by crush.
+    exists t2; crush.
+    assert (mEqn: m = n) by (pose proof (pc.f.uniqueEnq2 sendm sendn t1EqTz); crush).
+    rewrite <- mEqn in recvn.
+    exists ty; crush.
+    pose proof (pRespOnlyForReq sendrm recvrm sendn recvn cond1 tzLtT1); crush.
+    pose proof (creqLemma le psendRecv csendRecv) as stateLess.
+    pose proof (sendrChildReq sendr') as sth.
+    crush.
+  Qed.
+
+  Theorem cRecvCStateLt' {m t}
+    (recvm: recv c m t)
+    (fstmGtState: fst m > state c t):
+    False.
+  Proof.
+    pose proof (pc.f.deqImpEnq recvm) as [tp [_ sendm']].
+    assert (sendm: send p m tp) by crush; clear sendm'.
+    destruct (dec (forall t1, t1 < t -> forall n, send c n t1 -> exists t', t' < tp /\ recv p n t')) as [easy|real].
+    apply (cRecvNoIntersect sendm recvm easy fstmGtState).
+    assert (imp: (~ exists t1, t1 < t /\ exists n, send c n t1 /\ forall t', t' < tp -> ~ recv p n t') -> forall t1, t1 < t -> forall n, send c n t1 -> exists t', t' < tp /\ recv p n t') by (
+      intros contra t1 cond n sendn;
+        destruct (dec (exists t', t' < tp /\ recv p n t')) as [easy|hard]; [
+          firstorder|
+            assert (fo: forall t', t' < tp -> ~ recv p n t') by (generalize hard; clear; firstorder);
+              generalize cond contra fo sendn; clear; firstorder]).
+    assert (opp: ~ ~ exists t1, t1 < t /\ exists n, send c n t1 /\ forall t', t' < tp -> ~ recv p n t') by (generalize real imp; clear; firstorder).
+    assert (ex: exists t1, t1 < t /\ exists n, send c n t1 /\ forall t', t' < tp -> ~ recv p n t') by (
+      destruct (dec (exists t1, t1 < t /\ exists n, send c n t1 /\ forall t', t' < tp -> ~ recv p n t')); crush).
+    clear real imp opp.
+    destruct ex as [t1 [t1LtT [n [sendn norecvn]]]].
+    pose proof (pSendRecvr sendm) as [rm recvrm].
+    destruct (dec (wait c t1)) as [waiting|notWait].
+    pose proof (cSendWaitRecvr sendn waiting) as [r recvrr].
+    pose proof (pRecvrNoWait recvrm) as noWaitTp.
+    pose proof (pc.f.deqImpEnq recvrr) as [t2 [t2LeT1 sendrr']].
+    assert (sendrr: sendr p r t2) by crush; clear sendrr'.
+    pose proof (sendrWait sendrr) as [_ [nextWaitT2 _]].
+    unfold nextWait in *.
+    pose proof (pc.fifo2 sendm recvm sendrr recvrr t1LtT) as t2LtTp.
+    pose proof (pWaitNoWait4 t2LtTp sendrr noWaitTp) as [t3 [[t2LtT3 t3LtTp] [x [recvx sndx']]]].
+    pose proof (cp.f.deqImpEnq recvx) as [t4 [t4LeT3 sendx']].
+    assert (sendx: send c x t4) by crush; clear sendx'.
+    assert (t1LtT4: ~ t1 < t4) by (
+      unfold not; intros t1LtT4;
+        pose proof (cp.f.fifo sendx recvx sendn t1LtT4) as [ti [recvn tiLtT3]];
+          assert (tiLtTp: ti < tp) by crush;
+            apply (norecvn ti tiLtTp recvn)).
+    assert (t1NeT4: t1 <> t4) by (
+      unfold not; intros t1EqT4;
+        pose proof (cp.f.uniqueEnq2 sendn sendx t1EqT4) as xEqN;
+          rewrite <- xEqN in recvx;
+            apply (norecvn t3 t3LtTp recvx)).
+    assert (t4LtT1: t4 < t1) by crush; clear t1LtT4 t1NeT4.
+    destruct (dec (exists t', t4 < t' < t1 /\ exists y, recv c y t' /\ fst y <= state c t')) as [[t' [[t4LtT' t'LtT1] [y [recvy fsty]]]]|noEx].
+    pose proof (pc.f.deqImpEnq recvy) as [t'' [_ sendy']].
+    assert (sendy: send p y t'') by crush; clear sendy'.
+    pose proof (pc.fifo2 sendrr recvrr sendy recvy t'LtT1) as t''LtT2.
+    pose proof @cRecvIntersect.
+    assert (norecvEarly: forall tt, tt <= t'' -> ~ recv p x tt) by (
+      unfold not; intros tt ttLeT'' recvtt;
+        assert (xEqX: x = x) by crush;
+          pose proof (cp.f.uniqueDeq1 recvx recvtt xEqX) as t3EqTt;
+            rewrite <- t3EqTt in ttLeT'';
+              crush).
+    assert (t4LeT': t4 <= t') by crush.
+    apply (cRecvIntersect sendx sendy recvy t4LeT' norecvEarly fsty).
+    assert (norecv: forall t', t4 < t' < t1 -> forall y, ~ (recv c y t' /\ fst y <= state c t')) by (generalize noEx; clear; firstorder).
+    pose proof (noRecvChild0 t4LtT1 norecv) as sT1LeSndx.
+    pose proof (sendCommon sendx) as [_ sndx].
+    unfold nextState in sndx.
+    rewrite sndx in sT1LeSndx; clear sndx.
+    assert (st1LeR: state c t1 <= r) by crush.
+    pose proof (cRecvrNoSend recvrr sendn) as contra.
+    crush.
+    pose proof (cpr.f.deqImpEnq recvrm) as [tc [tcLeTp sendrm']].
+    assert (sendrm: sendr c rm tc) by crush; clear sendrm'.
+    pose proof (sendrWait sendrm) as [_ [nextWaitTc _]].
+    assert (notT1LtTc: ~ t1 < tc) by (
+      unfold not; intros t1LtTc;
+        pose proof (noOvertake sendrm recvrm sendn t1LtTc) as [tfake [tfakeLtTp recvn]];
+          generalize norecvn tfakeLtTp recvn; clear; firstorder).
+    assert (t1NeTc: t1 <> tc) by (
+      unfold not; intros t1EqTc;
+        rewrite <- t1EqTc in sendrm; 
+          apply (noSendrSend sendrm sendn)).
+    assert (tcLtT1: tc < t1) by crush; clear notT1LtTc t1NeTc.
+    unfold nextWait in *.
+    pose proof (waitNoWait tcLtT1 nextWaitTc notWait) as [t' [[tcLtT' t'LtT1] [x recvx]]].
+    pose proof (pc.f.deqImpEnq recvx) as [tx [_ sendx']].
+    assert (sendx: send p x tx) by crush; clear sendx'.
+    assert (t'LtT: t' < t) by crush.
+    pose proof (pc.fifo2 sendm recvm sendx recvx t'LtT) as txLtTp.
+    pose proof @pRespOnlyForReq.
+    apply (pRespOnlyForReq sendrm recvrm sendx recvx tcLtT' txLtTp).
+  Qed.
+
+  Theorem cRecvCStateLt {m t}
+    (recvm: recv c m t):
+    fst m <= state c t.
+  Proof.
+    pose proof (cRecvCStateLt' recvm) as stuff.
+    apply (Compare_dec.not_gt (fst m) (state c t) stuff).
+  Qed.
+
+  Theorem pRecvrAlwaysSend {r t}
+    (recvrr: recvr p r t):
+    exists m, send p m t /\ snd m >= r.
+  Proof.
+    pose proof (pRecvrPStateLt recvrr) as lt.
+    apply (pRecvrSend recvrr lt).
   Qed.
 
   Definition state := state.
