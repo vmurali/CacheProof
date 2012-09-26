@@ -19,32 +19,28 @@ Module PcMesg <: Mesg.
 End PcMesg.
 
 Module Type RespAxioms (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: FifoHighLevel CpReqMesg).
-  Import PcMesg.
-  Import CpRespMesg.
-  Import CpReqMesg.
-
   Definition send pt m t :=
     match pt with
-      | p => pc.f.enq (PcResp m) t
+      | p => pc.f.enq (PcMesg.PcResp m) t
       | c => cp.f.enq m t
     end.
   
   Definition recv pt m t :=
     match pt with
       | p => cp.f.deq m t
-      | c => pc.f.deq (PcResp m) t
+      | c => pc.f.deq (PcMesg.PcResp m) t
     end.
 
   Definition sendr pt r t :=
     match pt with
-      | p => pc.f.enq (PcReq r) t
+      | p => pc.f.enq (PcMesg.PcReq r) t
       | c => cpr.f.enq r t
     end.
 
   Definition recvr pt r t :=
     match pt with
       | p => cpr.f.deq r t
-      | c => pc.f.deq (PcReq r) t
+      | c => pc.f.deq (PcMesg.PcReq r) t
     end.
 
   Parameter state: Point -> nat -> State.
@@ -115,9 +111,6 @@ Module Type RespAxioms (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg)
 End RespAxioms.
 
 Module Type Resp (pc: FifoHighLevel PcMesg) (cp: FifoHighLevel CpRespMesg) (cpr: FifoHighLevel CpReqMesg).
-  Import PcMesg.
-  Import CpRespMesg.
-  Import CpReqMesg.
 
   Parameter state: Point -> nat -> State.
   Parameter nextState: Point -> nat -> State.
