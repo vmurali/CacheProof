@@ -1,0 +1,52 @@
+req from parent:
+input: pIndex, lineAddr, to
+let present = getPresent(lineAddr)
+let index = getIndex(lineAddr)
+accept: True
+if(present)
+  let (State st) = state[index]
+  if(st > to)
+    state[index] <= State to
+
+handleCoreReq(to, cmd, data, byteEn, index, offset, inState)
+  let (State st) = inState
+  if(st < to)
+    let mshrptr <- mshr.insert(offset, data, to)
+    state[index] <= {PReq} mshrptr
+    p.req(index, lineAddr, to)
+  else
+    line.updateData(cmd, data, byteEn, index, offset)
+    resp(morph(cmd, data, byteEn, line[index][offset]))
+
+req from core:
+input: addr, to, cmd, data, byteEn
+let present = getPresent(addr)
+let index = getIndex(addr)
+let lineAddr = getLineAddr(addr)
+accept: ~isPReq[index] /\ (present \/ existsReplace[lineAddr])
+let offset = getOffset(addr)
+if(present)
+  handleCoreReq(to, cmd, data, byteEn, index, offset, inState)
+else
+  let (replaceLineAddr, replaceIndex) = getReplace[lineAddr]
+  let (State st) = state[replaceIndex]
+  if(st <> I)
+    tag[replaceIndex] <= getTag(lineAddr)
+    p.resp(Voluntary replaceLineAddr, I, dirty[replaceIndex], line[replaceIndex])
+  handleCoreReq(to, cmd, data, byteEn, index, offset, State I)
+
+resp from parent:
+input: index, from -> gotTo, lineIn
+if(dataFromParent(from, gotTo))
+  line[index] <= lineIn
+let (Coherence whoState mshrptr) = state[index]
+let (Child c cIndex to (CohState st cstates)) = mshr.get(mshrptr)
+let cs = {x|cstates[x] > comp(to) /\ x <> c}
+if(cs = {})
+  let newcstates[x] = x = c? to : cstates[x]
+  mshr.remove(mshrptr)
+  state[index] <= State gotTo newcstates
+  c.resp(cIndex, cstates[c] -> to, lineIn)
+else
+  state[index] <= Coherence (whoState - {PReq}) mshrptr
+  mshr.updateChildCohReplace(mshrptr, CohState gotTo cstates)
