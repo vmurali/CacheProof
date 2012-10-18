@@ -8,6 +8,12 @@ interface Memory;
   method ActionValue#(FromParent) respToCache;
 endinterface
 
+(* synthesize *)
+module mkMemoryInst(Memory);
+  let mem <- mkMemory(150);
+  return mem;
+endmodule
+
 module mkMemory#(Latency lat)(Memory);
   FIFOF#(ReqToParent) reqFromC <- mkFIFOF;
   FIFOF#(FromParent) respToC <- mkFIFOF;
