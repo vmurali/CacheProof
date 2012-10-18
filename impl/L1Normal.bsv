@@ -9,7 +9,7 @@ import RegFile::*;
 interface L1Normal#(numeric type ways, numeric type sets);
   method Action fromPM(FromParent x);
   method Action reqFromCoreM(ReqFromCore x);
-  method Action respToCoreM;
+//  method Action respToCoreM;
   method ActionValue#(ReqToParent) reqToPM;
   method ActionValue#(RespToParent) respToPM;
 endinterface
@@ -32,7 +32,7 @@ module mkL1Normal
 
   FIFOF#(FromParent) fromP <- mkFIFOF;
   FIFOF#(ReqFromCore) reqFromCore <- mkFIFOF;
-  FIFOF#(void) respToCore <- mkFIFOF;
+//  FIFOF#(void) respToCore <- mkFIFOF;
   FIFOF#(ReqToParent) pReq <- mkFIFOF;
   FIFOF#(RespToParent) pResp <- mkFIFOF;
 
@@ -47,7 +47,7 @@ rule fromPResp(cache.init && fromP.first.isReq == False);
   cache.setS(index, to);
   cache.unsetPReq(index);
   cache.replaceUpd(index);
-  respToCore.enq(?);
+//  respToCore.enq(?);
 endrule
 
 (* preempts = "fromPResp, reqFromCoreRl" *)
@@ -66,7 +66,7 @@ begin
         hit <= hit + 1;
         reqFromCore.deq;
         cache.replaceUpd(index);
-        respToCore.enq(?);
+//        respToCore.enq(?);
       end
       else
       begin
@@ -126,7 +126,7 @@ endrule
     return pResp.first;
   endmethod
 
-  method Action respToCoreM;
-    respToCore.deq;
-  endmethod
+//  method Action respToCoreM;
+//    respToCore.deq;
+//  endmethod
 endmodule
