@@ -7,13 +7,14 @@ if(present)
   let (State st) = state[index]
   if(st > to)
     state[index] <= State to
+    p.resp(Index pIndex, to, dirty[index], line[index])
 
 handleCoreReq(to, cmd, data, byteEn, index, offset, inState)
   let (State st) = inState
   if(st < to)
-    let mshrptr <- mshr.insert(offset, data, to)
-    state[index] <= {PReq} mshrptr
-    p.req(index, lineAddr, to)
+    let mshrptr <- mshr.insert(Mshr cmd data byteEn offset)
+    state[index] <= Coherence {PReq} mshrptr
+    p.req(index, lineAddr, st -> to)
   else
     line.updateData(cmd, data, byteEn, index, offset)
     resp(morph(cmd, data, byteEn, line[index][offset]))
@@ -40,13 +41,8 @@ input: index, from -> gotTo, lineIn
 if(dataFromParent(from, gotTo))
   line[index] <= lineIn
 let (Coherence whoState mshrptr) = state[index]
-let (Child c cIndex to (CohState st cstates)) = mshr.get(mshrptr)
-let cs = {x|cstates[x] > comp(to) /\ x <> c}
-if(cs = {})
-  let newcstates[x] = x = c? to : cstates[x]
-  mshr.remove(mshrptr)
-  state[index] <= State gotTo newcstates
-  c.resp(cIndex, cstates[c] -> to, lineIn)
-else
-  state[index] <= Coherence (whoState - {PReq}) mshrptr
-  mshr.updateChildCohReplace(mshrptr, CohState gotTo cstates)
+let (Mshr cmd data byteEn offset) = mshr.get(mshrptr)
+mshr.remove(mshrptr)
+state[index] <= State gotTo
+line.updateData(cmd, data, byteEn, index, offset)
+resp(morph(cmd, data, byteEn, line[index][offset]))

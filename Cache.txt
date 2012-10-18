@@ -1,3 +1,5 @@
+If you search tag array for responses, you can eliminate MSHR (with just 3 extra bits) - maybe another paper
+
 req from parent:
 input: pIndex, lineAddr, to
 let present = getPresent(lineAddr)
@@ -57,7 +59,7 @@ else
     if(cs = {})
       p.resp(Voluntary replaceLineAddr, I, dirty[replaceIndex], line[replaceIndex])
       tag[replaceIndex] <= getTag(lineAddr)
-      handleChildReq(c, cIndex, lineAddr, to, replaceIndex, invState)
+      andleChildReq(c, cIndex, lineAddr, to, replaceIndex, invState)
     else
       let mshrptr <- mshr.insert(Child c cIndex to (Replace lineAddr |replaceCStates|))
       state[replaceIndex] <= Coherence {CReq} mshrptr
