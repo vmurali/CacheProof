@@ -68,4 +68,9 @@ typedef struct {
   Bool dirty;
 } RespToParent deriving (Bits, Eq);
 
+typedef struct {
+  St to;
+  LineAddr lineAddr;
+} ReqFromCore deriving (Bits, Eq);
+
 typedef Bit#(20) Latency;

@@ -27,6 +27,7 @@ interface Cache#(numeric type mshrSz, numeric type tagSz, numeric type waySz, nu
 
   method Bool dirty(Index index);
   method Action setDirty(Index index);
+  method Action unsetDirty(Index index);
 
   method Bit#(tagSz) getTag(Index index);
   method Action setTag(Index index, Bit#(tagSz) inTag);
@@ -44,9 +45,7 @@ module mkCache
   (Cache#(mshrSz, tagSz, waySz, ways, sets, childs)) provisos(
     Log#(sets, setSz),
     Log#(ways, waySz),
-    Add#(setSz, _x, AddrSz),
     Add#(setSz, tagSz, RemainSz),
-    Add#(tagSz, _y, AddrSz),
     Add#(setSz, _z, 15),
     Add#(waySz, _w, 6)
   );
@@ -163,6 +162,10 @@ module mkCache
     dirtyReg[index.way].upd(truncate(index.set), True);
   endmethod
 
+  method Action unsetDirty(Index index);
+    dirtyReg[index.way].upd(truncate(index.set), False);
+  endmethod
+
   method Bool existsReplace(LineAddr lineAddr);
     Bit#(setSz) set = truncate(lineAddr);
     function Bool bothFalse(Bool x, Bool y) = !x && !y;
@@ -196,9 +199,17 @@ module mkCache
 
   method Index getReplace(LineAddr lineAddr);
     Bit#(setSz) set = truncate(lineAddr);
-    function isLast(Bit#(waySz) lru) = lru == fromInteger(valueOf(ways) - 1);
-    Vector#(ways, Bit#(waySz)) lrus = genWith(getRegFile(lruBits, set));
-    return Index{set: zeroExtend(set), way: zeroExtend(validValue(find(isLast, lrus)))};
+    Maybe#(Tuple2#(Bit#(waySz), Bit#(waySz))) maxFound = Invalid;
+    for(Integer i = 0; i < valueOf(ways); i = i + 1)
+    begin
+      if(!pReq[i].sub(set) && !cReq[i].sub(set))
+        maxFound = case (maxFound) matches
+          tagged Valid .prev: Valid ((tpl_2(prev) < lruBits[i].sub(set))?
+                                        tuple2(fromInteger(i), lruBits[i].sub(set)): prev);
+          tagged Invalid: Valid (tuple2(fromInteger(i), lruBits[i].sub(set)));
+        endcase;
+    end
+    return Index{set: zeroExtend(set), way: zeroExtend(tpl_1(validValue(maxFound)))};
   endmethod
 
   method Bit#(mshrSz) getMshrPtr(Index index) = mshrPtr[index.way].sub(truncate(index.set));
