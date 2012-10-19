@@ -17,22 +17,30 @@ module mkFeeder#(Bool isData, Bit#(32) tId)(Feeder);
   endrule
 
   rule downCount(inited && count != 0);
+    $display("Nothing");
     count <= count - 1;
   endrule
 
   rule feedRl(inited && count == 0);
     if(isData)
     begin
-      match {.to, .addr} <- getDataFeed(tId);
+      let to <- getDataSt(tId);
+      let addr <- getFeed(True, tId);
       if(to == 0)
         count <= addr;
       else
-        f.enq(ReqFromCore{to: to, lineAddr: truncateLSB(addr)});
+      begin
+        LineAddr lineAddr = truncateLSB(addr);
+        f.enq(ReqFromCore{to: to, lineAddr: lineAddr});
+        $display("%d %x", to, lineAddr);
+      end
     end
     else
     begin
-      let addr <- getInstFeed(tId);
-      f.enq(ReqFromCore{to: 1, lineAddr: truncateLSB(addr)});
+      let addr <- getFeed(False, tId);
+      LineAddr lineAddr = truncateLSB(addr);
+      f.enq(ReqFromCore{to: 1, lineAddr: lineAddr});
+      $display("%x",lineAddr);
     end
   endrule
 

@@ -29,10 +29,6 @@ function St compat(St st);
     return 2;
 endfunction
 
-function Bool transfer(St from, St to);
-  return (from == 0);
-endfunction
-
 (* synthesize *)
 module mkInternalCtrlInst(InternalCtrl#(64, 8, 1024, 16));
   let ctrl <- mkInternalCtrl;
