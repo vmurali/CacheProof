@@ -17,7 +17,6 @@ module mkFeeder#(Bool isData, Bit#(32) tId)(Feeder);
   endrule
 
   rule downCount(inited && count != 0);
-    $display("Nothing");
     count <= count - 1;
   endrule
 
@@ -27,7 +26,10 @@ module mkFeeder#(Bool isData, Bit#(32) tId)(Feeder);
       let to <- getDataSt(tId);
       let addr <- getFeed(True, tId);
       if(to == 0)
+      begin
         count <= addr;
+        $display("count %d", addr);
+      end
       else
       begin
         LineAddr lineAddr = truncateLSB(addr);

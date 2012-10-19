@@ -9,12 +9,14 @@ void initialize(unsigned char isData, unsigned int tId) {
   int fd = 0;
   char buf[10];
   if(isData) {
-    sprintf(buf, "d%d", tId);
+    sprintf(buf, "d%d.tra", tId);
     dFds[tId] = open(buf, O_RDONLY);
+    printf("opened %s %d\n", buf, dFds[tId]);
   }
   else {
-    sprintf(buf, "i%d", tId);
+    sprintf(buf, "i%d.tra", tId);
     iFds[tId] = open(buf, O_RDONLY);
+    printf("opened %s %d\n", buf, iFds[tId]);
   }
 }
 
