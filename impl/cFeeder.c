@@ -11,12 +11,10 @@ void initialize(unsigned char isData, unsigned int tId) {
   if(isData) {
     sprintf(buf, "d%d.tra", tId);
     dFds[tId] = open(buf, O_RDONLY);
-    printf("opened %s %d\n", buf, dFds[tId]);
   }
   else {
     sprintf(buf, "i%d.tra", tId);
     iFds[tId] = open(buf, O_RDONLY);
-    printf("opened %s %d\n", buf, iFds[tId]);
   }
 }
 
@@ -24,6 +22,13 @@ char getDataSt(unsigned int tId) {
   char st;
   read(dFds[tId], &st, 1);
   return st;
+}
+
+unsigned int getCount(unsigned int tId) {
+  unsigned int count;
+  int fd = dFds[tId];
+  read(fd, &count, 4);
+  return count;
 }
 
 unsigned long long getFeed(char isData, unsigned int tId) {

@@ -7,4 +7,7 @@ import "BDPI"
 function ActionValue#(St) getDataSt(Bit#(32) tId);
 
 import "BDPI"
+function ActionValue#(Bit#(32)) getCount(Bit#(32) tId);
+
+import "BDPI"
 function ActionValue#(Addr) getFeed(Bool isData, Bit#(32) tId);
