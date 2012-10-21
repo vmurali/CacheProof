@@ -27,9 +27,11 @@ public:
   }
   void enq(void* x) {
     q->push(x);
+    numElems++;
   }
   void deq() {
     q->pop();
+    numElems--;
   }
   void* first() {
     return q->front();
