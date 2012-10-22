@@ -10,11 +10,12 @@ private:
   queue<void*>* q;
   U8 size;
   U8 numElems;
+  bool enqEn;
+  bool deqEn;
 public:
   fifo(U8 s) {
     q = new queue<void*>;
-    size = s;
-    numElems = 0;
+    size = s; numElems = 0; enqEn = false; deqEn = false;
   }
   ~fifo() {
     delete q;
@@ -27,13 +28,20 @@ public:
   }
   void enq(void* x) {
     q->push(x);
-    numElems++;
+    enqEn = true;
   }
   void deq() {
     q->pop();
-    numElems--;
+    deqEn = true;
   }
   void* first() {
     return q->front();
+  }
+
+  void cycle() {
+    if(enqEn)
+      numElems++;
+    if(deqEn)
+      numElems--;
   }
 } Fifo;
