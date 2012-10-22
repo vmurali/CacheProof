@@ -120,7 +120,7 @@ public:
   bool existsReplace(LineAddr lineAddr) {
     Set set = lineAddr & (sets - 1);
     for(Way i = 0; i < ways; i++)
-      if(!pReq[i] && !cReq[i])
+      if(!pReq[set][i] && !cReq[set][i])
         return true;
     return false;
   }
