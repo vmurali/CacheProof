@@ -286,6 +286,8 @@ private:
     bool present = cache->isPresent(msg->lineAddr);
     if(!present) {
       latWait = tagLat;
+      fromP->deq();
+      delete msg;
       return true;
     } else {
       Index index = cache->getIndex(msg->lineAddr);

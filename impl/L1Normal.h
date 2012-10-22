@@ -59,6 +59,7 @@ private:
     fromP->deq();
     delete msg;
     reqFromCore->deq();
+    cache->replaceUpd(index);
     ReqFromCore* m = (ReqFromCore*) reqFromCore->first();
     delete m;
     return true;
@@ -90,6 +91,8 @@ private:
       }
       if(cache->st[index.set][index.way] >= msg->to) {
         reqFromCore->deq();
+        cache->replaceUpd(index);
+        hit++;
         delete msg;
         return true;
       }
@@ -107,6 +110,7 @@ private:
        return false;
     bool present = cache->isPresent(msg->lineAddr);
     if(!present) {
+      fromP->deq();
       return true;
     } else {
       Index index = cache->getIndex(msg->lineAddr);
