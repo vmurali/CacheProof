@@ -1,8 +1,6 @@
 #pragma once
 
-#include "Cache.h"
 #include "Fifo.h"
-#include "FreeList.h"
 #include "CacheTypes.h"
 
 typedef class memory {
@@ -43,14 +41,14 @@ public:
   }
 
   void cycle() {
-    if(latWait > 1) {
-      latWait--;
-      return;
-    }
-    else if(latWait == 1 && !respFromP->empty() && !respFromPF->full()) {
-      respFromPF->enq(respFromP->first());
-      respFromPF->deq();
-      latWait = 0;
+    if(latWait != 0) {
+      if(latWait > 1)
+        latWait--;
+      else if(latWait == 1 && !respFromP->empty() && !respFromPF->full()) {
+        respFromPF->enq(respFromP->first());
+        respFromPF->deq();
+        latWait = 0;
+      }
       return;
     }
     handleCReq();
