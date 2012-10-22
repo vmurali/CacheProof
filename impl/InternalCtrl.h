@@ -6,24 +6,19 @@
 
 typedef U64 Counter;
 
-typedef struct {
+typedef class fromP {
+public:
   bool isReq;
   Index index;
   LineAddr lineAddr;
   St from;
   St to;
+
+  fromP(bool _isReq, Index _index, LineAddr _lineAddr, St _from, St _to) {
+    isReq = _isReq; index = _index; lineAddr = _lineAddr; from = _from; to = _to;
+  }
+  ~fromP() {}
 } FromP;
-
-typedef enum {P, C} Who;
-
-typedef struct {
-  Who who;
-  Child c;
-  Index index;
-  St to;
-  bool isReplacing;
-  LineAddr lineAddr;
-} Mshr;
 
 typedef class toCs {
 public:
@@ -60,39 +55,84 @@ public:
   }
 } ToCs;
 
-typedef struct {
+typedef class reqFromC {
+public:
   Child c;
   Index index;
   LineAddr lineAddr;
   St from;
   St to;
+
+  reqFromC(Child _c, Index _index, LineAddr _lineAddr, St _from, St _to) {
+    c = _c; index = _index; lineAddr = _lineAddr; from = _from; to = _to;
+  }
+  ~reqFromC() {}
 } ReqFromC;
 
-typedef struct {
+typedef class reqToP {
+public:
   Index index;
   LineAddr lineAddr;
   St from;
   St to;
+
+  reqToP(Index _index, LineAddr _lineAddr, St _from, St _to) {
+    index = _index; lineAddr = _lineAddr; from = _from; to = _to;
+  }
+  ~reqToP() {}
 } ReqToP;
 
 typedef enum {Forced, Voluntary} Trigger;
 
-typedef struct {
+typedef class respFromC {
+public:
   Child c;
   Trigger trigger;
   Index index;
   LineAddr lineAddr;
   St to;
   bool dirty;
+
+  respFromC(Child _c, Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty) {
+    c = _c; trigger = _trigger; index = _index; lineAddr = _lineAddr; to = _to; dirty = _dirty;
+  }
+
+  ~respFromC() {}
 } RespFromC;
 
-typedef struct {
+typedef class respToP {
+public:
   Trigger trigger;
   Index index;
   LineAddr lineAddr;
   St to;
   bool dirty;
+
+  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty) {
+    trigger = _trigger; index = _index; lineAddr = _lineAddr; to = _to; dirty = _dirty;
+  }
+
+  ~respToP() {}
 } RespToP;
+
+typedef enum {P, C} Who;
+
+typedef class mshr {
+public:
+  Who who;
+  Child c;
+  Index index;
+  St to;
+  bool isReplacing;
+  LineAddr lineAddr;
+
+  mshr() {}
+  mshr(Who _who, Child _c, Index _index, St _to, bool _isReplacing, LineAddr _lineAddr) {
+    who = _who; c = _c; index = _index; to = _to; isReplacing = _isReplacing;
+    lineAddr = _lineAddr;
+  }
+  ~mshr() {}
+} Mshr;
 
 typedef U32 Latency;
 
@@ -108,10 +148,6 @@ private:
 
   Fifo* pReq,* pResp,* toCs;
   Latency latPReq, latPResp, latToCs, latWait;
-
-  Counter hit;
-  Counter notPresentMiss;
-  Counter noPermMiss;
 
   Who priority;
 
@@ -134,11 +170,52 @@ private:
     return _isCHigher;
   }
 
+  void sendPResp(Index& index, St to, Trigger trigger, Index& pIndex, LineAddr lineAddr, Latency lat) {
+    cache->st[index.set][index.way] = to;
+    RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache->dirty[index.set][index.way]);
+    pResp->enq(resp);
+    latPResp = cache->dirty[index.set][index.way]? dataLat : lat;
+    if(to == 0)
+      cache->replaceRem(index);
+  }
+
+  void sendCResp(Index& index, St to, Child c, Index& cIndex, Latency lat) {
+    ToCs* resp = new ToCs(childs, c, false, cIndex, 0, cache->cstates[index.set][index.way][c], to);
+    latToCs = cache->cstates[index.set][index.way][c] == 0? dataLat: lat;
+    cache->cstates[index.set][index.way][c] = to;
+    toCs->enq(resp);
+    cache->replaceUpd(index);
+  }
+
+  void sendCsReq(Index& index, LineAddr lineAddr, St to) {
+    cache->cReq[index.set][index.way] = true;
+    cache->waitCs[index.set][index.way] = to;
+    bool* highChildren = new bool[childs];
+    for(Child i = 0; i < childs; i++)
+       highChildren[i] = cache->cstates[index.set][index.way][i] > to;
+    ToCs* req = new ToCs(childs, highChildren, true, index, lineAddr, NULL, to);
+    toCs->enq(req);
+    latToCs = tagLat;
+  }
+
+  void sendPReq(Index& index, LineAddr lineAddr, St to) {
+    cache->pReq[index.set][index.way] = true;
+    cache->waitS[index.set][index.way] = to;
+    ReqToP* req = new ReqToP(index, lineAddr, cache->st[index.set][index.way], to);
+    pReq->enq(req);
+    latPReq = tagLat;
+  }
+
+  void allocMshr(Index& index, Mshr entry) {
+    MshrPtr mshrPtr = mshrFl->alloc();
+    cache->mshrPtr[index.set][index.way] = mshrPtr;
+    mshr[mshrPtr] = entry;
+  }
+
   bool handleCResp() {
     if(respFromC->empty())
       return false;
     RespFromC* msg = (RespFromC*) respFromC->first();
-    respFromC->deq();
     Index index = msg->trigger == Forced? msg->index: cache->getIndex(msg->lineAddr);
     cache->cstates[index.set][index.way][msg->c] = msg->to;
     if(cache->cReq[index.set][index.way]) {
@@ -147,22 +224,13 @@ private:
       St to = m.who == P? m.to: compat(m.to);
       if(!isCHigher(index, to)) {
         cache->cReq[index.set][index.way] = false;
-        if(m.who == P) {
-          RespToP* resp = new RespToP();
-          resp->trigger = Forced; resp->index = m.index; resp->lineAddr = 0;
-          resp->to = m.to; resp->dirty = cache->dirty[index.set][index.way];
-          pResp->enq((void*)resp);
-          latPResp = msg->trigger == Forced? 1 : tagLat;
-        }
-        else if(!cache->pReq[index.set][index.way]) {
-          St from = cache->cstates[index.set][index.way][m.c];
-          ToCs* resp = new ToCs(childs, m.c, false, m.index, 0, from, m.to);
-          toCs->enq((void*)resp);
-          latToCs = msg->trigger == Forced? 1 : tagLat;
-          cache->replaceUpd(index);
-        }
+        if(m.who == P)
+          sendPResp(index, m.to, Forced, m.index, 0, msg->trigger == Forced? 1: tagLat);
+        else if(!cache->pReq[index.set][index.way])
+          sendCResp(index, m.to, m.c, m.index, msg->trigger == Forced? 1: tagLat);
       }
     }
+    respFromC->deq();
     delete msg;
     return true;
   }
@@ -173,21 +241,28 @@ private:
     FromP* msg = (FromP*) fromP->first();
     if(msg->isReq)
        return false;
-    fromP->deq();
     Index index = msg->index;
     MshrPtr mshrPtr = cache->mshrPtr[index.set][index.way];
     cache->st[index.set][index.way] = msg->to;
     cache->pReq[index.set][index.way] = false;
     if(!cache->cReq[index.set][index.way]) {
       Mshr m = mshr[mshrPtr];
+      sendCResp(index, m.to, m.c, m.index, 1);
       mshrFl->free(mshrPtr);
-      St from = cache->cstates[index.set][index.way][m.c];
-      ToCs* resp = new ToCs(childs, m.c, false, m.index, 0, from, m.to);
-      toCs->enq((void*)resp);
-      latToCs = from == 0? dataLat: 1;
     }
+    fromP->deq();
     delete msg;
     return true;
+  }
+
+  void resetLine(Index& index, LineAddr lineAddr) {
+    cache->pReq[index.set][index.way] = false;
+    cache->cReq[index.set][index.way] = false;
+    cache->tag[index.set][index.way] = lineAddr >> setSz;
+    cache->st[index.set][index.way] = 0;
+    for(Child i = 0; i < childs; i++)
+      cache->cstates[index.set][index.way][i] = 0;
+    cache->dirty[index.set][index.way] = false;
   }
 
   bool handleCReq() {
@@ -198,82 +273,57 @@ private:
     if(!present) {
       if(!mshrFl->isAvail() || !cache->existsReplace(msg->lineAddr)) {
         latWait = tagLat;
+        return true;
       }
-      MshrPtr mshrPtr = mshrFl->alloc();
+      notPresentMiss++;
       Index replaceIndex = cache->getReplace(msg->lineAddr);
-      cache->mshrPtr[replaceIndex.set][replaceIndex.way] = mshrPtr;
-      reqFromC->deq();
+      LineAddr replaceLineAddr = (cache->tag[replaceIndex.set][replaceIndex.way] << setSz)
+                            | replaceIndex.set;
       if(!isCHigher(replaceIndex, 0)) {
         if(cache->st[replaceIndex.set][replaceIndex.way] > 0) {
-          RespToP* vol = new RespToP;
-          LineAddr lineAddr = (cache->tag[replaceIndex.set][replaceIndex.way] << setSz)
-                                | replaceIndex.set;
-          vol->trigger = Voluntary; vol->lineAddr = lineAddr; vol->to = 0;
-          vol->dirty = cache->dirty[replaceIndex.set][replaceIndex.way];
-          cache->replaceRem(replaceIndex);
-          pResp->enq((void*) vol);
-          latPResp = vol->dirty? dataLat: tagLat;
+          sendPResp(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr, tagLat);
         }
-        cache->tag[replaceIndex.set][replaceIndex.way] = (msg->lineAddr) >> setSz;
-        cache->st[replaceIndex.set][replaceIndex.way] = 0;
-        for(Child i = 0; i < childs; i++)
-          cache->cstates[replaceIndex.set][replaceIndex.way][i] = 0;
-        cache->dirty[replaceIndex.set][replaceIndex.way] = false;
-        mshr[mshrPtr].who = C; mshr[mshrPtr].c = msg->c; mshr[mshrPtr].index = msg->index;
-        mshr[mshrPtr].to = msg->to; mshr[mshrPtr].isReplacing = false;
-        ReqToP* req = new ReqToP;
-        req->index = replaceIndex; req->lineAddr = msg->lineAddr; req->from = 0; req->to = msg->to;
-        pReq->enq((void*)req);
-        latPReq = tagLat;
+        resetLine(replaceIndex, msg->lineAddr);
+        allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
+        sendPReq(replaceIndex, msg->lineAddr, msg->to);
+        reqFromC->deq();
+        delete msg;
+        return true;
       } else {
-        mshr[mshrPtr].who = C; mshr[mshrPtr].c = msg->c; mshr[mshrPtr].index = msg->index;
-        mshr[mshrPtr].to = msg->to; mshr[mshrPtr].isReplacing = true; mshr[mshrPtr].lineAddr = msg->lineAddr;
-        bool* highChildren = new bool[childs];
-        for(Child i = 0; i < childs; i++)
-           highChildren[i] = cache->cstates[replaceIndex.set][replaceIndex.way][i] > 0;
-        ToCs* req = new ToCs(childs, highChildren, true, replaceIndex, 0, NULL, 0);
-        toCs->enq((void*)req);
-        latToCs = tagLat;
+        allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, true, msg->lineAddr));
+        sendCsReq(replaceIndex, replaceLineAddr, 0);
+        reqFromC->deq();
+        delete msg;
+        return true;
       }
     } else {
       Index index = cache->getIndex(msg->lineAddr);
       if(cache->cReq[index.set][index.way] || cache->pReq[index.set][index.way]) {
         latWait = tagLat;
+        return true;
       }
       if(cache->st[index.set][index.way] >= msg->to && !isCHigher(index, compat(msg->to))) {
-        St oldSt = cache->cstates[index.set][index.way][msg->c];
-        ToCs* resp = new ToCs(childs, msg->c, false, msg->index, msg->lineAddr, oldSt, msg->to);
-        toCs->enq((void*)resp);
-        latToCs = oldSt == 0? dataLat: tagLat;
+        sendCResp(index, msg->to, msg->c, msg->index, tagLat);
+        reqFromC->deq();
+        delete msg;
+        return true;
       }
       if(!mshrFl->isAvail()) {
         latWait = tagLat;
+        return true;
       }
-      MshrPtr mshrPtr = mshrFl->alloc();
-      mshr[mshrPtr].who = C; mshr[mshrPtr].c = msg->c; mshr[mshrPtr].index = msg->index;
-      mshr[mshrPtr].to = msg->to; mshr[mshrPtr].isReplacing = false;
+      noPermMiss++;
+      allocMshr(index, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
       if(cache->st[index.set][index.way] < msg->to) {
-        cache->pReq[index.set][index.way] = true;
-        cache->waitS[index.set][index.way] = msg->to;
-        ReqToP* req = new ReqToP;
-        req->index = index; req->lineAddr = msg->lineAddr;
-        req->from = cache->st[index.set][index.way]; req->to = msg->to;
-        pReq->enq((void*)req);
-        latPReq = tagLat;
+        sendPReq(index, msg->lineAddr, msg->to);
       }
       if(isCHigher(index, compat(msg->to))) {
-        cache->cReq[index.set][index.way] = true;
-        cache->waitCs[index.set][index.way] = compat(msg->to);
-        bool* highChildren = new bool[childs];
-        for(Child i = 0; i < childs; i++)
-           highChildren[i] = cache->cstates[index.set][index.way][i] > compat(msg->to);
-        ToCs* req = new ToCs(childs, highChildren, true, index, 0, NULL, compat(msg->to));
-        toCs->enq((void*)req);
-        latToCs = tagLat;
+        sendCsReq(index, msg->lineAddr, compat(msg->to));
       }
+      reqFromC->deq();
+      delete msg;
+      return true;
     }
-    delete msg;
-    return true;
   }
 
   bool handlePReq() {
@@ -282,6 +332,34 @@ private:
     FromP* msg = (FromP*) fromP->first();
     if(!msg->isReq)
        return false;
+    bool present = cache->isPresent(msg->lineAddr);
+    if(!present) {
+      latWait = tagLat;
+      return true;
+    } else {
+      Index index = cache->getIndex(msg->lineAddr);
+      if(cache->cReq[index.set][index.way]) {
+        latWait = tagLat;
+        return true;
+      }
+      if(!isCHigher(index, msg->to)) {
+        if(cache->st[index.set][index.way] > msg->to) {
+          sendPResp(index, msg->to, Forced, msg->index, 0, tagLat);
+        }
+        fromP->deq();
+        delete msg;
+        return true;
+      }
+      if(!mshrFl->isAvail()) {
+        latWait = tagLat;
+        return true;
+      }
+      allocMshr(index, Mshr(P, 0, msg->index, msg->to, false, (LineAddr)0));
+      sendCsReq(index, msg->lineAddr, msg->to);
+      fromP->deq();
+      delete msg;
+      return true;
+    }
   }
 
 public:
@@ -314,6 +392,8 @@ public:
     hit = 0;
     notPresentMiss = 0;
     noPermMiss = 0;
+
+    priority = C;
   }
   ~internalCtrl() {
     delete cache;
@@ -352,5 +432,24 @@ public:
       }
       return;
     }
+    if(handleCResp()) {}
+    else if(handlePResp()) {}
+    else if(priority == P) {
+      if(handlePReq()) {
+        priority = C;
+      }
+      else if(handleCReq()) {}
+    }
+    else {
+      if(handleCReq()) {
+        priority = P;
+      }
+      else if(handlePReq()) {}
+    }
   }
+
+  Counter hit;
+  Counter notPresentMiss;
+  Counter noPermMiss;
+
 } InternalCtrl;
