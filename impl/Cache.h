@@ -1,19 +1,7 @@
 #pragma once
 
 #include "Types.h"
-
-typedef U8 St;
-typedef U64 LineAddr;
-typedef U64 Tag;
-typedef U32 Set;
-typedef U8 Way;
-typedef U32 Child;
-typedef U8 MshrPtr;
-
-typedef struct {
-  Set set;
-  Way way;
-} Index;
+#include "CacheTypes.h"
 
 typedef class cache {
 private:

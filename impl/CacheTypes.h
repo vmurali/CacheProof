@@ -1,6 +1,21 @@
 #pragma once
 
+#include "Types.h"
+
 typedef U64 Counter;
+
+typedef U8 St;
+typedef U64 LineAddr;
+typedef U64 Tag;
+typedef U32 Set;
+typedef U8 Way;
+typedef U32 Child;
+typedef U8 MshrPtr;
+
+typedef struct {
+  Set set;
+  Way way;
+} Index;
 
 typedef class fromP {
 public:
@@ -49,3 +64,17 @@ public:
 typedef U32 Latency;
 
 typedef enum {P, C} Who;
+
+typedef U32 ThreadId;
+
+typedef class reqFromCore {
+public:
+  St to;
+  LineAddr lineAddr;
+
+  reqFromCore(St _to, LineAddr _lineAddr) {
+    to = _to; lineAddr = _lineAddr;
+  }
+  ~reqFromCore() {}
+} ReqFromCore;
+

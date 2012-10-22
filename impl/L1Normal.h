@@ -4,17 +4,6 @@
 #include "Fifo.h"
 #include "CacheTypes.h"
 
-typedef class reqFromCore {
-public:
-  St to;
-  LineAddr lineAddr;
-
-  reqFromCore(St _to, LineAddr _lineAddr) {
-    to = _to; lineAddr = _lineAddr;
-  }
-  ~reqFromCore() {}
-} ReqFromCore;
-
 typedef class l1Normal {
 private:
   Fifo* fromP,* reqFromCore,* pReq,* pResp;
