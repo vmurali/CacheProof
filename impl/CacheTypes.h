@@ -46,4 +46,7 @@ public:
   ~respToP() {}
 } RespToP;
 
+typedef U32 Latency;
+
+typedef enum {P, C} Who;
 

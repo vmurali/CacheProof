@@ -70,8 +70,6 @@ public:
   ~respFromC() {}
 } RespFromC;
 
-typedef enum {P, C} Who;
-
 typedef class mshr {
 public:
   Who who;
@@ -88,8 +86,6 @@ public:
   }
   ~mshr() {}
 } Mshr;
-
-typedef U32 Latency;
 
 typedef class internalCtrl {
 private:
