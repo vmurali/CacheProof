@@ -3,22 +3,7 @@
 #include "Cache.h"
 #include "Fifo.h"
 #include "FreeList.h"
-
-typedef U64 Counter;
-
-typedef class fromP {
-public:
-  bool isReq;
-  Index index;
-  LineAddr lineAddr;
-  St from;
-  St to;
-
-  fromP(bool _isReq, Index _index, LineAddr _lineAddr, St _from, St _to) {
-    isReq = _isReq; index = _index; lineAddr = _lineAddr; from = _from; to = _to;
-  }
-  ~fromP() {}
-} FromP;
+#include "CacheTypes.h"
 
 typedef class toCs {
 public:
@@ -69,21 +54,6 @@ public:
   ~reqFromC() {}
 } ReqFromC;
 
-typedef class reqToP {
-public:
-  Index index;
-  LineAddr lineAddr;
-  St from;
-  St to;
-
-  reqToP(Index _index, LineAddr _lineAddr, St _from, St _to) {
-    index = _index; lineAddr = _lineAddr; from = _from; to = _to;
-  }
-  ~reqToP() {}
-} ReqToP;
-
-typedef enum {Forced, Voluntary} Trigger;
-
 typedef class respFromC {
 public:
   Child c;
@@ -99,21 +69,6 @@ public:
 
   ~respFromC() {}
 } RespFromC;
-
-typedef class respToP {
-public:
-  Trigger trigger;
-  Index index;
-  LineAddr lineAddr;
-  St to;
-  bool dirty;
-
-  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty) {
-    trigger = _trigger; index = _index; lineAddr = _lineAddr; to = _to; dirty = _dirty;
-  }
-
-  ~respToP() {}
-} RespToP;
 
 typedef enum {P, C} Who;
 
@@ -212,6 +167,16 @@ private:
     mshr[mshrPtr] = entry;
   }
 
+  void resetLine(Index& index, LineAddr lineAddr) {
+    cache->pReq[index.set][index.way] = false;
+    cache->cReq[index.set][index.way] = false;
+    cache->tag[index.set][index.way] = lineAddr >> setSz;
+    cache->st[index.set][index.way] = 0;
+    for(Child i = 0; i < childs; i++)
+      cache->cstates[index.set][index.way][i] = 0;
+    cache->dirty[index.set][index.way] = false;
+  }
+
   bool handleCResp() {
     if(respFromC->empty())
       return false;
@@ -253,16 +218,6 @@ private:
     fromP->deq();
     delete msg;
     return true;
-  }
-
-  void resetLine(Index& index, LineAddr lineAddr) {
-    cache->pReq[index.set][index.way] = false;
-    cache->cReq[index.set][index.way] = false;
-    cache->tag[index.set][index.way] = lineAddr >> setSz;
-    cache->st[index.set][index.way] = 0;
-    for(Child i = 0; i < childs; i++)
-      cache->cstates[index.set][index.way][i] = 0;
-    cache->dirty[index.set][index.way] = false;
   }
 
   bool handleCReq() {
