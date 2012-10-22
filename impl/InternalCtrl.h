@@ -438,13 +438,13 @@ public:
       if(handlePReq()) {
         priority = C;
       }
-      else if(handleCReq()) {}
+      else handleCReq();
     }
     else {
       if(handleCReq()) {
         priority = P;
       }
-      else if(handlePReq()) {}
+      else handlePReq();
     }
   }
 
