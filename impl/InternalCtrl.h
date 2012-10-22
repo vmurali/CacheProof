@@ -359,28 +359,28 @@ public:
     if(latPReq != 0 || latPResp != 0 || latToCs != 0 || latWait != 0) {
       if(latPReq > 1)
         latPReq--;
-      else if(!pReq->empty() && !pReqF->full()) {
+      else if(latPReq == 1 && !pReq->empty() && !pReqF->full()) {
         pReqF->enq(pReq->first());
         pReq->deq();
         latPReq = 0;
       }
       if(latPResp > 1)
         latPResp--;
-      if(latToCs > 1)
-        latToCs--;
-      if(latWait != 0)
-        latWait--;
-
-      if(latPResp == 1 && !pResp->empty() && !pRespF->full()) {
+      else if(latPResp == 1 && !pResp->empty() && !pRespF->full()) {
         pRespF->enq(pResp->first());
         pResp->deq();
         latPResp = 0;
       }
-      if(latToCs == 1 && !toCs->empty() && !toCsF->full()) {
+      if(latToCs > 1)
+        latToCs--;
+      else if(latToCs == 1 && !toCs->empty() && !toCsF->full()) {
         toCsF->enq(toCs->first());
         toCs->deq();
         latToCs = 0;
       }
+      if(latWait != 0)
+        latWait--;
+
       return;
     }
     if(handleCResp()) {}
