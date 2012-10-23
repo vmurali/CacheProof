@@ -267,7 +267,7 @@ public:
     mshr = new Mshr[mshrs];
   }
   ~internalCtrl() {
-    delete mshr;
+    delete[] mshr;
   }
 
   void cycle() {

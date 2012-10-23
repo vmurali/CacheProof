@@ -63,4 +63,4 @@ public:
       feed(to);
     }
   }
-} Feeder;
+} DataFeeder;

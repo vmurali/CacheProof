@@ -143,3 +143,17 @@ public:
   ~reqFromCore() {}
 } ReqFromCore;
 
+FromP* toCs2fromP(ToCs* toCs, Child c) {
+  FromP* ret = new FromP(toCs->isReq, toCs->index, toCs->lineAddr, toCs->from[c], toCs->to);
+  return ret;
+}
+
+ReqFromC* reqToP2reqFromC(ReqToP* reqToP, Child c) {
+  ReqFromC* ret = new ReqFromC(c, reqToP->index, reqToP->lineAddr, reqToP->from, reqToP->to);
+  return ret;
+}
+
+RespFromC* respToP2respFromC(RespToP* respToP, Child c) {
+  RespFromC* ret = new RespFromC(c, respToP->trigger, respToP->index, respToP->lineAddr, respToP->to, respToP->dirty);
+  return ret;
+}
