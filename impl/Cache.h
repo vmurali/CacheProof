@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Types.h"
 #include "CacheTypes.h"
 
 typedef class cache {
