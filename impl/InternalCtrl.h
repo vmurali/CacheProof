@@ -89,7 +89,8 @@ public:
 
 typedef class internalCtrl {
 private:
-  Fifo* fromP,* reqFromC,* respFromC,* pReqF,* pRespF,* toCsF;
+  Fifo* fromP,* reqToPF,* respToPF;
+  Fifo* reqFromC,* respFromC,* toCsF;
   Child childs;
   Cache* cache;
   FreeList* mshrFl;
@@ -97,7 +98,7 @@ private:
   Latency tagLat;
   Latency dataLat;
 
-  Fifo* pReq,* pResp,* toCs;
+  Fifo* reqToP,* respToP,* toCs;
   Latency latPReq, latPResp, latToCs, latWait;
 
   Who priority;
@@ -124,7 +125,7 @@ private:
   void sendPResp(Index& index, St to, Trigger trigger, Index& pIndex, LineAddr lineAddr, Latency lat) {
     cache->st[index.set][index.way] = to;
     RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache->dirty[index.set][index.way]);
-    pResp->enq(resp);
+    respToP->enq(resp);
     latPResp = cache->dirty[index.set][index.way]? dataLat : lat;
     if(to == 0)
       cache->replaceRem(index);
@@ -153,7 +154,7 @@ private:
     cache->pReq[index.set][index.way] = true;
     cache->waitS[index.set][index.way] = to;
     ReqToP* req = new ReqToP(index, lineAddr, cache->st[index.set][index.way], to);
-    pReq->enq(req);
+    reqToP->enq(req);
     latPReq = tagLat;
   }
 
@@ -317,7 +318,7 @@ private:
 
 public:
   internalCtrl(Fifo* _fromP, Fifo* _reqFromC, Fifo* _respFromC,
-               Fifo* _reqToP, Fifo* _respToP, Fifo* _toCs,
+               Fifo* _reqToPF, Fifo* _respToPF, Fifo* _toCsF,
                MshrPtr mshrs, Way ways, U8 _setSz, Child _childs,
                Latency _tagLat, Latency _dataLat) {
     setSz = _setSz;
@@ -331,10 +332,10 @@ public:
     dataLat = _dataLat;
 
     fromP = _fromP; reqFromC = _reqFromC; respFromC = _respFromC;
-    pReqF = _reqToP; pRespF = _respToP; toCsF = _toCs;
+    reqToPF = _reqToPF; respToPF = _respToPF; toCsF = _toCsF;
 
-    pReq = new Fifo(1);
-    pResp = new Fifo(1);
+    reqToP = new Fifo(1);
+    respToP = new Fifo(1);
     toCs = new Fifo(1);
 
     latPReq = 0;
@@ -352,8 +353,8 @@ public:
     delete cache;
     delete mshrFl;
     delete mshr;
-    delete pReq;
-    delete pResp;
+    delete reqToP;
+    delete respToP;
     delete toCs;
   }
 
@@ -361,16 +362,16 @@ public:
     if(latPReq != 0 || latPResp != 0 || latToCs != 0 || latWait != 0) {
       if(latPReq > 1)
         latPReq--;
-      else if(latPReq == 1 && !pReq->empty() && !pReqF->full()) {
-        pReqF->enq(pReq->first());
-        pReq->deq();
+      else if(latPReq == 1 && !reqToP->empty() && !reqToPF->full()) {
+        reqToPF->enq(reqToP->first());
+        reqToP->deq();
         latPReq = 0;
       }
       if(latPResp > 1)
         latPResp--;
-      else if(latPResp == 1 && !pResp->empty() && !pRespF->full()) {
-        pRespF->enq(pResp->first());
-        pResp->deq();
+      else if(latPResp == 1 && !respToP->empty() && !respToPF->full()) {
+        respToPF->enq(respToP->first());
+        respToP->deq();
         latPResp = 0;
       }
       if(latToCs > 1)
