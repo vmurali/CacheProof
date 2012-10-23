@@ -328,7 +328,7 @@ public:
   Fifo* getReqFromC() { return &reqFromC; }
   Fifo* getRespFromC() { return &respFromC; }
   Fifo* getReqToP() { return &respToPF; }
-  Fifo* getRespToPF() { return &respToPF; }
-  Fifo* getToCsF() { return &toCsF; }
+  Fifo* getRespToP() { return &respToPF; }
+  Fifo* getToCs() { return &toCsF; }
 
 } InternalCtrl;
