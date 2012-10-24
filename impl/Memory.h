@@ -30,8 +30,8 @@ private:
 public:
   memory(Fifo* _reqToP, Fifo* _respFromP,
          Latency _latWait) {
-    latWait = _latWait;
-    latency = 0;
+    latWait = 0;
+    latency = _latWait;
 
     reqToP = _reqToP; respFromPF = _respFromP;
 
