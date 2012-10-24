@@ -5,6 +5,11 @@
 typedef class cache {
 private:
   Way** lruBits;
+  Set sets;
+  Way ways;
+  Child childs;
+  U8 setSz;
+
 public:
   St** st;
   St*** cstates;
@@ -15,11 +20,6 @@ public:
   bool** dirty;
   Tag** tag;
   MshrPtr** mshrPtr;
-
-  Set sets;
-  Way ways;
-  Child childs;
-  U8 setSz;
 
   cache(Way _ways, Set _setSz, Child _childs) {
     sets = 1<<_setSz;

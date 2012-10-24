@@ -13,18 +13,17 @@ private:
   ThreadId tId;
   Fifo * req;
 
-  bool feed(St to) {
+  void feed(St to) {
     if(req->full())
-      return false;
+      return;
     LineAddr addr;
     ssize_t bytes = read(fd, &addr, 8);
     if(bytes == 0) {
       close(fd);
-      return true;
+      return;
     }
     ReqFromCore* sendReq = new ReqFromCore(to, addr>>6);
     req->enq(sendReq);
-    return false;
   }
 
 public:

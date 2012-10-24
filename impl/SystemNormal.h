@@ -20,6 +20,37 @@ private:
   InternalCtrl*** ctrls;
   Connect*** connects;
   Memory* mem;
+
+  bool getDone() {
+    bool iDone = true;
+    bool dDone = true;
+    for(ThreadId i = 0; i < cores; i++) {
+      if(iFeeds[i]->done) {
+        iDone = false;
+        break;
+      }
+    }
+    for(ThreadId i = 0; i < cores; i++) {
+      if(dFeeds[i]->done) {
+        dDone = false;
+        break;
+      }
+    }
+    return iDone && dDone;
+  }
+
+  void cycle() {
+    for(ThreadId i = 0; i < 2*cores; i++)
+      l1s[i]->cycle();
+
+    for(U8 i = 0; i < levels; i++) {
+      for(ThreadId j = 0; j < numCtrls[i]; j++) {
+        ctrls[i][j]->cycle();
+        connects[i][j]->cycle();
+      }
+    }
+  }
+
 public:
   systemNormal(ThreadId _cores, U8 _levels, Child* _childs,
                MshrPtr* mshrs, Way* ways, U8* setSzs,
@@ -42,9 +73,11 @@ public:
       numCtrls[i] = (i == 0? 2*cores : numCtrls[i-1])/childs[i];
       ctrls[i] = new InternalCtrl*[numCtrls[i]];
       connects[i] = new Connect*[numCtrls[i]];
+
       for(ThreadId j = 0; j < numCtrls[i]; j++) {
-        ctrls[i][j] = new InternalCtrl(mshrs[i], ways[i], setSzs[i], childs[i],
+        ctrls[i][j] = new InternalCtrl(mshrs[i], ways[i+1], setSzs[i+1], childs[i],
                                        tagLats[i], dataLats[i]);
+
         Fifo* pToCs = ctrls[i][j]->getToCs();
         Fifo* pReqFromC = ctrls[i][j]->getReqFromC();
         Fifo* pRespFromC = ctrls[i][j]->getRespFromC();
@@ -87,4 +120,26 @@ public:
     delete numCtrls;
     delete mem;
   }
+
+  void run() {
+    while(!getDone())
+      cycle();
+  }
+
+  void display() {
+    for(U8 i = 0; i < levels; i++) {
+      for(ThreadId j = 0; j < numCtrls[i]; j++) {
+        printf("Level %u  Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
+                i, j, ctrls[i][j]->hit, ctrls[i][j]->noPermMiss, ctrls[i][j]->notPresentMiss);
+      }
+    }
+
+    for(ThreadId j = 0; j < cores; j++) {
+      printf("L1 Inst Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
+              j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->notPresentMiss);
+      printf("L1 Data Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
+              j, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->notPresentMiss);
+    }
+  }
+
 } SystemNormal;
