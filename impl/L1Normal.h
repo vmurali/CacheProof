@@ -19,7 +19,6 @@ private:
     cache.st[index.set][index.way] = to;
     RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way]);
     respToP.enq(resp);
-    printf("%p sending resp to parent %llx\n", this, lineAddr);
     if(to == 0)
       cache.replaceRem(index);
   }
@@ -29,7 +28,6 @@ private:
     cache.pReq[index.set][index.way] = true;
     cache.waitS[index.set][index.way] = to;
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
-    printf("%p sending req to parent %p %llx\n", this, req, lineAddr);
     reqToP.enq(req);
   }
 
@@ -56,7 +54,6 @@ private:
     ReqFromCore* m = (ReqFromCore*) reqFromCore.first();
     reqFromCore.deq();
     processing = false;
-    printf("%p parent resp %llx\n", this, m->lineAddr);
     delete m;
     return true;
   }
@@ -68,7 +65,6 @@ private:
       return false;
     }
     ReqFromCore* msg = (ReqFromCore*) reqFromCore.first();
-    printf("%p got address: %llx\n", this, msg->lineAddr);
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       if(!cache.existsReplace(msg->lineAddr)) {
@@ -94,7 +90,6 @@ private:
         return true;
       }
       if(cache.st[index.set][index.way] >= msg->to) {
-        printf("%p hit %llx\n", this, msg->lineAddr);
         reqFromCore.deq();
         cache.replaceUpd(index);
         hit++;

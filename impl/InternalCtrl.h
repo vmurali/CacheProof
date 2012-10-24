@@ -91,7 +91,6 @@ private:
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
     reqToP.enq(req);
     latPReq = tagLat;
-    printf("%p send req to mem : %llx\n", this, lineAddr);
   }
 
   void allocMshr(Index& index, Mshr entry) {
@@ -115,7 +114,9 @@ private:
       return false;
     RespFromC* msg = (RespFromC*) respFromC.first();
     Index index = msg->trigger == Forced? msg->index: cache.getIndex(msg->lineAddr);
+    printf("trigger: %d %d %d %llx\n\n\n\n", msg->trigger, msg->index.set, msg->index.way, msg->lineAddr);
     cache.cstates[index.set][index.way][msg->c] = msg->to;
+    printf("crap trigger: %d %d %d %llx\n\n\n\n", msg->trigger, msg->index.set, msg->index.way, msg->lineAddr);
     if(cache.cReq[index.set][index.way]) {
       MshrPtr mshrPtr = cache.mshrPtr[index.set][index.way];
       Mshr m = mshr[mshrPtr];
@@ -157,7 +158,6 @@ private:
     if(reqFromC.empty())
       return false;
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
-    printf("%p req from c: %llx\n", this, msg->lineAddr);
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       if(!mshrFl.isAvail() || !cache.existsReplace(msg->lineAddr)) {
@@ -174,7 +174,6 @@ private:
         }
         resetLine(replaceIndex, msg->lineAddr);
         allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
-        printf("%p send to mem req from c: %llx\n", this, msg->lineAddr);
         sendReqToP(replaceIndex, msg->lineAddr, msg->to);
         reqFromC.deq();
         delete msg;

@@ -31,7 +31,6 @@ public:
         Child c = (nextCReq + i)%childs;
         ReqToP* msg = (ReqToP*)csReqToP[c]->first();
         if(!csReqToP[c]->empty()) {
-          printf("connect called %p %p %p\n", msg, pReqFromC, csReqToP[c]);
           nextCReq = c;
           pReqFromC->enq(reqToP2reqFromC(msg, c));
           csReqToP[c]->deq();
