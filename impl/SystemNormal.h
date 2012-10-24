@@ -25,13 +25,13 @@ private:
     bool iDone = true;
     bool dDone = true;
     for(ThreadId i = 0; i < cores; i++) {
-      if(iFeeds[i]->done) {
+      if(!iFeeds[i]->done) {
         iDone = false;
         break;
       }
     }
     for(ThreadId i = 0; i < cores; i++) {
-      if(dFeeds[i]->done) {
+      if(!dFeeds[i]->done) {
         dDone = false;
         break;
       }
@@ -40,13 +40,17 @@ private:
   }
 
   void cycle() {
-    for(ThreadId i = 0; i < 2*cores; i++)
-      l1s[i]->cycle();
+    for(ThreadId i = 0; i < cores; i++) {
+      l1s[2*i]->cycle();
+      iFeeds[i]->cycle();
+      l1s[2*i+1]->cycle();
+      dFeeds[i]->cycle();
+    }
 
     for(U8 i = 0; i < levels; i++) {
       for(ThreadId j = 0; j < numCtrls[i]; j++) {
-        ctrls[i][j]->cycle();
         connects[i][j]->cycle();
+        ctrls[i][j]->cycle();
       }
     }
   }
@@ -86,8 +90,8 @@ public:
         Fifo** csRespToP = new Fifo*[childs[i]];
         for(Child k = 0; k < childs[i]; k++) {
           csFromP[k] = i == 0? l1s[j*childs[i] + k]->getFromP() : ctrls[i-1][j*childs[i] + k]->getFromP();
-          csReqToP[k] = i == 0? l1s[j*childs[i] + k]->getFromP() : ctrls[i-1][j*childs[i] + k]->getReqToP();
-          csRespToP[k] = i == 0? l1s[j*childs[i] + k]->getFromP() : ctrls[i-1][j*childs[i] + k]->getRespToP();
+          csReqToP[k] = i == 0? l1s[j*childs[i] + k]->getReqToP() : ctrls[i-1][j*childs[i] + k]->getReqToP();
+          csRespToP[k] = i == 0? l1s[j*childs[i] + k]->getRespToP() : ctrls[i-1][j*childs[i] + k]->getRespToP();
         }
         connects[i][j] = new Connect(childs[i], csFromP, csReqToP, csRespToP,
                                      pToCs, pReqFromC, pRespFromC);
@@ -122,8 +126,9 @@ public:
   }
 
   void run() {
-    while(!getDone())
+    while(!getDone()) {
       cycle();
+    }
   }
 
   void display() {

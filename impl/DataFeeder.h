@@ -4,7 +4,6 @@
 #include "CacheTypes.h"
 #include <unistd.h>
 #include <fcntl.h>
-#include <cstdio>
 
 typedef class dataFeeder {
 private:

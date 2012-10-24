@@ -155,6 +155,7 @@ private:
   bool handleReqFromC() {
     if(reqFromC.empty())
       return false;
+    printf("%p req from c: %llx", this, ((ReqFromC*)reqFromC.first())->lineAddr);
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
@@ -260,7 +261,7 @@ public:
           tagLat(_tagLat), dataLat(_dataLat), latPReq(0), latPResp(0), latToCs(0),
           latWait(0), priority(C),
           fromP(2), reqFromC(2), respFromC(2),
-          reqToPF(1), respToPF(1), toCsF(1),
+          reqToPF(2), respToPF(2), toCsF(2),
           reqToP(1), respToP(1), toCs(1),
           hit(0), notPresentMiss(0), noPermMiss(0)
   {

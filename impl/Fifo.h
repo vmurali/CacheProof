@@ -3,16 +3,19 @@
 #include "Types.h"
 #include <queue>
 
+#include <cstdio>
+#include <cassert>
+
 using namespace std;
 
 typedef class fifo {
 private:
   queue<void*>* q;
   U8 size;
+public:
   U8 numElems;
   bool enqEn;
   bool deqEn;
-public:
   fifo(U8 s) {
     q = new queue<void*>;
     size = s; numElems = 0; enqEn = false; deqEn = false;
@@ -27,10 +30,13 @@ public:
     return numElems == 0;
   }
   void enq(void* x) {
+    printf("enq called : %p\n", this);
+    assert (numElems < size);
     q->push(x);
     enqEn = true;
   }
   void deq() {
+    assert (numElems > 0);
     q->pop();
     deqEn = true;
   }
@@ -43,5 +49,6 @@ public:
       numElems++;
     if(deqEn)
       numElems--;
+    printf("fifo %p %d/%d\n", this, numElems, size);
   }
 } Fifo;

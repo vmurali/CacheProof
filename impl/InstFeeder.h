@@ -4,7 +4,6 @@
 #include "CacheTypes.h"
 #include <unistd.h>
 #include <fcntl.h>
-#include <cstdio>
 
 typedef class instFeeder {
 private:
@@ -24,6 +23,7 @@ private:
     }
     ReqFromCore* sendReq = new ReqFromCore(1, addr>>6);
     req->enq(sendReq);
+    printf("inst enq: %p %d %d %d\n", req, req->numElems, req->enqEn, req->deqEn);
     return false;
   }
 
