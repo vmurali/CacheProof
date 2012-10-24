@@ -314,7 +314,9 @@ public:
         else handleReqFromP();
       }
     }
+  }
 
+  void transfer() {
     fromP.cycle();
     reqFromC.cycle();
     respFromC.cycle();

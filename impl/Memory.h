@@ -14,7 +14,7 @@ private:
   void sendCResp(Index& cIndex) {
     FromP* resp = new FromP(false, cIndex, 0, 0, 2);
     latWait = latency;
-    printf("memory send resp %d %d\n", cIndex.set, cIndex.way);
+    printf("memory send resp %d %d %d\n", latWait, cIndex.set, cIndex.way);
     respFromP.enq(resp);
   }
 
@@ -36,9 +36,10 @@ public:
 
   void cycle() {
     if(latWait != 0) {
-      if(latWait > 1)
+      if(latWait > 1) {
         latWait--;
-      else if(latWait == 1 && !respFromP.empty() && !respFromPF->full()) {
+      } else if(latWait == 1 && !respFromP.empty() && !respFromPF->full()) {
+        printf("mem fially transferring\n");
         respFromPF->enq(respFromP.first());
         respFromP.deq();
         latWait = 0;
@@ -46,7 +47,9 @@ public:
       return;
     }
     handleCReq();
+  }
 
+  void transfer() {
     respFromP.cycle();
   }
 } Memory;

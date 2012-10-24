@@ -160,6 +160,9 @@ public:
       }
       else handlePReq();
     }
+  }
+
+  void transfer() {
     fromP.cycle();
     reqFromCore.cycle();
     reqToP.cycle();

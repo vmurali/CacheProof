@@ -54,6 +54,17 @@ private:
       }
     }
     mem->cycle();
+
+    for(ThreadId i = 0; i < 2*cores; i++) {
+      l1s[i]->transfer();
+    }
+
+    for(U8 i = 0; i < levels; i++) {
+      for(ThreadId j = 0; j < numCtrls[i]; j++) {
+        ctrls[i][j]->transfer();
+      }
+    }
+    mem->transfer();
   }
 
 public:
