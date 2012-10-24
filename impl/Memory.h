@@ -47,7 +47,7 @@ public:
         latWait--;
       else if(latWait == 1 && !respFromP->empty() && !respFromPF->full()) {
         respFromPF->enq(respFromP->first());
-        respFromPF->deq();
+        respFromP->deq();
         latWait = 0;
       }
       return;
