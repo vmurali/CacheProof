@@ -4,7 +4,7 @@
 #include "Fifo.h"
 #include "CacheTypes.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 typedef class l1Normal {
 private:

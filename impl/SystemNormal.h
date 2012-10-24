@@ -53,6 +53,7 @@ private:
         ctrls[i][j]->cycle();
       }
     }
+    mem->cycle();
   }
 
 public:

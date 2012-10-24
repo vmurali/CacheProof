@@ -1,5 +1,4 @@
 #include "SystemNormal.h"
-#include <cstdio>
 
 using namespace std;
 

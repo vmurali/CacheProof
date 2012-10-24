@@ -91,6 +91,7 @@ private:
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
     reqToP.enq(req);
     latPReq = tagLat;
+    printf("%p send req to mem : %llx\n", this, lineAddr);
   }
 
   void allocMshr(Index& index, Mshr entry) {
@@ -155,8 +156,8 @@ private:
   bool handleReqFromC() {
     if(reqFromC.empty())
       return false;
-    printf("%p req from c: %llx\n", this, ((ReqFromC*)reqFromC.first())->lineAddr);
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
+    printf("%p req from c: %llx\n", this, msg->lineAddr);
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       if(!mshrFl.isAvail() || !cache.existsReplace(msg->lineAddr)) {
@@ -167,13 +168,13 @@ private:
       Index replaceIndex = cache.getReplace(msg->lineAddr);
       LineAddr replaceLineAddr = (cache.tag[replaceIndex.set][replaceIndex.way] << setSz)
                             | replaceIndex.set;
-      printf("replace: %d %d\n", replaceIndex.way, replaceIndex.set);
       if(!isCHigher(replaceIndex, 0)) {
         if(cache.st[replaceIndex.set][replaceIndex.way] > 0) {
           sendRespToP(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr, tagLat);
         }
         resetLine(replaceIndex, msg->lineAddr);
         allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
+        printf("%p send to mem req from c: %llx\n", this, msg->lineAddr);
         sendReqToP(replaceIndex, msg->lineAddr, msg->to);
         reqFromC.deq();
         delete msg;

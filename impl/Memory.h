@@ -20,6 +20,7 @@ private:
     if(reqToP->empty())
       return false;
     ReqToP* msg = (ReqToP*) reqToP->first();
+    printf("memory got req %llx\n", msg->lineAddr);
     sendCResp(msg->index);
     reqToP->deq();
     delete msg;
