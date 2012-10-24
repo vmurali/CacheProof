@@ -330,7 +330,7 @@ public:
   Fifo* getFromP() { return &fromP; }
   Fifo* getReqFromC() { return &reqFromC; }
   Fifo* getRespFromC() { return &respFromC; }
-  Fifo* getReqToP() { return &respToPF; }
+  Fifo* getReqToP() { return &reqToPF; }
   Fifo* getRespToP() { return &respToPF; }
   Fifo* getToCs() { return &toCsF; }
 

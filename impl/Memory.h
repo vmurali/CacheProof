@@ -35,7 +35,7 @@ public:
 
     reqToP = _reqToP; respFromPF = _respFromP;
 
-    Fifo* respFromP = new Fifo(1);
+    respFromP = new Fifo(1);
   }
   ~memory() {
     delete respFromP;
