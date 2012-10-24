@@ -65,7 +65,6 @@ private:
     if(processing)
       return false;
     if(reqFromCore.empty()) {
-      printf("empty still\n");
       return false;
     }
     ReqFromCore* msg = (ReqFromCore*) reqFromCore.first();

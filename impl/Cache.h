@@ -37,7 +37,7 @@ public:
     mshrPtr = new MshrPtr*[sets];
     lruBits = new Way*[sets];
 
-    for(U32 i = 0; i < sets; i++) {
+    for(Set i = 0; i < sets; i++) {
       st[i] = new St[ways];
       cstates[i] = new St*[ways];
       pReq[i] = new bool[ways];
@@ -53,10 +53,10 @@ public:
         st[i][j] = 0;
         pReq[i][j] = false;
         cReq[i][j] = false;
-        cstates[i][j] = new Way[childs];
+        cstates[i][j] = new St[childs];
         lruBits[i][j] = j;
 
-        for(U32 k = 0; k < childs; k++) {
+        for(Child k = 0; k < childs; k++) {
           cstates[i][j][k] = 0;
         }
       }
@@ -132,15 +132,16 @@ public:
   Index getReplace(LineAddr lineAddr) {
     Set set = lineAddr & (sets - 1);
     bool found = false;
+    Way highestLruBits = 0;
     Index index;
     index.set = set;
     for(Way i = 0; i < ways; i++) {
       if(!pReq[set][i] && !cReq[set][i]) {
+        if(!found || lruBits[set][i] > highestLruBits) {
+          index.way = i;
+          highestLruBits = lruBits[set][i];
+        }
         found = true;
-        if(!found)
-          index.way = i;
-        else if(index.way < i)
-          index.way = i;
       }
     }
     return index;

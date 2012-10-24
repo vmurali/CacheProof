@@ -155,7 +155,7 @@ private:
   bool handleReqFromC() {
     if(reqFromC.empty())
       return false;
-    printf("%p req from c: %llx", this, ((ReqFromC*)reqFromC.first())->lineAddr);
+    printf("%p req from c: %llx\n", this, ((ReqFromC*)reqFromC.first())->lineAddr);
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
@@ -167,6 +167,7 @@ private:
       Index replaceIndex = cache.getReplace(msg->lineAddr);
       LineAddr replaceLineAddr = (cache.tag[replaceIndex.set][replaceIndex.way] << setSz)
                             | replaceIndex.set;
+      printf("replace: %d %d\n", replaceIndex.way, replaceIndex.set);
       if(!isCHigher(replaceIndex, 0)) {
         if(cache.st[replaceIndex.set][replaceIndex.way] > 0) {
           sendRespToP(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr, tagLat);

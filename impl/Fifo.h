@@ -3,7 +3,6 @@
 #include "Types.h"
 #include <queue>
 
-#include <cstdio>
 #include <cassert>
 
 using namespace std;
@@ -30,7 +29,6 @@ public:
     return numElems == 0;
   }
   void enq(void* x) {
-    printf("enq called : %p\n", this);
     assert (numElems < size);
     q->push(x);
     enqEn = true;
@@ -51,6 +49,5 @@ public:
       numElems--;
     enqEn = false;
     deqEn = false;
-    printf("fifo %p %d/%d\n", this, numElems, size);
   }
 } Fifo;
