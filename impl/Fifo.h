@@ -49,6 +49,8 @@ public:
       numElems++;
     if(deqEn)
       numElems--;
+    enqEn = false;
+    deqEn = false;
     printf("fifo %p %d/%d\n", this, numElems, size);
   }
 } Fifo;
