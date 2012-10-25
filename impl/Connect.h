@@ -31,7 +31,7 @@ public:
         Child c = (nextCReq + i)%childs;
         ReqToP* msg = (ReqToP*)csReqToP[c]->first();
         if(!csReqToP[c]->empty()) {
-          nextCReq = c;
+          nextCReq = (c + 1)%childs;
           pReqFromC->enq(reqToP2reqFromC(msg, c));
           csReqToP[c]->deq();
           delete msg;
@@ -44,7 +44,7 @@ public:
         Child c = (nextCResp + i)%childs;
         RespToP* msg = (RespToP*)csRespToP[c]->first();
         if(!csRespToP[c]->empty()) {
-          nextCResp = c;
+          nextCResp = (c + 1)%childs;
           pRespFromC->enq(respToP2respFromC(msg, c));
           csRespToP[c]->deq();
           delete msg;

@@ -11,8 +11,8 @@ private:
 
   Fifo* reqToP,* respFromPF;
 
-  void sendCResp(Index& cIndex) {
-    FromP* resp = new FromP(false, cIndex, 0, 0, 2);
+  void sendCResp(Index& cIndex, LineAddr lineAddr) {
+    FromP* resp = new FromP(false, cIndex, lineAddr, 0, 2);
     latWait = latency;
     respFromP.enq(resp);
   }
@@ -21,7 +21,7 @@ private:
     if(reqToP->empty())
       return false;
     ReqToP* msg = (ReqToP*) reqToP->first();
-    sendCResp(msg->index);
+    sendCResp(msg->index, msg->lineAddr);
     reqToP->deq();
     delete msg;
     return true;

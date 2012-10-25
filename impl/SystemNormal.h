@@ -20,6 +20,7 @@ private:
   InternalCtrl*** ctrls;
   Connect*** connects;
   Memory* mem;
+  Counter cycCount;
 
   bool getDone() {
     bool iDone = true;
@@ -40,6 +41,8 @@ private:
   }
 
   void cycle() {
+    printf("\nCYCLE: %lld\n", cycCount);
+    cycCount++;
     for(ThreadId i = 0; i < cores; i++) {
       l1s[2*i]->cycle();
       iFeeds[i]->cycle();
@@ -71,7 +74,7 @@ public:
   systemNormal(ThreadId _cores, U8 _levels, Child* _childs,
                MshrPtr* mshrs, Way* ways, U8* setSzs,
                Latency* tagLats, Latency* dataLats, Latency memLat):
-               cores(_cores), levels(_levels), childs(_childs) {
+               cores(_cores), levels(_levels), childs(_childs), cycCount(0) {
     l1s = new L1Normal*[2*cores];
     for(ThreadId i = 0; i < 2*cores; i++)
       l1s[i] = new L1Normal(ways[0], setSzs[0]);

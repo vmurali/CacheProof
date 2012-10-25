@@ -7,27 +7,26 @@
 
 typedef class dataFeeder {
 private:
+  ThreadId tId;
   U32 count;
   U32 fd;
-  ThreadId tId;
   Fifo * req;
 
   void feed(St to) {
-    if(req->full())
-      return;
     LineAddr addr;
     ssize_t bytes = read(fd, &addr, 8);
+      printf("trying to send something %llx\n", addr);
     if(bytes == 0) {
       close(fd);
       return;
     }
-    ReqFromCore* sendReq = new ReqFromCore(to, addr>>6);
+    ReqFromCore* sendReq = new ReqFromCore(to, addr);
     req->enq(sendReq);
   }
 
 public:
   bool done;
-  dataFeeder(ThreadId _tId, Fifo* _req) {
+  dataFeeder(ThreadId _tId, Fifo* _req) : tId(_tId), count(0) {
     tId = _tId;
     char buf[10];
     sprintf(buf, "d%d.tra", tId);
@@ -45,6 +44,8 @@ public:
         count --;
         return;
       }
+      if(req->full())
+        return;
       St to = 0;
       ssize_t bytes;
       bytes = read(fd, &to, 1);

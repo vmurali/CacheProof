@@ -2,8 +2,6 @@
 
 #include "CacheTypes.h"
 
-#include <cstdio>
-
 typedef class cache {
 private:
   Way** lruBits;
@@ -24,8 +22,7 @@ public:
   MshrPtr** mshrPtr;
 
   cache(Way _ways, Set _setSz, Child _childs):
-        ways(ways), setSz(_setSz), childs(_childs), sets(1<<setSz) { 
-
+        ways(_ways), setSz(_setSz), childs(_childs), sets(1<<setSz) { 
     st = new St*[sets];
     cstates = new St**[sets];
     pReq = new bool*[sets];
@@ -94,17 +91,13 @@ public:
     return false;
   }
   Index getIndex(LineAddr lineAddr) {
-    printf("addr: %llx\n", lineAddr);
     Set set = lineAddr & (sets-1);
-    printf("set: %d\n", set);
     Tag _tag = lineAddr >> setSz;
-    printf("tag: %llx %d\n", _tag, setSz);
     Index index;
     index.set = set;
     for(Way i = 0; i < ways; i++)
       if(tag[set][i] == _tag)
         index.way = i;
-    printf("way: %d\n", index.way);
     return index;
   }
 
@@ -117,21 +110,21 @@ public:
   }
   void replaceUpd(Index index) {
     Way old = lruBits[index.set][index.way];
-    lruBits[index.set][index.way] = 0;
     for(Way i = 0; i < ways; i++) {
       Way bits = lruBits[index.set][i];
       if(bits < old)
         lruBits[index.set][i] = bits+1;
     }
+    lruBits[index.set][index.way] = 0;
   }
   void replaceRem(Index index) {
     Way old = lruBits[index.set][index.way];
-    lruBits[index.set][index.way] = ways-1;
     for(Way i = 0; i < ways; i++) {
       Way bits = lruBits[index.set][i];
       if(bits > old)
         lruBits[index.set][i] = bits-1;
     }
+    lruBits[index.set][index.way] = ways-1;
   }
   Index getReplace(LineAddr lineAddr) {
     Set set = lineAddr & (sets - 1);

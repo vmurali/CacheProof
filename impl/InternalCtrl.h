@@ -64,14 +64,16 @@ private:
     latPResp = cache.dirty[index.set][index.way]? dataLat : lat;
     if(to == 0)
       cache.replaceRem(index);
+    printf("%p intr: resp to p %llx %d %d %d %d\n", this, lineAddr, index.set, index.way, pIndex.set, pIndex.way);
   }
 
-  void sendRespToC(Index& index, St to, Child c, Index& cIndex, Latency lat) {
-    ToCs* resp = new ToCs(childs, c, false, cIndex, 0, cache.cstates[index.set][index.way][c], to);
+  void sendRespToC(Index& index, St to, Child c, Index& cIndex, LineAddr lineAddr, Latency lat) {
+    ToCs* resp = new ToCs(childs, c, false, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to);
     latToCs = cache.cstates[index.set][index.way][c] == 0? dataLat: lat;
     cache.cstates[index.set][index.way][c] = to;
     toCs.enq(resp);
     cache.replaceUpd(index);
+    printf("%p intr: resp to c %d %llx %d %d %d %d\n", this, c, lineAddr, index.set, index.way, cIndex.set, cIndex.way);
   }
 
   void sendReqToCs(Index& index, LineAddr lineAddr, St to) {
@@ -83,6 +85,10 @@ private:
     ToCs* req = new ToCs(childs, highChildren, true, index, lineAddr, NULL, to);
     toCs.enq(req);
     latToCs = tagLat;
+    printf("%p intr: req to cs %llx %d %d ", this, lineAddr, index.set, index.way);
+    for(Child i = 0; i < childs; i++)
+      printf("%d", highChildren[i]);
+    printf("\n");
   }
 
   void sendReqToP(Index& index, LineAddr lineAddr, St to) {
@@ -91,6 +97,7 @@ private:
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
     reqToP.enq(req);
     latPReq = tagLat;
+    printf("%p intr: req to p %llx %d %d\n", this, lineAddr, index.set, index.way);
   }
 
   void allocMshr(Index& index, Mshr entry) {
@@ -114,9 +121,7 @@ private:
       return false;
     RespFromC* msg = (RespFromC*) respFromC.first();
     Index index = msg->trigger == Forced? msg->index: cache.getIndex(msg->lineAddr);
-    printf("trigger: %d %d %d %llx\n\n\n\n", msg->trigger, msg->index.set, msg->index.way, msg->lineAddr);
     cache.cstates[index.set][index.way][msg->c] = msg->to;
-    printf("crap trigger: %d %d %d %llx\n\n\n\n", msg->trigger, msg->index.set, msg->index.way, msg->lineAddr);
     if(cache.cReq[index.set][index.way]) {
       MshrPtr mshrPtr = cache.mshrPtr[index.set][index.way];
       Mshr m = mshr[mshrPtr];
@@ -124,11 +129,12 @@ private:
       if(!isCHigher(index, to)) {
         cache.cReq[index.set][index.way] = false;
         if(m.who == P)
-          sendRespToP(index, m.to, Forced, m.index, 0, msg->trigger == Forced? 1: tagLat);
+          sendRespToP(index, m.to, Forced, m.index, msg->lineAddr, msg->trigger == Forced? 1: tagLat);
         else if(!cache.pReq[index.set][index.way])
-          sendRespToC(index, m.to, m.c, m.index, msg->trigger == Forced? 1: tagLat);
+          sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
       }
     }
+    printf("%p intr: resp from c %d %llx %d %d\n", this, msg->c, msg->lineAddr, index.set, index.way);
     respFromC.deq();
     delete msg;
     return true;
@@ -146,9 +152,10 @@ private:
     cache.pReq[index.set][index.way] = false;
     if(!cache.cReq[index.set][index.way]) {
       Mshr m = mshr[mshrPtr];
-      sendRespToC(index, m.to, m.c, m.index, 1);
+      sendRespToC(index, m.to, m.c, m.index, msg->lineAddr, 1);
       mshrFl.free(mshrPtr);
     }
+    printf("%p intr: resp from p %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
     fromP.deq();
     delete msg;
     return true;
@@ -173,14 +180,16 @@ private:
           sendRespToP(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr, tagLat);
         }
         resetLine(replaceIndex, msg->lineAddr);
-        allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
+        allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, false, msg->lineAddr));
         sendReqToP(replaceIndex, msg->lineAddr, msg->to);
         reqFromC.deq();
+        printf("%p intr: not present, alloc %llx %d %d\n", this, msg->lineAddr, replaceIndex.set, replaceIndex.way);
         delete msg;
         return true;
       } else {
         allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, true, msg->lineAddr));
         sendReqToCs(replaceIndex, replaceLineAddr, 0);
+        printf("%p intr: not present, replace %llx to %llx %d %d\n", this, msg->lineAddr, replaceLineAddr, replaceIndex.set, replaceIndex.way);
         reqFromC.deq();
         delete msg;
         return true;
@@ -192,7 +201,8 @@ private:
         return true;
       }
       if(cache.st[index.set][index.way] >= msg->to && !isCHigher(index, compat(msg->to))) {
-        sendRespToC(index, msg->to, msg->c, msg->index, tagLat);
+        sendRespToC(index, msg->to, msg->c, msg->index, msg->lineAddr, tagLat);
+        printf("%p intr: hit %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
         reqFromC.deq();
         delete msg;
         return true;
@@ -202,6 +212,7 @@ private:
         return true;
       }
       noPermMiss++;
+      printf("%p intr: no perm %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
       allocMshr(index, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
       if(cache.st[index.set][index.way] < msg->to) {
         sendReqToP(index, msg->lineAddr, msg->to);
@@ -224,6 +235,7 @@ private:
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       latWait = tagLat;
+      printf("%p intr: req from P sent %llx\n", this, msg->lineAddr);
       fromP.deq();
       delete msg;
       return true;
@@ -235,8 +247,9 @@ private:
       }
       if(!isCHigher(index, msg->to)) {
         if(cache.st[index.set][index.way] > msg->to) {
-          sendRespToP(index, msg->to, Forced, msg->index, 0, tagLat);
+          sendRespToP(index, msg->to, Forced, msg->index, msg->lineAddr, tagLat);
         }
+        printf("%p intr: req from P sending %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
         fromP.deq();
         delete msg;
         return true;
@@ -247,6 +260,7 @@ private:
       }
       allocMshr(index, Mshr(P, 0, msg->index, msg->to, false, (LineAddr)0));
       sendReqToCs(index, msg->lineAddr, msg->to);
+      printf("%p intr: req from P req cs %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
       fromP.deq();
       delete msg;
       return true;

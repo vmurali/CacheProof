@@ -13,15 +13,13 @@ private:
   Fifo * req;
 
   bool feed() {
-    if(req->full())
-      return false;
     LineAddr addr;
     ssize_t bytes = read(fd, &addr, 8);
     if(bytes == 0) {
       close(fd);
       return true;
     }
-    ReqFromCore* sendReq = new ReqFromCore(1, addr>>6);
+    ReqFromCore* sendReq = new ReqFromCore(1, addr);
     req->enq(sendReq);
     return false;
   }
@@ -41,6 +39,8 @@ public:
   }
 
   void cycle() {
+    if(req->full())
+      return;
     if(!done) {
       done = feed();
     }
