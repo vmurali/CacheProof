@@ -10,7 +10,7 @@ Way ways[] = {8, 16};
 U8 setSzs[] = {6, 8};
 Latency tagLats[] = {5};
 Latency dataLats[] = {10};
-Latency memLat = 150;
+Latency memLat = 40;
 
 int main() {
 
