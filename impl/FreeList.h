@@ -7,28 +7,25 @@ using namespace std;
 
 typedef class freeList {
 private:
-  queue<U8>* q;
+  queue<U8> q;
 public:
   U8 numElems;
-  freeList(U8 s): numElems(s) {
-    q = new queue<U8>;
+  freeList(U8 s): q(), numElems(s) {
     for(U8 i = 0; i < s; i++)
-      q->push(i);
+      q.push(i);
   }
-  ~freeList() {
-    delete q;
-  }
+  ~freeList() {}
   bool isAvail() {
-    return !q->empty();
+    return !q.empty();
   }
   U8 alloc() {
     numElems--;
-    U8 idx = q->front();
-    q->pop();
+    U8 idx = q.front();
+    q.pop();
     return idx;
   }
   void free(U8 x) {
     numElems++;
-    q->push(x);
+    q.push(x);
   }
 } FreeList;

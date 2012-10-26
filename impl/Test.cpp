@@ -15,10 +15,7 @@ Latency dataLats[] = {1};
 Latency memLat = 1;
 
 int main() {
-
   SystemNormal sys(cores, levels, childs, mshrs, ways, setSzs, tagLats, dataLats, memLat);
   sys.run();
-  printf("Murali is done\n");
   sys.display();
-  printf("Yes, we are done\n");
 }
