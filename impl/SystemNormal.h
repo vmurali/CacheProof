@@ -7,6 +7,7 @@
 #include "InstFeeder.h"
 #include "DataFeeder.h"
 #include "Connect.h"
+#include <cstdlib>
 
 typedef class systemNormal {
 private:
@@ -159,6 +160,7 @@ public:
               2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->notPresentMiss);
       printf("L1 Data Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
               2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->notPresentMiss);
+      exit(0);
     }
   }
 

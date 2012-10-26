@@ -235,7 +235,7 @@ private:
       if(cache.st[index.set][index.way] == 0)
         notPresentMiss++;
       else
-      noPermMiss++;
+        noPermMiss++;
       //printf("%p intr: no perm %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
       allocMshr(index, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0));
       if(cache.st[index.set][index.way] < msg->to) {
