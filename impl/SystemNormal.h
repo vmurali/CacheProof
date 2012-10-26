@@ -8,6 +8,8 @@
 #include "DataFeeder.h"
 #include "Connect.h"
 
+#include "Debug.h"
+
 typedef class systemNormal {
 private:
   ThreadId cores;
@@ -41,6 +43,7 @@ private:
   }
 
   void cycle() {
+    printCycle;
     cycCount++;
     for(ThreadId i = 0; i < cores; i++) {
       l1s[2*i]->cycle();

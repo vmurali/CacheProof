@@ -3,6 +3,7 @@
 #include "Cache.h"
 #include "Fifo.h"
 #include "CacheTypes.h"
+#include "Debug.h"
 
 typedef class l1Normal {
 private:
@@ -13,7 +14,8 @@ private:
   bool processing;
   Who priority;
 
-  void sendPResp(Index& index, St to, Trigger trigger, Index& pIndex, LineAddr lineAddr) {
+  void sendRespToP(Index& index, St to, Trigger trigger, Index& pIndex, LineAddr lineAddr) {
+    printSendRespToP(lineAddr, trigger, index, to);
     cache.st[index.set][index.way] = to;
     RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way]);
     respToP.enq(resp);
@@ -21,7 +23,8 @@ private:
       cache.replaceRem(index);
   }
 
-  void sendPReq(Index& index, LineAddr lineAddr, St to) {
+  void sendReqToP(Index& index, LineAddr lineAddr, St to) {
+    printSendReqToP(lineAddr, index, to);
     processing = true;
     cache.pReq[index.set][index.way] = true;
     cache.waitS[index.set][index.way] = to;
@@ -37,10 +40,11 @@ private:
     cache.dirty[index.set][index.way] = false;
   }
 
-  bool handlePResp() {
+  bool handleRespFromP() {
     if(fromP.empty())
       return false;
     FromP* msg = (FromP*) fromP.first();
+    printHandleRespFromP(msg->lineAddr, msg->index, msg->to);
     if(msg->isReq)
        return false;
     Index index = msg->index;
@@ -56,13 +60,14 @@ private:
     return true;
   }
 
-  bool handleCReq() {
+  bool handleReqFromCore() {
     if(processing)
       return false;
     if(reqFromCore.empty()) {
       return false;
     }
     ReqFromCore* msg = (ReqFromCore*) reqFromCore.first();
+    printHandleReqFromCore(msg->lineAddr, msg->to);
     LineAddr addr = msg->lineAddr;
     msg->lineAddr = addr >> 6;
     bool present = cache.isPresent(msg->lineAddr);
@@ -77,12 +82,12 @@ private:
         return true;
       }
       if(cache.st[replaceIndex.set][replaceIndex.way] > 0) {
-        if(respToP.full()) {
+        if(respToP.full()){
           return true;
         }
-        sendPResp(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr);
+        sendRespToP(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr);
       }
-      sendPReq(replaceIndex, msg->lineAddr, msg->to);
+      sendReqToP(replaceIndex, msg->lineAddr, msg->to);
       resetLine(replaceIndex, msg->lineAddr);
       notPresentMiss++;
       return true;
@@ -101,7 +106,7 @@ private:
       if(reqToP.full()) {
         return true;
       }
-      sendPReq(index, msg->lineAddr, msg->to);
+      sendReqToP(index, msg->lineAddr, msg->to);
       if(cache.st[index.set][index.way] == 0)
         inclusiveMiss++;
       else
@@ -110,12 +115,13 @@ private:
     }
   }
 
-  bool handlePReq() {
+  bool handleReqFromP() {
     if(fromP.empty())
       return false;
     FromP* msg = (FromP*) fromP.first();
     if(!msg->isReq)
        return false;
+    printHandleReqFromP(msg->lineAddr, msg->to);
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       fromP.deq();
@@ -125,7 +131,7 @@ private:
     if(cache.st[index.set][index.way] > msg->to) {
       if(respToP.full())
         return true;
-      sendPResp(index, msg->to, Forced, msg->index, msg->lineAddr);
+      sendRespToP(index, msg->to, Forced, msg->index, msg->lineAddr);
     }
     fromP.deq();
     delete msg;
@@ -150,18 +156,18 @@ public:
 
   void cycle() {
     LineAddr addr = (cache.tag[5][0] << setSz)|5;
-    if(handlePResp()) {}
+    if(handleRespFromP()) {}
     else if(priority == P) {
-      if(handlePReq()) {
+      if(handleReqFromP()) {
         priority = C;
       }
-      else handleCReq();
+      else handleReqFromCore();
     }
     else {
-      if(handleCReq()) {
+      if(handleReqFromCore()) {
         priority = P;
       }
-      else handlePReq();
+      else handleReqFromP();
     }
   }
 

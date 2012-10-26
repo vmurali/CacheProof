@@ -5,6 +5,8 @@
 #include "FreeList.h"
 #include "CacheTypes.h"
 
+#include "Debug.h"
+
 typedef class mshr {
 public:
   Who who;
@@ -68,6 +70,7 @@ private:
   }
 
   void sendRespToP(Index& index, St to, Trigger trigger, Index& pIndex, LineAddr lineAddr, Latency lat) {
+    printSendRespToP(lineAddr, trigger, index, to);
     cache.st[index.set][index.way] = to;
     RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way]);
     respToP.enq(resp);
@@ -77,6 +80,7 @@ private:
   }
 
   void sendRespToC(Index& index, St to, Child c, Index& cIndex, LineAddr lineAddr, Latency lat) {
+    printSendRespToC(c, lineAddr, index, to);
     ToCs* resp = new ToCs(childs, c, false, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to);
     latToCs = cache.cstates[index.set][index.way][c] == 0? dataLat: lat;
     cache.cstates[index.set][index.way][c] = to;
@@ -85,17 +89,19 @@ private:
   }
 
   void sendReqToCs(Index& index, LineAddr lineAddr, St to, bool skip, Child skipChild) {
-    cache.cReq[index.set][index.way] = true;
-    cache.waitCs[index.set][index.way] = to;
     bool* highChildren = new bool[childs];
     for(Child i = 0; i < childs; i++)
        highChildren[i] = (!skip || i != skipChild) && cache.cstates[index.set][index.way][i] > to;
+    printSendReqToCs(highChildren, lineAddr, index, to);
+    cache.cReq[index.set][index.way] = true;
+    cache.waitCs[index.set][index.way] = to;
     ToCs* req = new ToCs(childs, highChildren, true, index, lineAddr, NULL, to);
     toCs.enq(req);
     latToCs = tagLat;
   }
 
   void sendReqToP(Index& index, LineAddr lineAddr, St to) {
+    printSendReqToP(lineAddr, index, to);
     cache.pReq[index.set][index.way] = true;
     cache.waitS[index.set][index.way] = to;
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
@@ -123,6 +129,7 @@ private:
     if(respFromC.empty())
       return false;
     RespFromC* msg = (RespFromC*) respFromC.first();
+    printHandleRespFromC(msg->c, msg->lineAddr, msg->trigger, msg->index, msg->to);
     Index index = msg->trigger == Forced? msg->index: cache.getIndex(msg->lineAddr);
     assert(cache.isPresent(msg->lineAddr));
     cache.cstates[index.set][index.way][msg->c] = msg->to;
@@ -168,6 +175,7 @@ private:
     FromP* msg = (FromP*) fromP.first();
     if(msg->isReq)
        return false;
+    printHandleRespFromP(msg->lineAddr, msg->index, msg->to);
     Index index = msg->index;
     MshrPtr mshrPtr = cache.mshrPtr[index.set][index.way];
     cache.st[index.set][index.way] = msg->to;
@@ -186,6 +194,7 @@ private:
     if(reqFromC.empty())
       return false;
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
+    printHandleReqFromC(msg->c, msg->lineAddr, msg->to);
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       if(!mshrFl.isAvail() || !cache.existsReplace(msg->lineAddr)) {
@@ -253,6 +262,7 @@ private:
     FromP* msg = (FromP*) fromP.first();
     if(!msg->isReq)
        return false;
+    printHandleReqFromP(msg->lineAddr, msg->to);
     bool present = cache.isPresent(msg->lineAddr);
     if(!present) {
       latWait = tagLat;
