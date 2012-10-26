@@ -51,8 +51,8 @@ public:
     }
     if(!respToP->empty()) {
       latRespToP = latency;
-      respToP->deq();
       RespToP* msg = (RespToP*) respToP->first();
+      respToP->deq();
       delete msg;
     } else {
       handleCReq();

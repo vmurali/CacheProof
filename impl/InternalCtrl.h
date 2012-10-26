@@ -138,18 +138,22 @@ private:
         }
       } else if(m.isReplacing) {
         if(!isCHigher(index, 0)) {
+          cache.cReq[index.set][index.way] = false;
           sendRespToP(index, (St)0, Voluntary, index, msg->lineAddr, msg->trigger == Forced? (Latency)1: tagLat);
           resetLine(index, m.lineAddr);
           sendReqToP(index, m.lineAddr, m.to);
           m.isReplacing = false;
           mshr[mshrPtr] = m;
-          printf("handle resp from c no free: %d\n", mshrFl.numElems);
+          printf("handle resp from c no free mshr: %d\n", mshrFl.numElems);
         }
       } else {
-        if(!cache.pReq[index.set][index.way] && !isCHigher(index, m.to)) {
-          sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
-          mshrFl.free(mshrPtr);
-          printf("handle resp from c free mshr (who = c): %d\n", mshrFl.numElems);
+        if(!isCHigher(index, m.to)) {
+          cache.cReq[index.set][index.way] = false;
+          if(!cache.pReq[index.set][index.way]) {
+            sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
+            mshrFl.free(mshrPtr);
+            printf("handle resp from c free mshr (who = c): %d\n", mshrFl.numElems);
+          }
         }
       }
     }
