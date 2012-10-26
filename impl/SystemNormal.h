@@ -41,7 +41,6 @@ private:
   }
 
   void cycle() {
-    printf("\nCYCLE: %lld\n", cycCount);
     cycCount++;
     for(ThreadId i = 0; i < cores; i++) {
       l1s[2*i]->cycle();

@@ -20,7 +20,6 @@ private:
       return;
     }
     ReqFromCore* sendReq = new ReqFromCore(to, addr);
-    printf("Data sent %llx\n", addr);
     req->enq(sendReq);
   }
 

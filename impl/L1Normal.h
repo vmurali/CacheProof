@@ -21,7 +21,7 @@ private:
     respToP.enq(resp);
     if(to == 0)
       cache.replaceRem(index);
-    printf("%p l1: resp to p %llx %d %d %d %d\n", this, lineAddr, index.set, index.way, pIndex.set, pIndex.way);
+    //printf("%p l1: resp to p %llx %d %d %d %d\n", this, lineAddr, index.set, index.way, pIndex.set, pIndex.way);
   }
 
   void sendPReq(Index& index, LineAddr lineAddr, St to) {
@@ -30,7 +30,7 @@ private:
     cache.waitS[index.set][index.way] = to;
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
     reqToP.enq(req);
-    printf("%p l1: req to p %llx %d %d\n", this, lineAddr, index.set, index.way);
+    //printf("%p l1: req to p %llx %d %d\n", this, lineAddr, index.set, index.way);
   }
 
   void resetLine(Index& index, LineAddr lineAddr) {
@@ -48,7 +48,7 @@ private:
     if(msg->isReq)
        return false;
     Index index = msg->index;
-    printf("%p l1: resp from p %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
+    //printf("%p l1: resp from p %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
     cache.st[index.set][index.way] = msg->to;
     cache.pReq[index.set][index.way] = false;
     fromP.deq();
@@ -86,11 +86,11 @@ private:
           return true;
         }
         sendPResp(replaceIndex, (St)0, Voluntary, replaceIndex, replaceLineAddr);
-        printf("%p l1: not present: replace: %llx %d %d\n", this, replaceLineAddr, replaceIndex.set, replaceIndex.way);
+        //printf("%p l1: not present: replace: %llx %d %d\n", this, replaceLineAddr, replaceIndex.set, replaceIndex.way);
       }
       sendPReq(replaceIndex, msg->lineAddr, msg->to);
       resetLine(replaceIndex, msg->lineAddr);
-      printf("%p l1: not present: %llx %d %d\n", this, msg->lineAddr, replaceIndex.set, replaceIndex.way);
+      //printf("%p l1: not present: %llx %d %d\n", this, msg->lineAddr, replaceIndex.set, replaceIndex.way);
       notPresentMiss++;
       return true;
     } else {
@@ -99,7 +99,7 @@ private:
         return true;
       }
       if(cache.st[index.set][index.way] >= msg->to) {
-        printf("%p l1: hit: %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
+        //printf("%p l1: hit: %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
         reqFromCore.deq();
         cache.replaceUpd(index);
         hit++;
@@ -110,7 +110,7 @@ private:
         return true;
       }
       sendPReq(index, msg->lineAddr, msg->to);
-      printf("%p l1: no perm: %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
+      //printf("%p l1: no perm: %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
       if(cache.st[index.set][index.way] == 0)
         notPresentMiss++;
       else
