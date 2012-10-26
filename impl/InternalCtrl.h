@@ -49,6 +49,14 @@ private:
       return 2;
   }
 
+  bool isCompat(Child c, Index index, St to) {
+    bool comp = true;
+    for(Child i = 0; i < childs; i++)
+      if(i != c && cache.cstates[index.set][index.way][i] > compat(to))
+        comp = false;
+    return comp;
+  }
+
   bool isCHigher(Index index, St to) {
     bool _isCHigher = false;
     for(Child i = 0; i < childs; i++)
@@ -143,7 +151,7 @@ private:
           mshr[mshrPtr] = m;
         }
       } else {
-        if(!isCHigher(index, compat(m.to))) {
+        if(isCompat(m.c, index, m.to)) {
           cache.cReq[index.set][index.way] = false;
           if(!cache.pReq[index.set][index.way]) {
             sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
@@ -221,8 +229,7 @@ private:
         latWait = tagLat;
         return true;
       }
-      if(cache.st[index.set][index.way] >= msg->to && !isCHigher(index, compat(msg->to))) {
-        printf("stupid : %d %d\n", msg->to, cache.cstates[index.set][index.way][msg->c]);
+      if(cache.st[index.set][index.way] >= msg->to && isCompat(msg->c, index, msg->to)) {
         sendRespToC(index, msg->to, msg->c, msg->index, msg->lineAddr, tagLat);
         //printf("%p intr: hit %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
         reqFromC.deq();
@@ -242,7 +249,7 @@ private:
       if(cache.st[index.set][index.way] < msg->to) {
         sendReqToP(index, msg->lineAddr, msg->to);
       }
-      if(isCHigher(index, compat(msg->to))) {
+      if(!isCompat(msg->c, index, msg->to)) {
         sendReqToCs(index, msg->lineAddr, compat(msg->to));
       }
       reqFromC.deq();
