@@ -7,7 +7,6 @@
 #include "InstFeeder.h"
 #include "DataFeeder.h"
 #include "Connect.h"
-#include <cstdlib>
 
 typedef class systemNormal {
 private:
@@ -76,8 +75,9 @@ public:
                Latency* tagLats, Latency* dataLats, Latency memLat):
                cores(_cores), levels(_levels), childs(_childs), cycCount(0) {
     l1s = new L1Normal*[2*cores];
-    for(ThreadId i = 0; i < 2*cores; i++)
+    for(ThreadId i = 0; i < 2*cores; i++) {
       l1s[i] = new L1Normal(ways[0], setSzs[0]);
+    }
     iFeeds = new InstFeeder*[cores];
     dFeeds = new DataFeeder*[cores];
     for(ThreadId i = 0; i < cores; i++) {
