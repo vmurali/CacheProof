@@ -157,9 +157,9 @@ public:
 
     for(ThreadId j = 0; j < cores; j++) {
       printf("L1 Inst Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
-              j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->notPresentMiss);
+              2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->notPresentMiss);
       printf("L1 Data Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
-              j, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->notPresentMiss);
+              2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->notPresentMiss);
     }
   }
 

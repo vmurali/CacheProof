@@ -3,6 +3,8 @@
 #include "Types.h"
 #include <queue>
 
+#include <cstdio>
+
 using namespace std;
 
 typedef class freeList {
@@ -14,7 +16,7 @@ public:
     for(U8 i = 0; i < s; i++)
       q.push(i);
   }
-//  ~freeList() {}
+  ~freeList() {printf("%p free list getting deleted\n", this);}
   bool isAvail() {
     return !q.empty();
   }

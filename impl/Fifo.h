@@ -4,6 +4,7 @@
 #include <queue>
 
 #include <cassert>
+#include <cstdio>
 
 using namespace std;
 
@@ -16,7 +17,7 @@ private:
   bool deqEn;
 public:
   fifo(U8 s) : q(), size(s), numElems(0), enqEn(false), deqEn(false){}
-//  ~fifo() {}
+  ~fifo() {printf("%p getting deleted\n", this);}
 
   bool full() {
     return numElems == size;

@@ -111,7 +111,10 @@ private:
       }
       sendPReq(index, msg->lineAddr, msg->to);
       printf("%p l1: no perm: %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
-      noPermMiss++;
+      if(cache.st[index.set][index.way] == 0)
+        notPresentMiss++;
+      else
+        noPermMiss++;
       return true;
     }
   }
