@@ -112,7 +112,7 @@ private:
       sendPReq(index, msg->lineAddr, msg->to);
       //printf("%p l1: no perm: %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
       if(cache.st[index.set][index.way] == 0)
-        notPresentMiss++;
+        inclusiveMiss++;
       else
         noPermMiss++;
       return true;
@@ -146,13 +146,14 @@ public:
   Counter hit;
   Counter notPresentMiss;
   Counter noPermMiss;
+  Counter inclusiveMiss;
 
   l1Normal(Way ways, U8 _setSz):
           setSz(_setSz), cache(ways, setSz, 0),
           fromP(2), reqFromCore(2),
           reqToP(2), respToP(2),
           priority(C), processing(false),
-          hit(0), notPresentMiss(0), noPermMiss(0) {}
+          hit(0), notPresentMiss(0), noPermMiss(0), inclusiveMiss(0) {}
 
   ~l1Normal() {}
 

@@ -232,6 +232,7 @@ private:
       if(cache.st[index.set][index.way] >= msg->to && isCompat(msg->c, index, msg->to)) {
         sendRespToC(index, msg->to, msg->c, msg->index, msg->lineAddr, tagLat);
         //printf("%p intr: hit %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
+        hit++;
         reqFromC.deq();
         delete msg;
         return true;
@@ -241,7 +242,7 @@ private:
         return true;
       }
       if(cache.st[index.set][index.way] == 0)
-        notPresentMiss++;
+        inclusiveMiss++;
       else
         noPermMiss++;
       //printf("%p intr: no perm %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
@@ -300,7 +301,7 @@ private:
   }
 
 public:
-  Counter hit, notPresentMiss, noPermMiss;
+  Counter hit, notPresentMiss, noPermMiss, inclusiveMiss;
   
   internalCtrl(MshrPtr mshrs, Way ways, U8 _setSz, Child _childs,
                Latency _tagLat, Latency _dataLat) :
@@ -310,7 +311,7 @@ public:
           fromP(2), reqFromC(2), respFromC(2),
           reqToPF(2), respToPF(2), toCsF(2),
           reqToP(1), respToP(1), toCs(1),
-          hit(0), notPresentMiss(0), noPermMiss(0)
+          hit(0), notPresentMiss(0), noPermMiss(0), inclusiveMiss(0)
   {
     mshr = new Mshr[mshrs];
   }

@@ -150,16 +150,16 @@ public:
   void display() {
     for(U8 i = 0; i < levels; i++) {
       for(ThreadId j = 0; j < numCtrls[i]; j++) {
-        printf("Level %u  Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
-                i, j, ctrls[i][j]->hit, ctrls[i][j]->noPermMiss, ctrls[i][j]->notPresentMiss);
+        printf("Level %u  Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
+                i, j, ctrls[i][j]->hit, ctrls[i][j]->noPermMiss, ctrls[i][j]->inclusiveMiss, ctrls[i][j]->notPresentMiss);
       }
     }
 
     for(ThreadId j = 0; j < cores; j++) {
-      printf("L1 Inst Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
-              2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->notPresentMiss);
-      printf("L1 Data Cache# %u: hits %llu PermMiss: %llu PresenceMiss: %llu\n",
-              2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->notPresentMiss);
+      printf("L1 Inst Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
+              2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->inclusiveMiss, l1s[2*j]->notPresentMiss);
+      printf("L1 Data Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
+              2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->inclusiveMiss, l1s[2*j+1]->notPresentMiss);
       exit(0);
     }
   }
