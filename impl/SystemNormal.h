@@ -114,7 +114,8 @@ public:
     }
     Fifo* csReqToP = ctrls[levels-1][0]->getReqToP();
     Fifo* csFromP = ctrls[levels-1][0]->getFromP();
-    mem = new Memory(csReqToP, csFromP, memLat);
+    Fifo* csRespToP = ctrls[levels-1][0]->getRespToP();
+    mem = new Memory(csReqToP, csFromP, csRespToP, memLat);
   }
   ~systemNormal() {
     for(ThreadId i = 0; i < 2*cores; i++)

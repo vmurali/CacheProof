@@ -5,15 +5,17 @@
 
 typedef class memory {
 private:
+  Latency latRespFromP;
+  Latency latRespToP;
   Latency latency;
-  Latency latWait;
-  Fifo respFromP;
 
-  Fifo* reqToP,* respFromPF;
+  Fifo* reqToP,* respFromPF,* respToP;
+
+  Fifo respFromP;
 
   void sendCResp(Index& cIndex, LineAddr lineAddr) {
     FromP* resp = new FromP(false, cIndex, lineAddr, 0, 2);
-    latWait = latency;
+    latRespFromP = latency;
     respFromP.enq(resp);
   }
 
@@ -28,23 +30,33 @@ private:
   }
 
 public:
-  memory(Fifo* _reqToP, Fifo* _respFromP, Latency _latWait):
-         latWait(0), latency(_latWait),
-         respFromP(1), reqToP(_reqToP), respFromPF(_respFromP) {}
+  memory(Fifo* _reqToP, Fifo* _respFromP, Fifo* _respToP, Latency _latency):
+         latRespFromP(0), latRespToP(0), latency(_latency),
+         respFromP(1), reqToP(_reqToP), respFromPF(_respFromP), respToP(_respToP) {}
   ~memory() {}
 
   void cycle() {
-    if(latWait != 0) {
-      if(latWait > 1) {
-        latWait--;
-      } else if(latWait == 1 && !respFromP.empty() && !respFromPF->full()) {
+    if(latRespFromP != 0 || latRespToP != 0) {
+      if(latRespFromP > 1) {
+        latRespFromP--;
+      } else if(latRespFromP == 1 && !respFromP.empty() && !respFromPF->full()) {
         respFromPF->enq(respFromP.first());
         respFromP.deq();
-        latWait = 0;
+        latRespFromP = 0;
+      }
+      if(latRespToP > 0) {
+        latRespToP--;
       }
       return;
     }
-    handleCReq();
+    if(!respToP->empty()) {
+      latRespToP = latency;
+      respToP->deq();
+      RespToP* msg = (RespToP*) respToP->first();
+      delete msg;
+    } else {
+      handleCReq();
+    }
   }
 
   void transfer() {
