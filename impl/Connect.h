@@ -26,6 +26,7 @@ public:
   }
 
   void cycle() {
+    printf("connect: %d %d %d\n", pReqFromC->full(), csReqToP[0]->empty(), csReqToP[1]->empty());
     if(!pReqFromC->full()) {
       for(Child i = 0; i < childs; i++) {
         Child c = (nextCReq + i)%childs;

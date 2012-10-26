@@ -20,6 +20,7 @@ private:
       return true;
     }
     ReqFromCore* sendReq = new ReqFromCore(1, addr);
+    printf("Inst sent %llx\n", addr);
     req->enq(sendReq);
     return false;
   }

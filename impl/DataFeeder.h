@@ -15,12 +15,12 @@ private:
   void feed(St to) {
     LineAddr addr;
     ssize_t bytes = read(fd, &addr, 8);
-      printf("trying to send something %llx\n", addr);
     if(bytes == 0) {
       close(fd);
       return;
     }
     ReqFromCore* sendReq = new ReqFromCore(to, addr);
+    printf("Data sent %llx\n", addr);
     req->enq(sendReq);
   }
 
