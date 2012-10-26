@@ -148,6 +148,7 @@ public:
   }
 
   void display() {
+    printf("Cycle count: %llu\n", cycCount);
     for(U8 i = 0; i < levels; i++) {
       for(ThreadId j = 0; j < numCtrls[i]; j++) {
         printf("Level %u  Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
@@ -160,7 +161,6 @@ public:
               2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->inclusiveMiss, l1s[2*j]->notPresentMiss);
       printf("L1 Data Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
               2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->inclusiveMiss, l1s[2*j+1]->notPresentMiss);
-//      exit(0);
     }
   }
 
