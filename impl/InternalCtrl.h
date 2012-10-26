@@ -101,9 +101,7 @@ private:
   }
 
   void allocMshr(Index& index, Mshr entry) {
-    printf("alloc mshr begin: %d\n", mshrFl.numElems);
     MshrPtr mshrPtr = mshrFl.alloc();
-    printf("alloc mshr: %d\n", mshrFl.numElems);
     cache.mshrPtr[index.set][index.way] = mshrPtr;
     mshr[mshrPtr] = entry;
   }
@@ -134,7 +132,6 @@ private:
           cache.cReq[index.set][index.way] = false;
           sendRespToP(index, m.to, Forced, m.index, msg->lineAddr, msg->trigger == Forced? 1: tagLat);
           mshrFl.free(mshrPtr);
-          printf("handle resp from c free mshr (who = p): %d\n", mshrFl.numElems);
         }
       } else if(m.isReplacing) {
         if(!isCHigher(index, 0)) {
@@ -144,7 +141,6 @@ private:
           sendReqToP(index, m.lineAddr, m.to);
           m.isReplacing = false;
           mshr[mshrPtr] = m;
-          printf("handle resp from c no free mshr: %d\n", mshrFl.numElems);
         }
       } else {
         if(!isCHigher(index, m.to)) {
@@ -152,7 +148,6 @@ private:
           if(!cache.pReq[index.set][index.way]) {
             sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
             mshrFl.free(mshrPtr);
-            printf("handle resp from c free mshr (who = c): %d\n", mshrFl.numElems);
           }
         }
       }
@@ -177,7 +172,6 @@ private:
       Mshr m = mshr[mshrPtr];
       sendRespToC(index, m.to, m.c, m.index, msg->lineAddr, 1);
       mshrFl.free(mshrPtr);
-      printf("handle resp from p free mshr: %d\n", mshrFl.numElems);
     }
     printf("%p intr: resp from p %llx %d %d\n", this, msg->lineAddr, index.set, index.way);
     fromP.deq();
@@ -194,7 +188,6 @@ private:
     if(!present) {
       if(!mshrFl.isAvail() || !cache.existsReplace(msg->lineAddr)) {
         latWait = tagLat;
-        printf("should do some req not present notAvail %d %d %d\n", mshrFl.isAvail(), mshrFl.numElems, cache.existsReplace(msg->lineAddr));
         return true;
       }
       printf("should do some req not present Avail\n");

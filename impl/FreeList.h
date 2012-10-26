@@ -8,13 +8,13 @@ using namespace std;
 typedef class freeList {
 private:
   queue<U8> q;
-public:
   U8 numElems;
+public:
   freeList(U8 s): q(), numElems(s) {
     for(U8 i = 0; i < s; i++)
       q.push(i);
   }
-  ~freeList() {}
+//  ~freeList() {}
   bool isAvail() {
     return !q.empty();
   }

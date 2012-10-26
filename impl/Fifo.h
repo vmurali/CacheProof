@@ -11,13 +11,11 @@ typedef class fifo {
 private:
   queue<void*> q;
   U8 size;
-public:
   U8 numElems;
   bool enqEn;
   bool deqEn;
-  fifo(U8 s) : q(){
-    size = s; numElems = 0; enqEn = false; deqEn = false;
-  }
+public:
+  fifo(U8 s) : q(), size(s), numElems(0), enqEn(false), deqEn(false){}
 //  ~fifo() {}
 
   bool full() {
