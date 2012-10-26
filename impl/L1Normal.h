@@ -4,8 +4,6 @@
 #include "Fifo.h"
 #include "CacheTypes.h"
 
-#include <cstdio>
-
 typedef class l1Normal {
 private:
   U8 setSz;

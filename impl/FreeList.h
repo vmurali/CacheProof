@@ -3,20 +3,20 @@
 #include "Types.h"
 #include <queue>
 
-#include <cstdio>
+#include <list>
 
 using namespace std;
 
 typedef class freeList {
 private:
-  queue<U8> q;
+  queue<U8, list<U8> > q;
   U8 numElems;
 public:
   freeList(U8 s): q(), numElems(s) {
     for(U8 i = 0; i < s; i++)
       q.push(i);
   }
-  ~freeList() {printf("%p free list getting deleted\n", this);}
+  ~freeList() {}
   bool isAvail() {
     return !q.empty();
   }

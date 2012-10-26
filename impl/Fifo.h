@@ -4,20 +4,20 @@
 #include <queue>
 
 #include <cassert>
-#include <cstdio>
+#include <list>
 
 using namespace std;
 
 typedef class fifo {
 private:
-  queue<void*> q;
+  queue<void*, list<void*> > q;
   U8 size;
   U8 numElems;
   bool enqEn;
   bool deqEn;
 public:
   fifo(U8 s) : q(), size(s), numElems(0), enqEn(false), deqEn(false){}
-  ~fifo() {printf("%p getting deleted\n", this);}
+  ~fifo() {}
 
   bool full() {
     return numElems == size;

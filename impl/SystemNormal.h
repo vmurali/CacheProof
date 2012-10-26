@@ -160,7 +160,7 @@ public:
               2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->inclusiveMiss, l1s[2*j]->notPresentMiss);
       printf("L1 Data Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
               2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->inclusiveMiss, l1s[2*j+1]->notPresentMiss);
-      exit(0);
+//      exit(0);
     }
   }
 

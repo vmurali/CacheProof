@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdio>
+
 typedef int I32;
 typedef unsigned int U32;
 typedef char I8;
