@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef DEBUG
+#ifdef Debug
 #define printSendRespToP(lineAddr, trigger, index, to)\
   printf("%p SendRespToP: %llx %c %d.%d %d->%d\n",\
          this, lineAddr, trigger == Forced? 'F': 'V', index.set, index.way, cache.st[index.set][index.way], to);

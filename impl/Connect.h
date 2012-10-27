@@ -26,6 +26,11 @@ public:
   }
 
   void cycle() {
+//    printf("%p nextCReq: %d ", this, nextCReq);
+//    for(Child i = 0; i < childs; i++) {
+//      printf("%d", csReqToP[i]->empty());
+//    }
+//    printf("\n");
     if(!pReqFromC->full()) {
       for(Child i = 0; i < childs; i++) {
         Child c = (nextCReq + i)%childs;
