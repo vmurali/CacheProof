@@ -91,8 +91,8 @@ public:
     to = _to;
   }
   ~toCs() {
-    delete children;
-    delete from;
+    delete[] children;
+    delete[] from;
   }
 } ToCs;
 

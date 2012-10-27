@@ -10,7 +10,7 @@ using namespace std;
 
 typedef class fifo {
 private:
-  queue<void*, list<void*> > q;
+  queue<void*> q;
   U8 size;
   U8 numElems;
   bool enqEn;
