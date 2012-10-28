@@ -125,8 +125,8 @@ public:
       delete l1s[i];
     delete[] l1s;
     for(ThreadId i = 0; i < cores; i++) {
-      delete iFeeds;
-      delete dFeeds;
+      delete iFeeds[i];
+      delete dFeeds[i];
     }
     delete[] iFeeds;
     delete[] dFeeds;
@@ -135,12 +135,12 @@ public:
         delete ctrls[i][j];
         delete connects[i][j];
       }
-      delete ctrls[i];
-      delete connects[i];
+      delete[] ctrls[i];
+      delete[] connects[i];
     }
     delete[] ctrls;
     delete[] connects;
-    delete numCtrls;
+    delete[] numCtrls;
     delete mem;
   }
 

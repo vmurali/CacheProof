@@ -72,6 +72,7 @@ public:
       delete[] waitCs[i];
       delete[] dirty[i];
       delete[] tag[i];
+      delete[] lruBits[i];
     }
     delete[] st;
     delete[] cstates;
@@ -81,6 +82,7 @@ public:
     delete[] waitCs;
     delete[] dirty;
     delete[] tag;
+    delete[] lruBits;
   }
   bool isPresent(LineAddr lineAddr) {
     Set set = lineAddr & (sets-1);
