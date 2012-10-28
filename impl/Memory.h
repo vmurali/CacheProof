@@ -15,7 +15,7 @@ private:
   Fifo respFromP;
 
   void sendRespToC(Index& cIndex, LineAddr lineAddr) {
-    FromP* resp = new FromP(Resp, cIndex, lineAddr, 0, 3);
+    FromP* resp = new FromP(Resp, cIndex, lineAddr, 0, 3, 0, 0);
     latRespFromP = latency;
     respFromP.enq(resp);
     printMemorySendResp(lineAddr, cIndex);

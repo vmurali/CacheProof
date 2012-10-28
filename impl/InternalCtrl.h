@@ -82,7 +82,7 @@ private:
 
   void sendRespToC(Index& index, St to, Child c, Index& cIndex, LineAddr lineAddr, Latency lat) {
     printSendRespToC(c, lineAddr, index, to);
-    ToCs* resp = new ToCs(childs, c, Resp, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to);
+    ToCs* resp = new ToCs(childs, c, Resp, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to, 0, 0);
     latToCs = cache.cstates[index.set][index.way][c] == 0? dataLat: lat;
     cache.cstates[index.set][index.way][c] = to;
     toCs.enq(resp);
@@ -96,7 +96,7 @@ private:
     printSendReqToCs(highChildren, lineAddr, index, to);
     cache.cReq[index.set][index.way] = true;
     cache.waitCs[index.set][index.way] = to;
-    ToCs* req = new ToCs(childs, highChildren, Req, index, lineAddr, NULL, to);
+    ToCs* req = new ToCs(childs, highChildren, Req, index, lineAddr, NULL, to, 0, 0);
     toCs.enq(req);
     latToCs = tagLat;
   }

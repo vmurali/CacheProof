@@ -30,12 +30,9 @@ public:
   Child fwdC;
   St fwdTo;
 
-  fromP(FromPType _type, Index _index, LineAddr _lineAddr, St _from, St _to):
-        type(_type), index(_index), lineAddr(_lineAddr), from(_from), to(_to) {}
-  fromP(FromPType _type, Index _index, LineAddr _lineAddr, St _to, Child _fwdC, St _fwdTo):
-        type(_type), index(_index), lineAddr(_lineAddr), to(_to), fwdC(_fwdC), fwdTo(_fwdTo) {}
-  fromP(FromPType _type, Index _index, LineAddr _lineAddr):
-        type(_type), index(_index), lineAddr(_lineAddr) {}
+  fromP(FromPType _type, Index _index, LineAddr _lineAddr, St _from, St _to,
+        Child _fwdC, St _fwdTo): type(_type), index(_index), lineAddr(_lineAddr),
+        from(_from), to(_to), fwdC(_fwdC), fwdTo(_fwdTo) {}
   ~fromP() {}
 } FromP;
 
@@ -78,15 +75,17 @@ public:
   LineAddr lineAddr;
   St* from;
   St to;
+  Child fwdC;
+  St fwdTo;
 
   toCs(Child _childs, bool* _children, FromPType _type, Index _index,
-       LineAddr _lineAddr, St* _from, St _to):
+       LineAddr _lineAddr, St* _from, St _to, Child _fwdC, St _fwdTo):
        childs(_childs), children(_children), type(_type), index(_index),
-       lineAddr(_lineAddr), from(_from), to(_to) {}
+       lineAddr(_lineAddr), from(_from), to(_to), fwdC(_fwdC), fwdTo(_fwdTo) {}
   toCs(Child _childs, Child c, FromPType _type, Index _index,
-       LineAddr _lineAddr, St _from, St _to):
+       LineAddr _lineAddr, St _from, St _to, Child _fwdC, St _fwdTo):
        childs(_childs), type(_type), index(_index), lineAddr(_lineAddr),
-       to(_to) {
+       to(_to), fwdC(_fwdC), fwdTo(_fwdTo) {
     children = new bool[childs];
     for(Child i = 0; i < childs; i++)
       children[i] = false;
@@ -147,7 +146,7 @@ public:
 
 FromP* toCs2fromP(ToCs* toCs, Child c) {
   St from = toCs->from == NULL? 0: toCs->from[c];
-  FromP* ret = new FromP(toCs->type, toCs->index, toCs->lineAddr, from, toCs->to);
+  FromP* ret = new FromP(toCs->type, toCs->index, toCs->lineAddr, from, toCs->to, toCs->fwdC, toCs->fwdTo);
   return ret;
 }
 
