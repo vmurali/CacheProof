@@ -57,12 +57,11 @@ public:
   LineAddr lineAddr;
   St to;
   bool dirty;
+  bool fwd;
+  Child c;
 
-  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty):
-          trigger(_trigger), index(_index), lineAddr(_lineAddr), to(_to), dirty(_dirty) {}
-  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr):
-          trigger(_trigger), index(_index), lineAddr(_lineAddr) {}
-
+  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty, bool _fwd, Child _c):
+          trigger(_trigger), index(_index), lineAddr(_lineAddr), to(_to), dirty(_dirty), fwd(_fwd), c(_c) {}
   ~respToP() {}
 } RespToP;
 
@@ -156,6 +155,7 @@ ReqFromC* reqToP2reqFromC(ReqToP* reqToP, Child c) {
 }
 
 RespFromC* respToP2respFromC(RespToP* respToP, Child c) {
-  RespFromC* ret = new RespFromC(c, respToP->trigger, respToP->index, respToP->lineAddr, respToP->to, respToP->dirty);
+  RespFromC* ret = new RespFromC(respToP->fwd? respToP->c: c, respToP->trigger,
+                                 respToP->index, respToP->lineAddr, respToP->to, respToP->dirty);
   return ret;
 }

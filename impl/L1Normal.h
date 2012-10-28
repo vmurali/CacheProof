@@ -17,7 +17,7 @@ private:
   void sendRespToP(Index& index, St to, Trigger trigger, Index& pIndex, LineAddr lineAddr) {
     printSendRespToP(lineAddr, trigger, index, to);
     cache.st[index.set][index.way] = to;
-    RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way]);
+    RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way], false, 0);
     respToP.enq(resp);
     if(to == 0)
       cache.replaceRem(index);
