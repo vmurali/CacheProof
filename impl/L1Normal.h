@@ -44,9 +44,9 @@ private:
     if(fromP.empty())
       return false;
     FromP* msg = (FromP*) fromP.first();
-    printHandleRespFromP(msg->lineAddr, msg->index, msg->to);
-    if(msg->isReq)
+    if(msg->type != Resp)
        return false;
+    printHandleRespFromP(msg->lineAddr, msg->index, msg->to);
     Index index = msg->index;
     cache.st[index.set][index.way] = msg->to;
     cache.pReq[index.set][index.way] = false;
@@ -119,10 +119,10 @@ private:
     if(fromP.empty())
       return false;
     FromP* msg = (FromP*) fromP.first();
-    if(!msg->isReq)
+    if(msg->type != Req)
        return false;
-    printHandleReqFromP(msg->lineAddr, msg->to);
     bool present = cache.isPresent(msg->lineAddr);
+    printHandleReqFromP(msg->lineAddr, msg->to, present);
     if(!present) {
       fromP.deq();
       return true;

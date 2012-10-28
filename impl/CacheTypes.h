@@ -17,17 +17,23 @@ typedef struct {
   Way way;
 } Index;
 
+typedef enum {Req, Resp, FwdReq, FwdResp} FromPType;
+
 typedef class fromP {
 public:
-  bool isReq;
+  FromPType type;
   Index index;
   LineAddr lineAddr;
   St from;
   St to;
 
-  fromP(bool _isReq, Index _index, LineAddr _lineAddr, St _from, St _to) {
-    isReq = _isReq; index = _index; lineAddr = _lineAddr; from = _from; to = _to;
-  }
+  bool isFwdReq;
+  bool changeState;
+  Child fwdC;
+  St fwdTo;
+
+  fromP(FromPType _type, Index _index, LineAddr _lineAddr, St _from, St _to):
+       type(_type), index(_index), lineAddr(_lineAddr), from(_from), to(_to), isFwdReq(false) {}
   ~fromP() {}
 } FromP;
 
@@ -65,25 +71,25 @@ typedef class toCs {
 public:
   Child childs;
   bool* children;
-  bool isReq;
+  FromPType type;
   Index index;
   LineAddr lineAddr;
   St* from;
   St to;
 
-  toCs(Child _childs, bool* _children, bool _isReq, Index _index,
+  toCs(Child _childs, bool* _children, FromPType _type, Index _index,
        LineAddr _lineAddr, St* _from, St _to) {
-    childs = _childs; children = _children; isReq = _isReq;
+    childs = _childs; children = _children; type = _type;
     index = _index; lineAddr = _lineAddr; from = _from; to = _to;
   }
-  toCs(Child _childs, Child c, bool _isReq, Index _index,
+  toCs(Child _childs, Child c, FromPType _type, Index _index,
        LineAddr _lineAddr, St _from, St _to) {
     childs = _childs;
     children = new bool[childs];
     for(Child i = 0; i < childs; i++)
       children[i] = false;
     children[c] = true;
-    isReq = _isReq;
+    type = _type;
     index = _index;
     lineAddr = _lineAddr;
     from = new St[childs];
@@ -145,7 +151,7 @@ public:
 
 FromP* toCs2fromP(ToCs* toCs, Child c) {
   St from = toCs->from == NULL? 0: toCs->from[c];
-  FromP* ret = new FromP(toCs->isReq, toCs->index, toCs->lineAddr, from, toCs->to);
+  FromP* ret = new FromP(toCs->type, toCs->index, toCs->lineAddr, from, toCs->to);
   return ret;
 }
 

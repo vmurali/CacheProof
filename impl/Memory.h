@@ -2,6 +2,7 @@
 
 #include "Fifo.h"
 #include "CacheTypes.h"
+#include "Debug.h"
 
 typedef class memory {
 private:
@@ -13,18 +14,20 @@ private:
 
   Fifo respFromP;
 
-  void sendCResp(Index& cIndex, LineAddr lineAddr) {
-    FromP* resp = new FromP(false, cIndex, lineAddr, 0, 2);
+  void sendRespToC(Index& cIndex, LineAddr lineAddr) {
+    FromP* resp = new FromP(Resp, cIndex, lineAddr, 0, 3);
     latRespFromP = latency;
     respFromP.enq(resp);
+    printMemorySendResp(lineAddr, cIndex);
   }
 
-  bool handleCReq() {
+  bool handleReqFromC() {
     if(reqToP->empty())
       return false;
     ReqToP* msg = (ReqToP*) reqToP->first();
-    sendCResp(msg->index, msg->lineAddr);
+    sendRespToC(msg->index, msg->lineAddr);
     reqToP->deq();
+    printHandleReqFromC(0, msg->lineAddr, msg->to, true);
     delete msg;
     return true;
   }
@@ -55,7 +58,7 @@ public:
       respToP->deq();
       delete msg;
     } else {
-      handleCReq();
+      handleReqFromC();
     }
   }
 

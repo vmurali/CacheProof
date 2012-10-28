@@ -59,6 +59,8 @@ public:
           count--;
         return;
       }
+      if(to == 2)
+        to = 3;
       feed(to);
     }
   }

@@ -45,12 +45,13 @@ private:
   Mshr* mshr;
 
   St compat(St to) {
-    if(to == 2)
+    assert(to != 2);
+    if(to == 3)
       return 0;
     if(to == 1)
       return 1;
     if(to == 0)
-      return 2;
+      return 3;
   }
 
   bool isCompat(Child c, Index index, St to) {
@@ -81,7 +82,7 @@ private:
 
   void sendRespToC(Index& index, St to, Child c, Index& cIndex, LineAddr lineAddr, Latency lat) {
     printSendRespToC(c, lineAddr, index, to);
-    ToCs* resp = new ToCs(childs, c, false, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to);
+    ToCs* resp = new ToCs(childs, c, Resp, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to);
     latToCs = cache.cstates[index.set][index.way][c] == 0? dataLat: lat;
     cache.cstates[index.set][index.way][c] = to;
     toCs.enq(resp);
@@ -95,7 +96,7 @@ private:
     printSendReqToCs(highChildren, lineAddr, index, to);
     cache.cReq[index.set][index.way] = true;
     cache.waitCs[index.set][index.way] = to;
-    ToCs* req = new ToCs(childs, highChildren, true, index, lineAddr, NULL, to);
+    ToCs* req = new ToCs(childs, highChildren, Req, index, lineAddr, NULL, to);
     toCs.enq(req);
     latToCs = tagLat;
   }
@@ -148,7 +149,7 @@ private:
       } else if(m.isReplacing) {
         if(!isCHigher(index, 0)) {
           cache.cReq[index.set][index.way] = false;
-          sendRespToP(index, (St)0, Voluntary, index, msg->lineAddr, msg->trigger == Forced? (Latency)1: tagLat);
+          sendRespToP(index, (St)0, Voluntary, index, msg->lineAddr, msg->trigger == Forced? 1: tagLat);
           resetLine(index, m.lineAddr);
           sendReqToP(index, m.lineAddr, m.to);
           m.isReplacing = false;
@@ -173,7 +174,7 @@ private:
     if(fromP.empty())
       return false;
     FromP* msg = (FromP*) fromP.first();
-    if(msg->isReq)
+    if(msg->type != Resp)
        return false;
     printHandleRespFromP(msg->lineAddr, msg->index, msg->to);
     Index index = msg->index;
@@ -194,8 +195,8 @@ private:
     if(reqFromC.empty())
       return false;
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
-    printHandleReqFromC(msg->c, msg->lineAddr, msg->to);
     bool present = cache.isPresent(msg->lineAddr);
+    printHandleReqFromC(msg->c, msg->lineAddr, msg->to, present);
     if(!present) {
       if(!mshrFl.isAvail() || !cache.existsReplace(msg->lineAddr)) {
         latWait = tagLat;
@@ -222,77 +223,75 @@ private:
         delete msg;
         return true;
       }
-    } else {
-      Index index = cache.getIndex(msg->lineAddr);
-      if(cache.cReq[index.set][index.way] || cache.pReq[index.set][index.way]) {
-        latWait = tagLat;
-        return true;
-      }
-      if(cache.st[index.set][index.way] >= msg->to && isCompat(msg->c, index, msg->to)) {
-        sendRespToC(index, msg->to, msg->c, msg->index, msg->lineAddr, tagLat);
-        hit++;
-        reqFromC.deq();
-        delete msg;
-        return true;
-      }
-      if(!mshrFl.isAvail()) {
-        latWait = tagLat;
-        return true;
-      }
-      if(cache.st[index.set][index.way] == 0)
-        inclusiveMiss++;
-      else
-        noPermMiss++;
-      allocMshr(index, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0, false, (MshrPtr)0));
-      if(cache.st[index.set][index.way] < msg->to) {
-        sendReqToP(index, msg->lineAddr, msg->to);
-      }
-      if(!isCompat(msg->c, index, msg->to)) {
-        sendReqToCs(index, msg->lineAddr, compat(msg->to), true, msg->c);
-      }
+    }
+    Index index = cache.getIndex(msg->lineAddr);
+    if(cache.cReq[index.set][index.way] || cache.pReq[index.set][index.way]) {
+      latWait = tagLat;
+      return true;
+    }
+    if(cache.st[index.set][index.way] >= msg->to && isCompat(msg->c, index, msg->to)) {
+      sendRespToC(index, msg->to, msg->c, msg->index, msg->lineAddr, tagLat);
+      hit++;
       reqFromC.deq();
       delete msg;
       return true;
     }
+    if(!mshrFl.isAvail()) {
+      latWait = tagLat;
+      return true;
+    }
+    if(cache.st[index.set][index.way] == 0)
+      inclusiveMiss++;
+    else
+      noPermMiss++;
+    allocMshr(index, Mshr(C, msg->c, msg->index, msg->to, false, (LineAddr)0, false, (MshrPtr)0));
+    if(cache.st[index.set][index.way] < msg->to) {
+      sendReqToP(index, msg->lineAddr, msg->to);
+    }
+    if(!isCompat(msg->c, index, msg->to)) {
+      sendReqToCs(index, msg->lineAddr, compat(msg->to), true, msg->c);
+    }
+    reqFromC.deq();
+    delete msg;
+    return true;
   }
 
   bool handleReqFromP() {
     if(fromP.empty())
       return false;
     FromP* msg = (FromP*) fromP.first();
-    if(!msg->isReq)
+    if(msg->type != Req)
        return false;
-    printHandleReqFromP(msg->lineAddr, msg->to);
     bool present = cache.isPresent(msg->lineAddr);
+    printHandleReqFromP(msg->lineAddr, msg->to, present);
     if(!present) {
       latWait = tagLat;
       fromP.deq();
       delete msg;
       return true;
-    } else {
-      Index index = cache.getIndex(msg->lineAddr);
-      if(cache.cReq[index.set][index.way]) {
-        latWait = tagLat;
-        return true;
+    } 
+    Index index = cache.getIndex(msg->lineAddr);
+    if(cache.cReq[index.set][index.way]) {
+      latWait = tagLat;
+      return true;
+    }
+    if(!isCHigher(index, msg->to)) {
+      if(cache.st[index.set][index.way] > msg->to) {
+        sendRespToP(index, msg->to, Forced, msg->index, msg->lineAddr, tagLat);
       }
-      if(!isCHigher(index, msg->to)) {
-        if(cache.st[index.set][index.way] > msg->to) {
-          sendRespToP(index, msg->to, Forced, msg->index, msg->lineAddr, tagLat);
-        }
-        fromP.deq();
-        delete msg;
-        return true;
-      }
-      if(!mshrFl.isAvail()) {
-        latWait = tagLat;
-        return true;
-      }
-      allocMshr(index, Mshr(P, 0, msg->index, msg->to, false, msg->lineAddr, cache.pReq[index.set][index.way], cache.mshrPtr[index.set][index.way]));
-      sendReqToCs(index, msg->lineAddr, msg->to, false, 0);
       fromP.deq();
       delete msg;
       return true;
     }
+    if(!mshrFl.isAvail()) {
+      latWait = tagLat;
+      return true;
+    }
+    allocMshr(index, Mshr(P, 0, msg->index, msg->to, false, msg->lineAddr, cache.pReq[index.set][index.way], cache.mshrPtr[index.set][index.way]));
+    sendReqToCs(index, msg->lineAddr, msg->to, false, 0);
+    fromP.deq();
+    delete msg;
+    return true;
   }
 
 public:
