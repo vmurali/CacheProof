@@ -17,7 +17,7 @@ typedef struct {
   Way way;
 } Index;
 
-typedef enum {Req, Resp, FwdReq, FwdResp} FromPType;
+typedef enum {Req, Resp, FwdReq, FwdResp, PAck} FromPType;
 
 typedef class fromP {
 public:
@@ -27,13 +27,15 @@ public:
   St from;
   St to;
 
-  bool isFwdReq;
-  bool changeState;
   Child fwdC;
   St fwdTo;
 
   fromP(FromPType _type, Index _index, LineAddr _lineAddr, St _from, St _to):
-       type(_type), index(_index), lineAddr(_lineAddr), from(_from), to(_to), isFwdReq(false) {}
+        type(_type), index(_index), lineAddr(_lineAddr), from(_from), to(_to) {}
+  fromP(FromPType _type, Index _index, LineAddr _lineAddr, St _to, Child _fwdC, St _fwdTo):
+        type(_type), index(_index), lineAddr(_lineAddr), to(_to), fwdC(_fwdC), fwdTo(_fwdTo) {}
+  fromP(FromPType _type, Index _index, LineAddr _lineAddr):
+        type(_type), index(_index), lineAddr(_lineAddr) {}
   ~fromP() {}
 } FromP;
 
@@ -44,13 +46,12 @@ public:
   St from;
   St to;
 
-  reqToP(Index _index, LineAddr _lineAddr, St _from, St _to) {
-    index = _index; lineAddr = _lineAddr; from = _from; to = _to;
-  }
+  reqToP(Index _index, LineAddr _lineAddr, St _from, St _to):
+         index(_index), lineAddr(_lineAddr), from(_from), to(_to) {}
   ~reqToP() {}
 } ReqToP;
 
-typedef enum {Forced, Voluntary} Trigger;
+typedef enum {Forced, Voluntary, CAck} Trigger;
 
 typedef class respToP {
 public:
@@ -60,9 +61,10 @@ public:
   St to;
   bool dirty;
 
-  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty) {
-    trigger = _trigger; index = _index; lineAddr = _lineAddr; to = _to; dirty = _dirty;
-  }
+  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty):
+          trigger(_trigger), index(_index), lineAddr(_lineAddr), to(_to), dirty(_dirty) {}
+  respToP(Trigger _trigger, Index _index, LineAddr _lineAddr):
+          trigger(_trigger), index(_index), lineAddr(_lineAddr) {}
 
   ~respToP() {}
 } RespToP;
@@ -78,23 +80,19 @@ public:
   St to;
 
   toCs(Child _childs, bool* _children, FromPType _type, Index _index,
-       LineAddr _lineAddr, St* _from, St _to) {
-    childs = _childs; children = _children; type = _type;
-    index = _index; lineAddr = _lineAddr; from = _from; to = _to;
-  }
+       LineAddr _lineAddr, St* _from, St _to):
+       childs(_childs), children(_children), type(_type), index(_index),
+       lineAddr(_lineAddr), from(_from), to(_to) {}
   toCs(Child _childs, Child c, FromPType _type, Index _index,
-       LineAddr _lineAddr, St _from, St _to) {
-    childs = _childs;
+       LineAddr _lineAddr, St _from, St _to):
+       childs(_childs), type(_type), index(_index), lineAddr(_lineAddr),
+       to(_to) {
     children = new bool[childs];
     for(Child i = 0; i < childs; i++)
       children[i] = false;
     children[c] = true;
-    type = _type;
-    index = _index;
-    lineAddr = _lineAddr;
     from = new St[childs];
     from[c] = _from;
-    to = _to;
   }
   ~toCs() {
     delete[] children;
@@ -110,9 +108,8 @@ public:
   St from;
   St to;
 
-  reqFromC(Child _c, Index _index, LineAddr _lineAddr, St _from, St _to) {
-    c = _c; index = _index; lineAddr = _lineAddr; from = _from; to = _to;
-  }
+  reqFromC(Child _c, Index _index, LineAddr _lineAddr, St _from, St _to):
+           c(_c), index(_index), lineAddr(_lineAddr), from(_from), to(_to) {}
   ~reqFromC() {}
 } ReqFromC;
 
@@ -125,9 +122,8 @@ public:
   St to;
   bool dirty;
 
-  respFromC(Child _c, Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty) {
-    c = _c; trigger = _trigger; index = _index; lineAddr = _lineAddr; to = _to; dirty = _dirty;
-  }
+  respFromC(Child _c, Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty):
+            c(_c), trigger(_trigger), index(_index), lineAddr(_lineAddr), to(_to), dirty(_dirty) {}
 
   ~respFromC() {}
 } RespFromC;
