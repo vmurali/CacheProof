@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 #ifdef Debug
 #define printSendRespToP(lineAddr, trigger, index, to)\
   printf("%p SendRespToP: %llx %c %d.%d %d->%d\n",\
@@ -47,6 +49,8 @@
 
 #define printCycle printf("\nCYCLE %lld\n", cycCount)
 
+#define Assert(c) assert(c)
+
 #else
 #define printSendRespToP(lineAddr, trigger, index, to)
 #define printSendRespToC(c, lineAddr, index, to)
@@ -59,4 +63,5 @@
 #define printHandleReqFromP(lineAddr, to, present)
 #define printHandleReqFromCore(lineAddr, to)
 #define printCycle
+#define Assert(c)
 #endif

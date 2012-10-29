@@ -29,6 +29,7 @@ public:
 typedef class internalCtrl {
 private:
   U8 setSz;
+  Way ways;
   Child childs;
   Cache cache;
   FreeList mshrFl;
@@ -45,7 +46,7 @@ private:
   Mshr* mshr;
 
   St compat(St to) {
-    assert(to != 2);
+    Assert(to != 2);
     if(to == 3)
       return 0;
     if(to == 1)
@@ -75,7 +76,13 @@ private:
     cache.st[index.set][index.way] = to;
     RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way], false, 0);
     respToP.enq(resp);
-    latPResp = cache.dirty[index.set][index.way]? dataLat : lat;
+    if(cache.dirty[index.set][index.way]) {
+      latPResp = dataLat;
+      respToPDataC++;
+    } else {
+      latPResp = lat;
+      respToPC++;
+    }
     if(to == 0)
       cache.replaceRem(index);
   }
@@ -83,7 +90,13 @@ private:
   void sendRespToC(Index& index, St to, Child c, Index& cIndex, LineAddr lineAddr, Latency lat) {
     printSendRespToC(c, lineAddr, index, to);
     ToCs* resp = new ToCs(childs, c, Resp, cIndex, lineAddr, cache.cstates[index.set][index.way][c], to, 0, 0);
-    latToCs = cache.cstates[index.set][index.way][c] == 0? dataLat: lat;
+    if(cache.cstates[index.set][index.way][c] == 0) {
+      latToCs = dataLat;
+      respToCDataC++;
+    } else {
+      latToCs = lat;
+      respToCC++;
+    }
     cache.cstates[index.set][index.way][c] = to;
     toCs.enq(resp);
     cache.replaceUpd(index);
@@ -91,8 +104,14 @@ private:
 
   void sendReqToCs(Index& index, LineAddr lineAddr, St to, bool skip, Child skipChild) {
     bool* highChildren = new bool[childs];
-    for(Child i = 0; i < childs; i++)
-       highChildren[i] = (!skip || i != skipChild) && cache.cstates[index.set][index.way][i] > to;
+    for(Child i = 0; i < childs; i++) {
+      if((!skip || i != skipChild) && cache.cstates[index.set][index.way][i] > to) {
+        highChildren[i] = true;
+        reqToCC++;
+      }
+      else
+        highChildren[i] = false;
+    }
     printSendReqToCs(highChildren, lineAddr, index, to);
     cache.cReq[index.set][index.way] = true;
     cache.waitCs[index.set][index.way] = to;
@@ -107,6 +126,7 @@ private:
     cache.waitS[index.set][index.way] = to;
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
     reqToP.enq(req);
+    reqToPC++;
     latPReq = tagLat;
   }
 
@@ -132,7 +152,7 @@ private:
     RespFromC* msg = (RespFromC*) respFromC.first();
     printHandleRespFromC(msg->c, msg->lineAddr, msg->trigger, msg->index, msg->to);
     Index index = msg->trigger == Forced? msg->index: cache.getIndex(msg->lineAddr);
-    assert(cache.isPresent(msg->lineAddr));
+    Assert(cache.isPresent(msg->lineAddr));
     cache.cstates[index.set][index.way][msg->c] = msg->to;
     cache.dirty[index.set][index.way] = msg->dirty;
     if(cache.cReq[index.set][index.way]) {
@@ -191,10 +211,28 @@ private:
     return true;
   }
 
+  bool handlingAlready(LineAddr lineAddr) {
+    Index index = cache.getIndex(lineAddr);
+    Set set = index.set;
+    for(Way i = 0; i < ways; i++) {
+      if(cache.cReq[set][i]) {
+        Mshr m = mshr[cache.mshrPtr[set][i]];
+        if(m.who == C && m.isReplacing && m.lineAddr == lineAddr) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   bool handleReqFromC() {
     if(reqFromC.empty())
       return false;
     ReqFromC* msg = (ReqFromC*) reqFromC.first();
+    if(handlingAlready(msg->lineAddr)) {
+      latWait = tagLat;
+      return true;
+    }
     bool present = cache.isPresent(msg->lineAddr);
     printHandleReqFromC(msg->c, msg->lineAddr, msg->to, present);
     if(!present) {
@@ -295,17 +333,18 @@ private:
   }
 
 public:
-  Counter hit, notPresentMiss, noPermMiss, inclusiveMiss;
+  Counter hit, notPresentMiss, noPermMiss, inclusiveMiss, reqToPC, respToPC, respToPDataC, reqToCC, respToCC, respToCDataC;
   
-  internalCtrl(MshrPtr mshrs, Way ways, U8 _setSz, Child _childs,
+  internalCtrl(MshrPtr mshrs, Way _ways, U8 _setSz, Child _childs,
                Latency _tagLat, Latency _dataLat) :
-          setSz(_setSz), childs(_childs), cache(ways, setSz, childs), mshrFl(mshrs),
+          setSz(_setSz), ways(_ways), childs(_childs), cache(ways, setSz, childs), mshrFl(mshrs),
           tagLat(_tagLat), dataLat(_dataLat), latPReq(0), latPResp(0), latToCs(0),
           latWait(0), priority(C),
           fromP(2), reqFromC(2), respFromC(2),
           reqToPF(2), respToPF(2), toCsF(2),
           reqToP(1), respToP(1), toCs(1),
-          hit(0), notPresentMiss(0), noPermMiss(0), inclusiveMiss(0)
+          hit(0), notPresentMiss(0), noPermMiss(0), inclusiveMiss(0), reqToPC(0), respToPC(0),
+          respToPDataC(0), reqToCC(0), respToCC(0), respToCDataC(0)
   {
     mshr = new Mshr[mshrs];
   }

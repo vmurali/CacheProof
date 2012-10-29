@@ -48,7 +48,7 @@ public:
   ~reqToP() {}
 } ReqToP;
 
-typedef enum {Forced, Voluntary, CAck} Trigger;
+typedef enum {Forced, Voluntary, CAck, CNack} Trigger;
 
 typedef class respToP {
 public:
@@ -119,9 +119,10 @@ public:
   LineAddr lineAddr;
   St to;
   bool dirty;
+  bool fwd;
 
-  respFromC(Child _c, Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty):
-            c(_c), trigger(_trigger), index(_index), lineAddr(_lineAddr), to(_to), dirty(_dirty) {}
+  respFromC(Child _c, Trigger _trigger, Index _index, LineAddr _lineAddr, St _to, bool _dirty, bool _fwd):
+            c(_c), trigger(_trigger), index(_index), lineAddr(_lineAddr), to(_to), dirty(_dirty), fwd(_fwd) {}
 
   ~respFromC() {}
 } RespFromC;
@@ -156,6 +157,6 @@ ReqFromC* reqToP2reqFromC(ReqToP* reqToP, Child c) {
 
 RespFromC* respToP2respFromC(RespToP* respToP, Child c) {
   RespFromC* ret = new RespFromC(respToP->fwd? respToP->c: c, respToP->trigger,
-                                 respToP->index, respToP->lineAddr, respToP->to, respToP->dirty);
+                                 respToP->index, respToP->lineAddr, respToP->to, respToP->dirty, respToP->fwd);
   return ret;
 }

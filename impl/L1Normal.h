@@ -19,6 +19,10 @@ private:
     cache.st[index.set][index.way] = to;
     RespToP* resp = new RespToP(trigger, pIndex, lineAddr, to, cache.dirty[index.set][index.way], false, 0);
     respToP.enq(resp);
+    if(cache.dirty[index.set][index.way])
+      respToPDataC++;
+    else
+      respToPC++;
     if(to == 0)
       cache.replaceRem(index);
   }
@@ -28,6 +32,7 @@ private:
     processing = true;
     cache.pReq[index.set][index.way] = true;
     cache.waitS[index.set][index.way] = to;
+    reqToPC++;
     ReqToP* req = new ReqToP(index, lineAddr, cache.st[index.set][index.way], to);
     reqToP.enq(req);
   }
@@ -100,6 +105,8 @@ private:
         reqFromCore.deq();
         cache.replaceUpd(index);
         hit++;
+        if(msg->to == 3)
+           cache.dirty[index.set][index.way] = true;
         delete msg;
         return true;
       }
@@ -144,13 +151,15 @@ public:
   Counter notPresentMiss;
   Counter noPermMiss;
   Counter inclusiveMiss;
+  Counter reqToPC, respToPC, respToPDataC;
 
   l1Normal(Way ways, U8 _setSz):
           setSz(_setSz), cache(ways, setSz, 0),
           fromP(2), reqFromCore(2),
           reqToP(2), respToP(2),
           priority(C), processing(false),
-          hit(0), notPresentMiss(0), noPermMiss(0), inclusiveMiss(0) {}
+          hit(0), notPresentMiss(0), noPermMiss(0), inclusiveMiss(0),
+          reqToPC(0), respToPC(0), respToPDataC(0) {}
 
   ~l1Normal() {}
 

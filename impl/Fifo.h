@@ -1,10 +1,8 @@
 #pragma once
 
 #include "Types.h"
+#include "Debug.h"
 #include <queue>
-
-#include <cassert>
-#include <list>
 
 using namespace std;
 
@@ -26,12 +24,12 @@ public:
     return numElems == 0;
   }
   void enq(void* x) {
-    assert (numElems < size);
+    Assert (numElems < size);
     q.push(x);
     enqEn = true;
   }
   void deq() {
-    assert (numElems > 0);
+    Assert (numElems > 0);
     q.pop();
     deqEn = true;
   }
