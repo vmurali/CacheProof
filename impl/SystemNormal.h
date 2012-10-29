@@ -154,16 +154,22 @@ public:
     printf("Cycle count: %llu\n", cycCount);
     for(U8 i = 0; i < levels; i++) {
       for(ThreadId j = 0; j < numCtrls[i]; j++) {
-        printf("Level %u  Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
+        printf("Level %u  Cache# %u: hits: %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
                 i, j, ctrls[i][j]->hit, ctrls[i][j]->noPermMiss, ctrls[i][j]->inclusiveMiss, ctrls[i][j]->notPresentMiss);
+        printf("             : reqToCC: %llu respToCC: %llu respToCDataC: %llu reqToPC: %llu respToPC: %llu respToPDataC: %llu\n",
+                ctrls[i][j]->reqToCC, ctrls[i][j]->respToCC, ctrls[i][j]->respToCDataC, ctrls[i][j]->reqToPC, ctrls[i][j]->respToPC, ctrls[i][j]->respToPDataC);
       }
     }
 
     for(ThreadId j = 0; j < cores; j++) {
       printf("L1 Inst Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
               2*j, l1s[2*j]->hit, l1s[2*j]->noPermMiss, l1s[2*j]->inclusiveMiss, l1s[2*j]->notPresentMiss);
+      printf("             : reqToPC: %llu respToPC: %llu respToPDataC: %llu\n",
+              l1s[2*j]->reqToPC, l1s[2*j]->respToPC, l1s[2*j]->respToPDataC);
       printf("L1 Data Cache# %u: hits %llu PermMiss: %llu InclusiveMiss: %llu PresenceMiss: %llu\n",
               2*j+1, l1s[2*j+1]->hit, l1s[2*j+1]->noPermMiss, l1s[2*j+1]->inclusiveMiss, l1s[2*j+1]->notPresentMiss);
+      printf("             : reqToPC: %llu respToPC: %llu respToPDataC: %llu\n",
+              l1s[2*j+1]->reqToPC, l1s[2*j+1]->respToPC, l1s[2*j+1]->respToPDataC);
     }
   }
 
