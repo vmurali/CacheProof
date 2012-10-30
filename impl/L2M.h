@@ -8,7 +8,7 @@
 
 #include "Debug.h"
 
-typedef class internalCtrl {
+typedef class l2M {
 private:
   U8 setSz;
   Way ways;
@@ -84,14 +84,17 @@ private:
     cache.replaceUpd(index);
   }
 
-  void sendReqToCs(Index& index, LineAddr lineAddr, St to, bool skip, Child skipChild) {
+  void sendReqToCs(Index& index, LineAddr lineAddr, St to, bool skip, Child skipChild, St childTo) {
     bool* highChildren = new bool[childs];
+    St highState = 0;
     St* cstates = new St[childs];
     for(Child i = 0; i < childs; i++) {
       cstates[i] = cache.cstates[index.set][index.way][i];
       if((!skip || i != skipChild) && cstates[i] > to) {
         highChildren[i] = true;
         reqToCC++;
+        if(highState < cstates[i])
+          highState = cstates[i];
       }
       else
         highChildren[i] = false;
@@ -99,7 +102,8 @@ private:
     printSendReqToCs(highChildren, lineAddr, index, to);
     cache.cReq[index.set][index.way] = true;
     cache.waitCs[index.set][index.way] = to;
-    ToCs* req = new ToCs(childs, highChildren, Req, index, lineAddr, cstates, to, 0, 0);
+    ToCs* req = new ToCs(childs, highChildren, skipChild && highState >= 2? FwdReq: Req,
+                         index, lineAddr, cstates, to, skipChild, childTo);
     toCs.enq(req);
     latToCs = tagLat;
   }
@@ -163,7 +167,11 @@ private:
         if(isCompat(m.c, index, m.to)) {
           cache.cReq[index.set][index.way] = false;
           if(!cache.pReq[index.set][index.way]) {
-            sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
+            if(msg->fwd) {
+              cache.cstates[index.set][index.way][m.c] = m.to;
+            } else {
+              sendRespToC(index, m.to, m.c, m.index, m.lineAddr, msg->trigger == Forced? 1: tagLat);
+            }
             mshrFl.free(mshrPtr);
           }
         }
@@ -240,7 +248,7 @@ private:
         return true;
       } else {
         allocMshr(replaceIndex, Mshr(C, msg->c, msg->index, msg->to, true, msg->lineAddr, false, (MshrPtr)0));
-        sendReqToCs(replaceIndex, replaceLineAddr, 0, false, 0);
+        sendReqToCs(replaceIndex, replaceLineAddr, 0, false, 0, 0);
         reqFromC.deq();
         delete msg;
         return true;
@@ -271,7 +279,7 @@ private:
       sendReqToP(index, msg->lineAddr, msg->to);
     }
     if(!isCompat(msg->c, index, msg->to)) {
-      sendReqToCs(index, msg->lineAddr, compat(msg->to), true, msg->c);
+      sendReqToCs(index, msg->lineAddr, compat(msg->to), true, msg->c, msg->to);
     }
     reqFromC.deq();
     delete msg;
@@ -310,7 +318,7 @@ private:
       return true;
     }
     allocMshr(index, Mshr(P, 0, msg->index, msg->to, false, msg->lineAddr, cache.pReq[index.set][index.way], cache.mshrPtr[index.set][index.way]));
-    sendReqToCs(index, msg->lineAddr, msg->to, false, 0);
+    sendReqToCs(index, msg->lineAddr, msg->to, false, 0, 0);
     fromP.deq();
     delete msg;
     return true;
@@ -319,7 +327,7 @@ private:
 public:
   Counter hit, notPresentMiss, noPermMiss, inclusiveMiss, reqToPC, respToPC, respToPDataC, reqToCC, respToCC, respToCDataC;
   
-  internalCtrl(MshrPtr mshrs, Way _ways, U8 _setSz, Child _childs,
+  l2M(MshrPtr mshrs, Way _ways, U8 _setSz, Child _childs,
                Latency _tagLat, Latency _dataLat) :
           setSz(_setSz), ways(_ways), childs(_childs), cache(ways, setSz, childs), mshrFl(mshrs),
           tagLat(_tagLat), dataLat(_dataLat), latPReq(0), latPResp(0), latToCs(0),
@@ -332,7 +340,7 @@ public:
   {
     mshr = new Mshr[mshrs];
   }
-  ~internalCtrl() {
+  ~l2M() {
     delete[] mshr;
   }
 
@@ -399,4 +407,4 @@ public:
   Fifo* getRespToP() { return &respToPF; }
   Fifo* getToCs() { return &toCsF; }
 
-} InternalCtrl;
+} L2M;

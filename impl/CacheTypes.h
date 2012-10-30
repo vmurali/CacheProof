@@ -145,8 +145,7 @@ public:
 } ReqFromCore;
 
 FromP* toCs2fromP(ToCs* toCs, Child c) {
-  St from = toCs->from == NULL? 0: toCs->from[c];
-  FromP* ret = new FromP(toCs->type, toCs->index, toCs->lineAddr, from, toCs->to, toCs->fwdC, toCs->fwdTo);
+  FromP* ret = new FromP(toCs->type, toCs->index, toCs->lineAddr, toCs->from[c], toCs->to, toCs->fwdC, toCs->fwdTo);
   return ret;
 }
 
