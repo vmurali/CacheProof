@@ -1,0 +1,25 @@
+\documentclass[pageno]{jpaper}
+%replace XXX with the submission number you are given from the ISCA submission site.
+\newcommand{\iscasubmissionnumber}{XXX}
+
+\usepackage[normalem]{ulem}
+
+\begin{document}
+
+\input{Title}
+
+\date{}
+\maketitle
+
+\thispagestyle{empty}
+
+\begin{abstract}
+\input{Abstract}
+\end{abstract}
+
+\input{Files}
+
+\bstctlcite{bstctl:etal, bstctl:nodash, bstctl:simpurl}
+\bibliographystyle{IEEEtranS}
+\bibliography{references}
+\end{document}
