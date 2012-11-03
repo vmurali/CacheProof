@@ -1,30 +1,34 @@
-Designing message-passing, directory-based cache coherence protocols has been
-very difficult and error-prone because of the following reasons: a) a directory
-can not look into the states of other caches to service a request, it has to
-rely on the ``correctness'' of the directory's own approximation of other
-caches' states, and b) the directory and the caches must ensure that every
-request is served in order to avoid deadlocks. One encounters several corner
-cases which violate either the ``correctness'' of the directory's states, or
-create a scenario where the cache or the directory enters a state which can not
-handle a particular (request) message leading to a deadlock. With the increase
-in number of cores in modern systems, this protocol design problem gets
-exacerbated because of the need for hierarchical caches and the associated
-hierarchical directories.
+Designing and implementing message-passing directory-based cache coherence
+protocols has been very difficult and error-prone because of the following
+reasons: a) a directory can not look into the states of other caches to service
+a request, it has to rely on the ``correctness'' of the directory's own
+approximation of other caches' states, and b) the directory and the caches must
+ensure that every request is served in order to avoid deadlocks. One encounters
+several corner cases where either the ``correctness'' of the directory's states
+is violated, thereby breaking coherence, or a state is reached by a cache or the
+directory which prevents handling of a particular request leading to a
+deadlock.% With the
+%increase in number of cores in modern systems, this protocol design problem
+%gets exacerbated because of the need for hierarchical caches and the associated
+%hierarchical directories.
 
-In this paper, we present a systematic methodology to develop hierarchical
-message-passing directory-based inclusive cache coherence protocols. We provide
-the semantics describing the states in caches and directories, and the
-behaviors of the cache and directory controllers which will ensure the above
-two properties, \viz that the directory's approximation of its (children)
-caches' states is ``correct'' and that every request gets a response. The fact
-that these semantics ensure that the two properties hold has been formally
-proven using the Coq theorem prover for any number of cache levels and any
-number of caches in each level of the hierarchy; the methodology scales without
-any additional verification requirement. We demonstrate how a family of
-protocols starting from a simple MSI protocol, all the way to
-cache-intervention based MOESI protocol can be reduced to the presented
-semantics, thus proving the correctness of all these protocols. We finally show
-that our methodology, while formally proven, does not impose any additional
-requirements in terms of more state bits or passing of more messages than
-published protocols, \ie the methodology has no overhead in spite of being
-formally proven.
+We present a systematic methodology to develop correct implementations of
+hierarchical message-passing directory-based inclusive cache coherence
+protocols. We present a set of behavioral requirements that each cache and
+directory controller must follow, in order to ensure the following two
+properties: a) the directory's notion of the permissions of the caches it serves
+is ``conservative'', \ie the caches do not have more permission than what is
+assumed by the directory, and b) every request by a cache or a directory will
+eventually get a response. We have formally proved using the Coq theorem prover
+that the requirements we specify ensure the above two properties. The proof is
+parameterized for any number of cache levels and any number of caches in each
+level of the hierarchy without any extra computational complexity or state space
+explosion. These behavioral requirements are flexible and the properties
+sufficient to map many hierarchical directory-based inclusive cache coherence
+protocols and prove their correctness. We demonstrate that using MSI, MESI,
+MOSI and MOESI, both in the presence as well as in the absence of point-to-point
+FIFO networks and thus prove the correctness of all these protocols without the
+need for any additional verification. We finally show that the protocols we
+design using our methodology has no overhead (in terms of state bits or number
+of messages passed to service each request) compared to the existing
+implementations of these protocols -- formal verification comes for free.
