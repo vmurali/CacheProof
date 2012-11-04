@@ -1,0 +1,15 @@
+\section{Abstract directory-based protocol}
+\label{sec:setup}
+
+We first present the state
+In an directory-based inclusive cache coherence protocol, the directory keeps
+information about the states (of the lines) of all the caches that it services.
+The directory essentially has a copy of the 
+The directory essentially has a copy of the states of the cache lines of each
+cache that it services, but using a more compact encoding. For instance, if a
+cache has write permission for a line, no other cache would have any permission
+-- in this case, storing just the index of the cache having the write permission is enough,
+instead of keeping a replica of the state of the line in each cache.  one
+cache can have write permission for a cache line, so it's not necessary to 
+The directory can be thought of as having a copy of the states of each cache
+line in each state. 

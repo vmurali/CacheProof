@@ -1,2 +1,7 @@
-*.aux *.bbl *.blg *.log *.out Main.pdf
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+Main.pdf
 .*

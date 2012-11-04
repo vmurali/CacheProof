@@ -1,0 +1,162 @@
+\section{Introduction} With the increasing number of cores, bus-based
+cache-coherence protocols have started being replaced by message-passing
+directory-based protocols. Bus-based protocols allow only one cache-line
+transaction to happen at a time, locking the bus till the transaction is
+complete. This serializes memory accesses across each processor, even if they
+are for different cache lines. On the other hand, message-passing,
+directory-based protocols can handle multiple independent transactions in
+parallel, thus scaling better with increasing core counts.
+
+In a message-passing directory-based protocol, the coherence state changes are
+orchestrated by passing messages in the form of upgrade or downgrade requests
+and responses between the caches via the directory. Unlike bus-based protocols
+which lock the bus till all the required state transitions are done thereby
+ensuring atomicity of state transitions, in a message-passing protocol, requests
+and responses are split leading to transient states. This creates scenarios not
+present in bus-based protocols, which can lead to coherence violations or
+deadlocks, if the protocol is not designed or implemented carefully.
+
+For instance, consider a scenario in which a cache having read permission for
+a line gets a store request from its core and hence requires write permissions
+for that line. The cache would send an upgrade request to the directory
+controller and may eventually get a response from the directory controller. The
+response would signify that the permissions in the other caches \emph{were}
+compatible with this cache having write permission for the line, \ie the other
+caches neither \emph{had} read nor write permissions for that line. But the messages
+take time to propagate. Thus, as emphasized, the response message is based on
+the old permissions that the other caches had, not the permissions that the
+other caches have at the moment the original cache gets the response. If an
+other cache gets a read or write permission for that line during the time the
+messages are in flight, coherence would be violated.
+
+Consider a different scenario in which a cache, already having read permission
+for a line, gets a store request, and hence sends an upgrade request for write
+permission to the directory controller. Instead of getting a response, the cache
+may receive a request from the directory controller asking this cache to give up
+the read permission for the line \ie an invalidate request. This could happen if
+the directory controller received a request for write permission from another
+cache earlier. It is not easy to determine the correct behavior of the cache
+receiving the invalidate request -- whether it should ignore the invalidate
+request and wait till it receives a response from the directory controller for
+its request, or if it should invalidate its line. If it ignores the invalidate
+request, is there any guarantee that it would receive a response for its request
+for write permission, or would it deadlock? As we will be showing later, this
+could create a deadlock.
+
+Consider yet another scenario in which a cache receives an invalidate request
+from the directory controller for a line that is not present in the cache. Is
+such a request even possible? The directory does not have access to the
+up-to-date state of the cache, and so can potentially make this request. How
+should a cache handle this request; should it drop such a request, or respond
+saying that it does not have the line? Again, reasoning about these questions is
+very difficult, as one has to take into account all the possible transitions
+that can happen in the entire system.
+
+These examples give a glimpse of the complexity of designing and implementing a
+correct cache coherence protocol in a message-passing directory-based setting.
+Even for a 2-level cache hierarchy, a private L1 cache for each core and a
+shared L2 cache, designing and implementing the protocol is very hard. This
+problem is greatly exacerbated in a multi-level cache hierarchy, which is
+becoming the norm because of the increasing core counts.
+
+In this paper, we present a systematic design methodology to design hierarchical
+messaging-passing, directory-based inclusive cache coherence protocols. We
+restrict our methodology to inclusive protocols as we want our protocols to
+scale to multiple levels of hierarchy. A non-inclusive or exclusive cache
+coherence protocol requires probing every level of the hierarchy starting from
+the root (LLC) to the leaf (L1 cache) to process any request for permission. We
+believe that this would not scale as the number of cores and the number of
+cache levels increase.
+
+We present a set of transitions that the caches and directories must follow on
+sending or receiving a request or a response. We have formally proved that
+these behaviors will ensure the following properties: a) the directory's notion
+of a cache's state is ``conservative'' in that a cache is never going to have
+more permissions that what the directory thinks the cache has, and b) any
+request will eventually get a corresponding response. It should be noted that
+the formal proof was written using the Coq theorem prover \cite{}, and the
+discussion of the formal proof is beyond the scope of this paper.
+
+The flexibility of our methodology to design multiple cache coherence protocols
+comes from the fact that we do not assign any meaning or semantics to the value
+of a coherence state. All the transitions that we present are in the form of
+upgrades or downgrades from state $x$ to state $y$, without giving concrete
+values for $x$ or $y$. We can thus use our methodology to design multiple
+hierarchical cache coherence protocols: MSI, MESI, MOSI, MOESI. We will show
+how each of these protocols obey the set of transitions that we require for our
+methodology, proving the correctness of all these protocols.
+
+%\paragraph{Paper organization:} Section \ref{sec:setup} gives the setup for our
+%methodology. It gives the state transitions of the cache and directory
+%controllers on sending or receiving messages. Section \ref{sec:properties} gives
+%the two properties that are guaranteed if the state transitions that we present
+%are obeyed. We present the intuition for proving these properties starting from
+%the state transitions that we present in \ref{sec:setup}. In Section
+%\ref{sec:protocols}, we show how these properties can be used to implement a
+%hierarchical MSI, MESI, MOSI and MOESI protocols. We also demonstrate how the
+%correctness and deadlock freedom of each of the protocols follows straightaway
+%from our methodology with no additional verification effort. Our claim is that
+%our state transitions and the guaranteed properties can be used to formally
+%prove any message-passing directory-based hierarchical inclusive cache coherence
+%protocols by appropriate mapping. In Section \ref{sec:performance}, we show that
+%these formally verified family of protocols require no extra state bits, nor
+%extra message transfers compared to other published protocols. In Section
+%\ref{sec:related}, we present some of the related work and finally in Section
+%\ref{sec:conclusion}, we present the directions we would like to take this work
+%in the future and conclude.
+
+%We carried out the proof using the Coq theorem prover \cite{}. Unlike
+%model-checking based techniques, the theorem prover merely checks the
+%correctness of a supplied mathematical proof, thereby avoiding the state
+%explosion problem. The proof is not restricted to a fixed number of cores,
+%number of caches levels or number of caches in each level. Instead the proof can
+%be parameterized for these quantities, thus ensuring that the same proof holds
+%for any configuration, without any additional computational complexity. The
+%downside of a theorem prover is that it shifts the onus of supplying a correct
+%mathematical proof to the user, instead of searching through the state space to
+%expose violations of specifications \ala model checking.
+
+%$S$ and $I$ in an MSI protocol
+%The state transitions that we require does not enforce a particular cache
+%coherence protocol. It merely dictates how the states change on sending or
+%receiving a response message, or after handling a request message. To be more
+%concrete, consider a simple example. A directory controller receives a Write
+%permission request for a line from a cache. If the directory thinks that some
+%other cache has a read or write permission for that line, then a correct cache
+%coherence protocol requires that the other cache invalidates that line before
+%the directory sends a response to the first cache giving it Write permission.
+%But this ``policy'' is not enforced by the state transitions that we present.
+%Instead, if the directory decides to give Write permission to the original cache
+%when it thinks another cache still has that line, then our state transitions
+%will permit it. The system will no longer be coherent, but it will not violate
+%the two properties that our state transitions guarantee (the directory would now
+%think that the original cache has Write permission and some other caches also
+%have some permissions for that line). This enables us to implement a wide range
+%of correct cache coherence protocols with minimal proof burden.
+%
+%For example, it is straight forward to implement MSI or MESI protocols making
+%use of the properties guaranteed in our methodology. If the directory controller
+%receives a Write permission request from a cache for a line, then it sends
+%requests to every cache which has that line. Our second property of getting a
+%response for every request ensures that these caches would respond eventually,
+%making their local states for that line Invalid. Our first property guarantees
+%that when the directory controller thinks the state of a cache for a line is
+%Invalid, then the actual states in the caches at that time should not be greater
+%than Invalid. Thus, once all the other caches have responded, the directory
+%controller can respond to the original cache. This way, the two properties can
+%be used to implement MSI or MESI in a straightforward manner. We will present
+%how this is done in greater detail in the paper.
+%
+%A more complicated protocol with cache intervention (like MOSI and MOESI)
+%can also be implemented using the two properties that we guarantee, but it
+%requires an additional step of mapping the protocol to our transitions (and
+%proving that the mapping is correct). We will present this in greater detail in
+%the paper.
+%
+%Finally, we will show that these formally verified family of protocols require
+%no extra state bits, nor extra message transfers compared to other published
+%protocols. In fact, our claim is that our state transitions and the two
+%guaranteed properties can be used to formally prove any message-passing
+%directory-based hierarchical inclusive cache coherence protocols by
+%appropriately mapping the protocol to our transitions, as shown in the
+%MOSI/MOESI mapping.
