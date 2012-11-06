@@ -1,34 +1,21 @@
-Designing and implementing message-passing directory-based cache coherence
-protocols has been very difficult and error-prone because of the following
-reasons: a) a directory can not look into the states of other caches to service
-a request, it has to rely on the ``correctness'' of the directory's own
-approximation of other caches' states, and b) the directory and the caches must
-ensure that every request is served in order to avoid deadlocks. One encounters
-several corner cases where either the ``correctness'' of the directory's states
-is violated, thereby breaking coherence, or a state is reached by a cache or the
-directory which prevents handling of a particular request leading to a
-deadlock.% With the
-%increase in number of cores in modern systems, this protocol design problem
-%gets exacerbated because of the need for hierarchical caches and the associated
-%hierarchical directories.
+We present a method to develop implementations of hierarchical,
+message-passing, directory-based, cache-coherence protocols. Our method is
+based on the cache system preserving two invariants: a) the directory's notion
+of the permissions for the caches it serves is ``conservative'', \ie the caches
+do not have more permission than what is assumed by the directory, and b) every
+request by a cache or a directory will eventually get a response. We specify an
+abstract protocol, that is, a set of meta rules for state transitions, which
+has been shown, using the Coq theorem prover, to preserve these invariants. We
+have also shown that this abstract protocol can be implemented using $2N + 1$
+virtual channels where $N$ is the number of levels and each channel can have as
+few as one buffer. 
 
-We present a systematic methodology to develop correct implementations of
-hierarchical message-passing directory-based inclusive cache coherence
-protocols. We present a set of behavioral requirements that each cache and
-directory controller must follow, in order to ensure the following two
-properties: a) the directory's notion of the permissions of the caches it serves
-is ``conservative'', \ie the caches do not have more permission than what is
-assumed by the directory, and b) every request by a cache or a directory will
-eventually get a response. We have formally proved using the Coq theorem prover
-that the requirements we specify ensure the above two properties. The proof is
-parameterized for any number of cache levels and any number of caches in each
-level of the hierarchy without any extra computational complexity or state space
-explosion. These behavioral requirements are flexible and the properties
-sufficient to map many hierarchical directory-based inclusive cache coherence
-protocols and prove their correctness. We demonstrate that using MSI, MESI,
-MOSI and MOESI, both in the presence as well as in the absence of point-to-point
-FIFO networks and thus prove the correctness of all these protocols without the
-need for any additional verification. We finally show that the protocols we
-design using our methodology has no overhead (in terms of state bits or number
-of messages passed to service each request) compared to the existing
-implementations of these protocols -- formal verification comes for free.
+In this paper, we use the abstract protocol to develop formally proven
+implementations of a number of well-known protocols like MSI, MESI, MOSI and
+MOESI, both in the presence as well as in the absence of point-to-point FIFO
+networks. All these protocols can be expressed in terms of an extra
+``compatibility of state'' check in the state transitions allowed by the
+abstract protocol. We finally show that the protocols we design using our
+methodology have no extra overhead (in terms of state bits or the number of
+messages passed to service each request) compared to the existing
+implementations of these protocols. 
