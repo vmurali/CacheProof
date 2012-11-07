@@ -3,16 +3,29 @@
 %replace XXX with the submission number you are given from the ISCA submission site.
 \newcommand{\iscasubmissionnumber}{XXX}
 
+\usepackage[normalem]{ulem}
+
+\usepackage{algpseudocode}
+\algblockdefx[rule]{Rule}{EndRule}%
+   [2]{\textbf{rule} \textsc{#1}(#2)}%
+   {\textbf{end rule}}
+
+\usepackage{amsmath}
+
 \newcommand{\viz}{\textit{viz.,\ }}
 \newcommand{\ie}{\textit{i.e.,\ }}
 \newcommand{\eg}{\textit{e.g.,\ }}
 \newcommand{\ala}{\textit{\`a la\ }}
 
-\usepackage[normalem]{ulem}
+\usepackage{color}
+\usepackage[usenames]{xcolor}
 
-\usepackage{algorithmicx}
-\usepackage{algpseudocode}
-\usepackage{amsmath}
+\usepackage{amsfonts}
+
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage{slashbox}
 
 \begin{document}
 

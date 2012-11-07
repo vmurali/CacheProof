@@ -1,12 +1,12 @@
 \section{Introduction} 
 
 Large shared-memory multicores are likely to use cache-coherence protocols
-which are directory based, hierarchical, and implemented using message passing.
+which are directory-based, hierarchical, and implemented using message passing.
 Even though such protocols have been around for two decades (see, for example,
 DASH\cite{DASH}, Alewife\cite{Anant}, ...) correct design and implementation of
 such protocols remains a challenge. It is difficult to convince oneself that
 all corner cases have been handled adequately without a formal proof. And yet
-formal proofs of real implementations are practically non-existent. One can not
+formal proofs of real implementations are practically non-existent. One can't
 settle for conservative choices in cache-coherence protocol designs because
 performance (\eg the number of messages needed to maintain coherence, the
 buffer requirements, etc) is as important as correctness. Consequently proving
@@ -43,7 +43,7 @@ space and cannot be accessed atomically;
 of communication buffers or head-of-the-line blocking; 
 
 \item For each message type, determining which cache and directory states are
-possible and therefore must be dealt with is hard. An incomplete set of
+possible (and therefore must be dealt) with is difficult. An incomplete set of
 transition rules may cause the protocol to deadlock.
 
 \end{enumerate}
@@ -86,9 +86,9 @@ request; should it drop such a request, or respond saying that it does not have
 the line?
 
 These examples give a glimpse of the complexity of designing and implementing a
-correct cache coherence protocol in a message-passing directory-based setting.
+correct cache coherence protocol in a message-passing, directory-based setting.
 Even for a 2-level cache hierarchy, designing and implementing the protocol is
-very hard. This problem is greatly exacerbated in a multi-level cache
+quite difficult. This problem is greatly exacerbated in a multi-level cache
 hierarchy, which is becoming the norm because of the increasing core counts. 
 
 In this paper, we present a substantially easier method to design
@@ -110,8 +110,8 @@ following properties: a) the directory's notion of a cache's state is
 ``conservative'' in that a cache is never going to have more permissions that
 what the directory thinks the cache has; and b) any request will eventually get
 a corresponding response. A formal proof of the abstract protocol was written
-using the Coq theorem prover \cite{}, however, a discussion of the formal proof
-is beyond the scope of this paper.
+using the Coq theorem prover \cite{}, however, a presentation of the formal
+proof is beyond the scope of this paper.
 
 It should be noted that the flexibility of our methodology to design multiple
 cache coherence protocols comes from the fact that we do not assign any meaning
@@ -130,7 +130,7 @@ and 3. Our method does not introduce any overhead over direct implementation of
 these protocols.  We think that this new method of designing protocols
 substantially reduces the required effort, and that our abstract protocol is
 flexible enough to implement (while ensuring correctness of) most if not all
-inclusive message-passing directory-based protocols.
+inclusive, message-passing, directory-based protocols.
 
 \paragraph{Paper organization:} Section \ref{sec:abstract} describes the abstract
 protocol; Section \ref{sec:properties} gives the two properties that are

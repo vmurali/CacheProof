@@ -11,6 +11,9 @@
 \newcommand{\assigns}{:=}
 \newcommand{\AndAnd}{\;\&\&\;}
 \newcommand{\OrOr}{\;||\;}
+\newcommand{\Inv}{\text{$Inv$}}
+
+\definecolor{trig-color}{gray}{.6}
 
 We will give the abstract directory-based protocol for a hierarchical system of
 caches. The caches are assumed to be organized in the form of a tree. The leaves
@@ -19,9 +22,7 @@ one core. The root of the tree is a single Last-level cache (LLC), connected to
 the main memory.
 
 The notation we adopt is primarily for conciseness of description while allowing
-maximum flexibility in the implementation. An realistic efficient implementation
-would forego some of the flexibility, and we will show such implementations
-later.
+maximum flexibility in the implementation.
 
 A node keeps information about the state of each cache line in the node as well
 as in each of its children, \ie the directory. Figure~\ref{table:states} shows
@@ -34,7 +35,7 @@ show efficient implementations later.
 \begin{figure}
 \begin{tabular}{|l|p{.64\columnwidth}|}
 \hline
-isPresent(a) & Cache line for address $a$ is present\\
+isPresent(a) & Check if cache line for address $a$ is present\\
 \hline
 data(a) & Cache line data for address $a$\\
 \hline
@@ -46,7 +47,7 @@ $c$\\
 isCWait(c, a) & Check if the node waiting for a response from child $c$
 for address $a$\\
 \hline
-cWait(cm a) & The coherence state to which the node has requested child $c$ to
+cWait(c, a) & The coherence state to which the node has requested child $c$ to
 go to, for address $a$\\
 \hline
 isPWait(a) & Check if the node waiting for a response from its parent for
@@ -55,13 +56,41 @@ address $a$\\
 replacingAddr(a) & The address of the line that is going to replace the line
 corresponding to address $a$\\
 \hline
+whoTrigger(a) & The source of the request which made the node wait for a
+response. It is $None, Parent, Child \text{ or } Evict$\\
+\hline
+childTrigger(a) & If $whoTrigger(a)$ is $Child$, the index of the child which
+is the source of the request\\
+\hline
 \end{tabular}
 \caption{Information that the node keeps for a cache line}
 \label{table:states}
 \end{figure}
 
+The values of the coherence state (and hence the directory state) belong to a
+totally ordered set, \ie a set in which a \emph{less than} ($<$) relation is
+defined between every pair of elements in that set and that relation is
+transitive. For instance, in an MSI protocol, the values of the coherence state
+are from the set $\{M, S, I\}$ where $I < S$, $S < M$ and $I < M$. Our abstract
+protocol does not assign any semantics or meaning to the values of the coherence
+states. In a concrete cache coherence protocol, the values of the states are
+associated with permissions for reading and writing, and the state with fewer
+permissions is $<$ the state with more permissions. We use \Inv to denote the
+least element in the set containing the values of the coherence state.
+Typically, this denotes that the node has no permissions for reading or writing
+that line.
+
+In order to increase the coherence state of a cache line, a node has to send an
+\emph{upgrade request} to its parent and may eventually get an \emph{upgrade
+response} from the parent. In order to decrease the coherence state of a cache
+line for one of the node's children, the node has to send a \emph{downgrade
+request} to that child, and may eventually get a \emph{downgrade response} from
+that child.
+
 Figure~\ref{table:messages} shows the incoming and outgoing messages to and from
-the node, respectively.
+the node, respectively, and requests for eviction. An eviction request for an
+address is generated if a child has made a request for a different cache line
+whose address is not currently present in the cache.
 
 \begin{figure}
 \begin{tabular}{|l|p{.6\columnwidth}|}
@@ -106,62 +135,141 @@ the node itself)\\
 \label{table:messages}
 \end{figure}
 
+\floatstyle{boxed} 
+\restylefloat{figure}
+
+\begin{figure}
+\begin{minipage}{\columnwidth}
+\begin{enumerate}
+\item A request or a response should not be handled before handling an earlier
+response for the same address from the same source
+
+\item A request from a child for an address should not block or prevent the
+handling of a request from the parent for the same address
+
+\item A request for an address should not block or prevent the handling of a
+response from any source for any address
+\end{enumerate}
+\end{minipage}
+\caption{Message ordering, and blocking restrictions}
+\label{list:messageOrder}
+\end{figure}
+
+\floatstyle{plain} 
+\restylefloat{figure}
+
 Each message coming from a particular child or the parent is independent of the
 messages coming from another source, in addition to being independent of the
 messages for a different address. The node can process messages coming from
-different sources, and for different addresses in any order. \emph{ A response
-or a request should not be handled before handling an earlier response for the
-same address from the same source}. Even though our abstract protocol requires
-this ordering, we later show that is easy to enforce these even if the
-underlying network doesn't enforce point-to-point FIFO ordering or priorities
-between different kinds of messages.
-
-Evicting a cache line for replacement can also be treated as a request message,
-albeit generated internally by the node. Such a request would be generated if a
-cache line requested by a child is currently not present in the cache, and some
-other cache line has to be evicted to make room for the requested cache line. 
+different sources, and for different addresses in any order, subject to the
+ordering requirements in Figure~\ref{list:messageOrder}. We later show that is
+easy to enforce this ordering even if the underlying network doesn't enforce
+point-to-point FIFO ordering or priorities between different kinds of messages.
 
 To allow maximum flexibility of implementation, the node is given separate
 access queues for each kind of message (request of response) from each source
 and for each address. An implementation of a protocol using our methodology does
 not have to keep a separate access queue for each source and each address, but
-it must adhere to the following rules: \emph{\emph{a)} a request from any child
-should not block a request from the parent, and \emph{b)} no request should
-block any response}. As we show later, these rules are necessary to avoid
-deadlocks. This flexibility allows one to design a wide range of blocking
-policy.
+it must adhere to the blocking restrictions in Figure~\ref{list:messageOrder}.
+These restrictions are necessary to avoid deadlocks. The flexibility of the
+abstract protocol allows one to design a wide range of blocking policies.
 
-The values of the coherence state (and hence the directory state) belong to a
-totally ordered set, \ie a set in which a \emph{less than} ($<$) relation is
-defined between every pair of elements in that set. If a line is not present,
-then the state of the line is the least value in this totally ordered set, for
-comparison purposes. Let us call this least value as $Inv$, a shorthand for
-Invalid. Typically, a line in state $Inv$ signifies no permissions.
+Our abstract protocol also depends on the designer correctly defining the three
+functions shown in Figure~\ref{table:functions}. These functions abstract away
+the coherence aspect of the cache coherence protocol. Note that $maxCompat$
+function can be derived from $isCompat$ function, if $isCompat$ is defined
+correctly. Figure~\ref{fig:msiFunc} shows the functions defined for MSI (--
+denotes undefined).
+
+\begin{figure}
+\begin{tabular}{|c|p{.63\columnwidth}|}
+\hline
+isCompat(x, y) & Checks if two different caches can have coherence states
+$x$ and $y$, respectively, for the same address\\
+\hline
+maxCompat(x) & Returns a coherence state value $y$ such that, $\forall z \le y,
+isCompat(x, z)$ and $\forall w > y, !isCompat(x, w)$\\
+\hline
+dataXfer(x, y) & Checks if cache line data has to be transferred by a cache to its
+parent on downgrading from $x$ to $y$\\
+\hline
+\end{tabular}
+\caption{Functions to abstract away the coherence aspect}
+\label{table:functions}
+\end{figure}
+
+\begin{figure}
+\centering
+\begin{subfigure}{.45\columnwidth}
+\centering
+\begin{tabular}{|c||c|c|c|}
+\hline
+& I & S & M\\
+\hline\hline
+I & $\checkmark$ & $\checkmark$ & $\checkmark$\\
+\hline
+S & $\checkmark$ & $\checkmark$ & $\times$\\
+\hline
+M & $\checkmark$ & $\times$ & $\times$\\
+\hline
+\end{tabular}
+\label{table:isCompat}
+\caption{$isCompat$ for MSI}
+\end{subfigure}
+\quad
+\begin{subfigure}{.45\columnwidth}
+\centering
+\begin{tabular}{|c||c|c|c|}
+\hline
+\backslashbox{$x$}{$y$} & I & S & M\\
+\hline\hline
+I & -- & -- & --\\
+\hline
+S & $\times$ & -- & --\\
+\hline
+M & $\checkmark$ & $\checkmark$ & --\\
+\hline
+\end{tabular}
+\label{table:dataXfer}
+\caption{$dataXfer(x, y)$ for MSI}
+\end{subfigure}
+\caption{Coherence abstraction for MSI}
+\label{fig:msiFunc}
+\end{figure}
 
 We now describe the procedures for a node to handle requests and responses. Note
 that a message handler would be triggered only if the corresponding message is
-present.  Similarly, if the required resources for handling a message are not
-present (for example, if the handling of the request from a child requires
-sending further requests to its children or the parent, and the send buffers are
-full), then the handler for request from a child would not be triggered.
+present. If the required resources for handling a message are not present (for
+example, if the handling of the request from a child requires sending further
+requests to its children or the parent, and the send buffers are full), then the
+handler for request from a child would not be triggered.
 
 Figure~\ref{alg:handlePReq} specifies how to handle a node's incoming request
-from the parent for downgrading the coherence state of address $a$ to $x$.
+from the parent for downgrading the coherence state of address $a$ to $x$. Note
+that a request from the parent can be handled successfully only if the node is
+not already waiting for a response from a child.
 
-Function $hasDataXfer(x, y)$ specifies whether data has to be transferred
-from a node to its parent when the node downgrades the coherence state of some
-line from $x$ to $y$.  This function is used at the node to determine if the
-child has transferred data or not on receiving a response from the child, and
-also to determine if the node has to send data to the parent, for processing a
-request from the parent. In a typical coherence protocol, the data has to be
-only transferred by a node to its parent if the cache line has been modified.
+Figure~\ref{alg:handleCReq} specifies how to handle a node's incoming request
+from a child for upgrading the child's coherence state for address $a$ to $x$.
+Note that a request from a child can be handled successfully only if the node is
+not already waiting for a response from the parent or from any child.
+
+Figure~\ref{alg:handlePResp} specifies how to handle a node's incoming response
+from the parent for upgrading the coherence state of address $a$ to $x$.
+
+Figure~\ref{alg:handleCResp} specifies how to handle a node's incoming response
+from a child for downgrading the child's coherence state for address $a$ to $x$.
+
+Figure~\ref{alg:handleEvict} specifies how to handle an eviction message (in
+order to replace the current line in address $a$ with the line for some other
+address, which is given by $replacingAddr(a)$).
 
 \floatstyle{boxed} 
 \restylefloat{figure}
 
 \begin{figure}
 \begin{algorithmic}
-\Function{handlePReq}{\two{ReqFromP}{a}{x}}
+\Rule{handlePReq}{\two{ReqFromP}{a}{x}}
 \If {$!isPresent(a)$}
   \State remove$(\two{ReqFromP}{a}{x})$
 \ElsIf {$\forall c, !isCWait(c, a)$}
@@ -169,7 +277,7 @@ only transferred by a node to its parent if the cache line has been modified.
      \State remove$(\two{ReqFromP}{a}{x})$
   \ElsIf {$\forall c, dir(c, a) \le x$}
      \State remove$(\two{ReqFromP}{a}{x})$
-     \If {hasDataXfer$(state(a), x)$}
+     \If {dataXfer$(state(a), x)$}
         \State send$(\two{DataToP}{a}{data(a)})$
      \EndIf
      \State $state(a) \assigns x$
@@ -182,76 +290,24 @@ only transferred by a node to its parent if the cache line has been modified.
            \State send$(\three{ReqToC}{c}{a}{x})$
         \EndIf
      \EndFor
+     \State \textcolor{trig-color}{$whoTrigger(a) \assigns Parent$}
   \EndIf
 \EndIf
-\EndFunction
+\EndRule
 \end{algorithmic}
 \caption{Handle request from parent}
 \label{alg:handlePReq}
 \end{figure}
 
-Figure~\ref{alg:handlePResp} specifies how to handle a node's incoming response
-from the parent for upgrading the coherence state of address $a$ to $x$.
-
 \begin{figure}
 \begin{algorithmic}
-\Function{handlePResp}{\two{RespFromP}{a}{x}}
-  \State remove$(\two{RespFromP}{a}{x})$
-  \If {$state(a) \neq Inv$}
-     \State remove$(\two{DataFromP}{a}{d})$
-     \State $data(a) = d$
-  \EndIf
-  \State $state(a) \assigns x$
-  \State $isPWait(a) \assigns \False$ 
-\EndFunction
-\end{algorithmic}
-\caption{Handle response from parent}
-\label{alg:handlePResp}
-\end{figure}
-
-Figure~\ref{alg:handleCResp} specifies how to handle a node's incoming response
-from a child for downgrading the child's coherence state for address $a$ to $x$.
-
-\begin{figure}
-\begin{algorithmic}
-\Function{handleCResp}{\three{RespFromC}{c}{a}{x}}
-  \State remove$(\two{RespFromC}{c}{a}{x})$
-  \If {hasDataXfer$(dir(c,a), x)$}
-     \State remove$(\two{DataFromC}{c}{a}{d})$
-     \State $data(a) = d$
-  \EndIf
-  \State $dir(c,a) \assigns x$
-  \If {$isCWait(c, a) \AndAnd cWait(c, a) >= x$}
-    \State $isCWait(c, a) \assigns \False$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-\caption{Handle response from child}
-\label{alg:handleCResp}
-\end{figure}
-
-Figure~\ref{alg:handleCReq} specifies how to handle a node's incoming request
-from a child for upgrading the child's coherence state for address $a$ to $x$.
-
-Function \emph{compatible(x)} gives the highest state that a line in another
-cache can be in without violating coherency if the line is in one cache in state
-$x$. For example, the highest state that is compatible with a state having
-read-write permissions is the state having no permissions (\ie $Inv$).
-
-Function \emph{getReplace(a)} gives the address of the line that can be replaced
-in order to accommodate the line in address $a$. However, if a line is waiting
-for a response (from either a child or the parent), then that line can not be
-replaced (ensured by the check for $isCWait$ and $isPWait$) in the pseudo-code.
-
-\begin{figure}
-\begin{algorithmic}
-\Function{handleCReq}{\three{ReqFromC}{c}{a}{x}}
+\Rule{handleCReq}{\three{ReqFromC}{c}{a}{x}}
   \If {$isPresent(a)$}
      \If {$!isPWait(a)\ \AndAnd \forall c, !isCWait(c, a)$}
         \If {$state(a) \ge x \AndAnd$ \\
-              \hspace{2.5cm} $\forall c' \neq c, dir(c', a) \le \text{compatible}(x)$}
+              \hspace{2.5cm} $\forall c' \neq c, dir(c', a) \le \text{maxCompat}(x)$}
            \State remove$(\three{ReqFromC}{c}{a}{x})$
-           \If {$dir(c,a) \neq Inv)$}
+           \If {$dir(c,a) \neq \Inv)$}
               \State send$(\three{DataToC}{c}{a}{data(a)})$
            \EndIf
            \State $dir(c, a) \assigns x$
@@ -262,78 +318,148 @@ replaced (ensured by the check for $isCWait$ and $isPWait$) in the pseudo-code.
               \State send$(\two{ReqToP}{a}{x})$
            \EndIf
            \ForAll {$c' \neq c$}
-              \If {$dir(c', a) > \text{compatible}(x)$}
+              \If {$dir(c', a) > \text{maxCompat}(x)$}
                  \State $isCWait(c', a) \assigns \True$
-                 \State $cWait(c', a) \assigns \text{compatible}(x)$
-                 \State send$(\three{ReqToC}{c'}{a}{\text{compatible}(x)})$
+                 \State $cWait(c', a) \assigns \text{maxCompat}(x)$
+                 \State send$(\three{ReqToC}{c'}{a}{\text{maxCompat}(x)})$
               \EndIf
            \EndFor
+           \State \textcolor{trig-color}{$whoTrigger(a) \assigns Child$}
+           \State \textcolor{trig-color}{$childTrigger(a) \assigns c$}
         \EndIf
      \EndIf
   \Else
-     \State \textbf{let} $a' = \text{getReplace}(a)$
+     \State \textbf{let} $a' \assigns \text{getReplace}(a)$
      \If {$!isPWait(a') \AndAnd !isCWait(a')$}
         \State $replacingAddr(a') \assigns a$
         \State send$(\One{EvictReq}{a'})$
+        \State \textcolor{trig-color}{$whoTrigger(a) \assigns Evict$}
+        \State \textcolor{trig-color}{$childTrigger(a) \assigns c$}
      \EndIf
   \EndIf
-\EndFunction
+\EndRule
 \end{algorithmic}
 \caption{Handle request from child}
 \label{alg:handleCReq}
 \end{figure}
 
-Figure~\ref{alg:handleEvict} specifies how to handle an eviction message (in
-order to replace the current line in address $a$ with the line for some other
-address, which is given by $replacingAddr(a)$).
 \begin{figure}
 \begin{algorithmic}
-\Function{handleEvict}{\One{EvictReq}{a}}
-   \If {$!isPresent(a) \OrOr$\\
-        \hspace{3cm} $\forall c, dir(c, a) = Inv$}
+\Rule{handleEvict}{\One{EvictReq}{a}}
+   \If {$!isPresent(a) \OrOr \forall c, dir(c, a) = \Inv$}
       \State remove$(\One{EvictReq}{a})$
-      \If {$state(a) \neq Inv$}
-         \State send$(\two{RespToP}{a}{Inv})$
-         \If {hasDataXfer$(state(a), Inv)$}
+      \If {$state(a) \neq \Inv$}
+         \State send$(\two{RespToP}{a}{\Inv})$
+         \If {dataXfer$(state(a), \Inv)$}
             \State send$(\two{RespToP}{a}{data(a)})$
          \EndIf
       \EndIf
       \State $isPresent(a) \assigns \False$
-      \State $isPresent(replacingAddr(a)) \assigns \True$
+      \State allocLine$(replacingAddr(a))$
+      \State \textcolor{trig-color}{\textbf{trigger} handleCReq($childTrigger(a)$)}
    \Else
       \If {$\forall c, !isCWait(c, a)$}
          \ForAll{$c$}
-            \If {$dir(c, a) > Inv$}
+            \If {$dir(c, a) > \Inv$}
                \State $isCWait(c, a) \assigns \True$
-               \State $cWait(c, a) \assigns Inv$
-               \State send$(\three{ReqToC}{c}{a}{Inv})$
+               \State $cWait(c, a) \assigns \Inv$
+               \State send$(\three{ReqToC}{c}{a}{\Inv})$
             \EndIf
          \EndFor
       \EndIf
    \EndIf
-\EndFunction
+\EndRule
 \end{algorithmic}
 \caption{Evict a line in address $a$}
 \label{alg:handleEvict}
 \end{figure}
 
+\begin{figure}
+\begin{algorithmic}
+\Rule{handlePResp}{\two{RespFromP}{a}{x}}
+  \State remove$(\two{RespFromP}{a}{x})$
+  \If {$state(a) \neq \Inv$}
+     \State remove$(\two{DataFromP}{a}{d})$
+     \State $data(a) = d$
+  \EndIf
+  \State $state(a) \assigns x$
+  \State $isPWait(a) \assigns \False$ 
+  \State \textcolor{trig-color}{\textbf{trigger} handleCReq($childTrigger(a)$)}
+\EndRule
+\end{algorithmic}
+\caption{Handle response from parent}
+\label{alg:handlePResp}
+\end{figure}
+
+\begin{figure}
+\begin{algorithmic}
+\Rule{handleCResp}{\three{RespFromC}{c}{a}{x}}
+  \State remove$(\two{RespFromC}{c}{a}{x})$
+  \If {dataXfer$(dir(c,a), x)$}
+     \State remove$(\two{DataFromC}{c}{a}{d})$
+     \State $data(a) = d$
+  \EndIf
+  \State $dir(c,a) \assigns x$
+  \If {$isCWait(c, a) \AndAnd cWait(c, a) >= x$}
+    \State $isCWait(c, a) \assigns \False$
+  \EndIf
+  {\color{trig-color}
+  \If {$whoTrigger(a) = Parent$}
+     \State \textbf{trigger} handlePReq
+  \ElsIf {$whoTrigger(a) = Evict$}
+     \State \textbf{trigger} handleEvict
+  \ElsIf {$whoTrigger(a) = Child$}
+     \State \textbf{trigger} handleCReq($childTrigger(a)$)
+  \EndIf}
+\EndRule
+\end{algorithmic}
+\caption{Handle response from child}
+\label{alg:handleCResp}
+\end{figure}
+
+Function \emph{getReplace(a)} gives the address of the line that can be replaced
+in order to accommodate the line in address $a$. Note that if the line selected
+for eviction is waiting for a response from the parent or from any child, then
+it can not be replaced.
+
+Figure~\ref{alg:allocLine} shows the initiation that has to happen for
+allocating a new cache line for an address.
+
+\begin{figure}
+\begin{algorithmic}
+\Procedure{allocLine}{$a$}
+  \State $isPresent(a) \assigns \True$
+  \State \textcolor{trig-color}{$whoTrigger(a) \assigns None$}
+  \State $state(a) \assigns \Inv$
+  \ForAll {$c$}
+     \State $dir(c, a) \assigns \Inv$
+  \EndFor
+  \State $isCWait(a) \assigns \False$
+  \State $isPWait(a) \assigns \False$
+\EndProcedure
+\end{algorithmic}
+\caption{Allocate a new cache line for address $a$}
+\label{alg:allocLine}
+\end{figure}
+
 \floatstyle{plain} 
 \restylefloat{figure}
 
-Note that the handlers continue to be triggered till the corresponding message
-has been removed.
-
-In order to avoid starvation, once a response is available, the handler for that
+Each handler will be triggered repeatedly till the corresponding message has
+been removed. In order to avoid starvation, the following two conditions must be
+maintained:
+\begin{enumerate}
+\item Once a response is available from any source, the handler for that
 response must be triggered eventually.
+\item After handling a response (or an evict request) the corresponding handler
+must trigger the original handler that requested the received response (or made
+an eviction request). The $whoTrigger(a)$ keeps track of the original handler
+for each address $a$. In case of a $Child$ trigger, the actual child
+corresponding to the original handler is kept track of in $childTrigger(a)$, for
+address $a$, in which case $handleCReq$ is triggered for the outstanding request
+from that child. In the figures, the code corresponding to this is grayed out
+\end{enumerate}
 
-Once a node starts handling a request from the parent, it can ignore all other
-requests (from the children, or eviction requests) to the same address, till the
-node has removed the request from the parent.
-
-Similarly, once a node starts handling a request from a child, it can ignore
-other requests from other children to the same address, till it has removed the
-request from the child. However, it can not ignore requests from the parent to
-the same address, in order to avoid deadlocks.
 
 %The following are the messages transferred to and from the node
 %For the abstract protocol, we consider a hierarchical system of caches. The
