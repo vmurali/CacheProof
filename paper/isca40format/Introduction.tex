@@ -65,8 +65,8 @@ the other caches have at the moment the original cache gets the response. If
 another cache gets a read or write permission for that line during the time the
 messages are in flight, coherence would be violated.
 
-\emph{Example 2:} A cache, already having read permission for a line, gets a
-store request, and sends an upgrade request for write permission to the
+\noindent \emph{Example 2:} A cache, already having read permission for a line,
+gets a store request, and sends an upgrade request for write permission to the
 directory controller. Instead of getting a response, the cache may receive a
 request from the directory controller asking this cache to give up the read
 permission for the line \ie an invalidate request. This could happen if the
@@ -78,12 +78,12 @@ its request, or if it should invalidate its line. If it ignores the invalidate
 request, is there any guarantee that it would receive a response for its
 request for write permission, or would it deadlock?
 
-\emph{Example 3:} A cache receives an invalidate request from the directory
-controller for a line that is not present in the cache. Is such a request even
-possible? The directory does not have access to the up-to-date state of the
-cache, and so can potentially make this request. How should a cache handle this
-request; should it drop such a request, or respond saying that it does not have
-the line?
+\noindent \emph{Example 3:} A cache receives an invalidate request from the
+directory controller for a line that is not present in the cache. Is such a
+request even possible? The directory does not have access to the up-to-date
+state of the cache, and so can potentially make this request. How should a
+cache handle this request; should it drop such a request, or respond saying
+that it does not have the line?
 
 These examples give a glimpse of the complexity of designing and implementing a
 correct cache coherence protocol in a message-passing, directory-based setting.

@@ -13,7 +13,7 @@
 \newcommand{\OrOr}{\;||\;}
 \newcommand{\Inv}{\text{$Inv$}}
 
-\definecolor{trig-color}{gray}{.6}
+\definecolor{trig-color}{gray}{.4}
 
 We will give the abstract directory-based protocol for a hierarchical system of
 caches. The caches are assumed to be organized in the form of a tree. The leaves
@@ -53,11 +53,11 @@ go to, for address $a$\\
 isPWait(a) & Check if the node waiting for a response from its parent for
 address $a$\\
 \hline
-replacingAddr(a) & The address of the line that is going to replace the line
-corresponding to address $a$\\
-\hline
 whoTrigger(a) & The source of the request which made the node wait for a
 response. It is $None, Parent, Child \text{ or } Evict$\\
+\hline
+replacingAddr(a) & If $whoTrigger(a)$ is $Evict$, the address replacing the line
+of address $a$\\
 \hline
 childTrigger(a) & If $whoTrigger(a)$ is $Child$, the index of the child which
 is the source of the request\\
@@ -303,9 +303,9 @@ address, which is given by $replacingAddr(a)$).
 \begin{algorithmic}
 \Rule{handleCReq}{\three{ReqFromC}{c}{a}{x}}
   \If {$isPresent(a)$}
-     \If {$!isPWait(a)\ \AndAnd \forall c, !isCWait(c, a)$}
+     \If {$!isPWait(a) \AndAnd \forall c, !isCWait(c, a)$}
         \If {$state(a) \ge x \AndAnd$ \\
-              \hspace{2.5cm} $\forall c' \neq c, dir(c', a) \le \text{maxCompat}(x)$}
+              \hspace{2.2cm} $\forall c' \neq c, dir(c', a) \le \text{maxCompat}(x)$}
            \State remove$(\three{ReqFromC}{c}{a}{x})$
            \If {$dir(c,a) \neq \Inv)$}
               \State send$(\three{DataToC}{c}{a}{data(a)})$
@@ -330,11 +330,11 @@ address, which is given by $replacingAddr(a)$).
      \EndIf
   \Else
      \State \textbf{let} $a' \assigns \text{getReplace}(a)$
-     \If {$!isPWait(a') \AndAnd !isCWait(a')$}
-        \State $replacingAddr(a') \assigns a$
+     \If {$!isPWait(a') \AndAnd \forall c', !isCWait(c', a')$}
         \State send$(\One{EvictReq}{a'})$
         \State \textcolor{trig-color}{$whoTrigger(a) \assigns Evict$}
         \State \textcolor{trig-color}{$childTrigger(a) \assigns c$}
+        \State $replacingAddr(a') \assigns a$
      \EndIf
   \EndIf
 \EndRule
@@ -351,7 +351,7 @@ address, which is given by $replacingAddr(a)$).
       \If {$state(a) \neq \Inv$}
          \State send$(\two{RespToP}{a}{\Inv})$
          \If {dataXfer$(state(a), \Inv)$}
-            \State send$(\two{RespToP}{a}{data(a)})$
+            \State send$(\two{DataToP}{a}{data(a)})$
          \EndIf
       \EndIf
       \State $isPresent(a) \assigns \False$
@@ -433,8 +433,8 @@ allocating a new cache line for an address.
   \State $state(a) \assigns \Inv$
   \ForAll {$c$}
      \State $dir(c, a) \assigns \Inv$
+     \State $isCWait(c, a) \assigns \False$
   \EndFor
-  \State $isCWait(a) \assigns \False$
   \State $isPWait(a) \assigns \False$
 \EndProcedure
 \end{algorithmic}
@@ -442,23 +442,83 @@ allocating a new cache line for an address.
 \label{alg:allocLine}
 \end{figure}
 
-\floatstyle{plain} 
-\restylefloat{figure}
-
 Each handler will be triggered repeatedly till the corresponding message has
 been removed. In order to avoid starvation, the following two conditions must be
 maintained:
+
 \begin{enumerate}
+
 \item Once a response is available from any source, the handler for that
 response must be triggered eventually.
+
 \item After handling a response (or an evict request) the corresponding handler
 must trigger the original handler that requested the received response (or made
 an eviction request). The $whoTrigger(a)$ keeps track of the original handler
 for each address $a$. In case of a $Child$ trigger, the actual child
 corresponding to the original handler is kept track of in $childTrigger(a)$, for
 address $a$, in which case $handleCReq$ is triggered for the outstanding request
-from that child. In the figures, the code corresponding to this is grayed out
+from that child. In the figures, the pseudo-code corresponding to this is grayed out
+
 \end{enumerate}
+
+The L1 caches, \ie the leaf nodes, do not have any children. Instead, they
+handle requests from cores, which resembles handling requests from children. A
+store request for a word is essentially a request by the core for write
+permissions for the corresponding cache line, and a load request for a word is a
+request for read permissions. These permissions can be mapped to the values of
+the coherence state.
+
+Because of the absence of children any request from the parent or an eviction
+request can be handled without producing more requests. As a result, we do not
+need a separate handler for eviction requests. We also do not need to store
+$whoTrigger$, since the only trigger that produces more requests, and hence has
+to wait for response is a request from the core. We omit the pseudo-code for
+handling a request from the core because it is very similar to an instance of
+Figure~\ref{alg:handleCReq} with no children.
+
+
+%Figure~\ref{alg:handleCoreReq} shows the handler for a request from the core,
+%which is very similar to a combination of \texttt{handleCReq} and
+%\texttt{handleEvict}. The code shows that the cache line is sent back to the
+%core for any request, which is not necessary for a store request in an actual
+%implementation.
+%
+%\begin{figure}
+%\begin{algorithmic}
+%\Rule{handleCoreReq}{\three{ReqFromCore}{a}{x}}
+%  \If {$isPresent(a)$}
+%     \If {$!isPWait(a)$}
+%        \If {$state(a) \ge x$}
+%           \State remove$(\three{ReqFromCore}{a}{x})$
+%           \State send$(\three{RespToCore}{a}{x}{data(a)})$
+%        \ElsIf {$state(a) < x$}
+%              \State $isPWait(a) \assigns \True$
+%              \State send$(\two{ReqToP}{a}{x})$
+%        \EndIf
+%     \EndIf
+%  \Else
+%     \State \textbf{let} $a' \assigns \text{getReplace}(a)$
+%     \If {$!isPWait(a')$}
+%        \If {$state(a') \neq Inv$}
+%           \State send($\two{RespToP}{a'}{Inv}$)
+%           \If {dataXfer($state(a'), Inv$)}
+%              \State send($\two{DataToP}{a'}{Inv}$)
+%           \EndIf
+%        \EndIf
+%        \State $isPresesnt(a') \assigns \False$
+%        \State allocLine($a$)
+%        \State $isPWait(a) \assigns \True$
+%        \State send$(\two{ReqToP}{a}{x})$
+%     \EndIf
+%  \EndIf
+%\EndRule
+%\end{algorithmic}
+%\caption{Handle request from core}
+%\label{alg:handleCoreReq}
+%\end{figure}
+
+\floatstyle{plain} 
+\restylefloat{figure}
 
 
 %The following are the messages transferred to and from the node
