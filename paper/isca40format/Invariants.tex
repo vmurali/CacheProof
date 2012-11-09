@@ -1,0 +1,399 @@
+\section{Invariants}
+\label{sec:invariants}
+
+\newcommand{\threeAngle}[4]{\text{$#1\langle#2,#3,#4\rangle$}}
+
+\newcommand{\Req}[3]{\threeAngle{Req}{#1}{#2}{#3}}
+\newcommand{\Resp}[3]{\threeAngle{Resp}{#1}{#2}{#3}}
+\newcommand{\Inv}{\text{$Inv$\;}}
+
+The values of the coherence state (and hence the directory state) belong to a
+totally ordered set, \ie a set in which a \emph{less than} ($<$) relation is
+defined between any two set elements and this relation is transitive. If an
+address is not present, then the coherence state corresponding to that address
+is the lowest value in the set (which we denote by \Inv. For instance, in an
+MSI protocol, the values of the coherence state are from the set $\{M, S, I\}$
+where $I < S$, $S < M$ and $I < M$; if an address is not present, the state
+corresponding to that address is $I$. Our abstract protocol does not assign any
+semantics or meaning to the values of the coherence states. In a concrete cache
+coherence protocol, the values of the states are associated with permissions
+for reading and writing, and the state with fewer permissions is $<$ the state
+with more permissions.
+
+\begin{figure}\centering
+\begin{tabularx}{\linewidth}{|l|X|}
+\hline
+$state[a]$ & Coherence state for address $a$\\
+\hline
+$dir[a][c]$ & Directory's version of the coherence state for address $a$ in child
+$c$\\
+\hline
+\end{tabularx}
+\caption{Information stored for each cache line}
+\label{table:storage}
+\end{figure}
+
+\begin{figure}\centering
+\begin{tabularx}{\linewidth}{|l|X|}
+\hline
+$isPresent(a)$ & Is line for address $a$ present in this node?\\
+\hline
+$isWait(n, a)$ & Is there a pending response from node $n$ (either parent $P$
+or a child) for address $a$?\\
+\hline
+$isReplacing(a)$ & Is address $a$ currently being evicted?\\
+\hline
+$isEnterPending(a)$ & Is there any (child) request for address $a$ waiting to get
+a cache line entry in the cache?\\
+\hline
+$isHandling(n, a)$ & Is there any request for address $a$ from node $n$ (either
+parent $P$ or a child) that has started to be handled?\\
+\hline
+%$replacingAddr(a)$ & The address that is going to replace the line
+%corresponding to address $a$\\
+%\hline
+%$cWaitState(c, a)$ & The state to which the node has requested its child $c$ to
+%downgrade to and hence waiting for a response\\
+%\hline
+\end{tabularx}
+\caption{Information that can be computed for each address (typically from the
+MSHR)}
+\label{table:functions}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|l|l|X|}
+\hline
+\multicolumn{3}{|c|}{\Req{n}{a}{x}}\\
+\hline
+\multirow{4}{*}{$n = P$} & Incoming & Request from parent for changing my
+                                      $state[a]$ to $x$\\
+\cline{2-3}
+                         & Outgoing & Request to parent for permission to change
+                                      my $state[a]$ to $x$\\
+\hline
+\multirow{4}{*}{$n \neq P$} & Incoming & Request from child $n$ for permission
+                                         to change $n$'s $state[a]$ to $x$\\
+\cline{2-3}
+                            & Outgoing & Request to child $n$ to change $n$'s
+                                         $state[a]$ to $x$\\
+\hline
+\multicolumn{3}{|c|}{\Resp{n}{a}{x}}\\
+\hline
+\multirow{4}{*}{$n = P$} & Incoming & Response from parent granting permission
+                                      to change my $state[a]$ to $x$\\
+\cline{2-3}
+                         & Outgoing & Response to parent indicating that my
+                                      $state[a]$ has changed to $x$\\
+\hline
+\multirow{4}{*}{$n \neq P$} & Incoming & Response from child indicating that
+                                         $n$'s $state[a]$ has changed to $x$\\
+\cline{2-3}
+                            & Outgoing & Response to child $n$ granting permission
+                                         to change $n$'s $state[a]$ to $x$\\
+\hline
+\end{tabularx}
+\caption{Incoming and outgoing messages}
+\label{table:messages}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+A response for address $a$ can be sent only if the line for $a$ is present in
+the current node\\
+\hline
+\multicolumn{1}{|c|}{Response to child $c$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item A response to child $c$ for address $a$ can be sent only if a
+request from child $c$ for $a$ is being handled
+\item Response \Resp{c}{a}{x} can be sent only if $x > dir[a][c]$, $\forall c',
+c' \neq c \rightarrow isCompatible(x, dir[a][c'])$ and  $x \le state[a]$
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Response to parent $P$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item If there is a pending response from the parent for address $a$, a
+response to the parent for $a$ can be sent only if a request from
+the parent for $a$ is being handled
+\item If there is no pending response from the parent for address $a$, a
+response to the parent for $a$ can be sent any time
+\item Response \Resp{P}{a}{x} can be sent only if $x < state[a]$ and $\forall
+c, x \ge dir[a][c]$
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Sending a response: Preconditions}
+\label{sendRespPre}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+A response for address $a$ can be sent only if the line for $a$ is present in
+the current node\\
+\hline
+\multicolumn{1}{|c|}{Response to child $c$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item[] On sending \Resp{c}{a}{x}, $dir[a][c]$ changes to $x$
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Response to parent $P$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item[] On sending \Resp{P}{a}{x}, $state[a]$ changes to $x$
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Sending a response: Effects}
+\label{sendRespEff}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{On receiving a response from child $c$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item $dir[a][c]$ changes to $x$
+\item Response \Resp{c}{a}{x} is removed
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{On receiving a response from parent $c$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item $state[a]$ changes to $x$
+\item Response \Resp{P}{a}{x} is removed
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Receiving a response: Effects}
+\label{recvResp}
+\end{figure}
+
+\floatstyle{boxed}
+\restylefloat{figure}
+
+\begin{figure}
+\begin{enumerate}
+\item $state[a]$ can change only on sending or receiving a response from the
+parent
+\item $dir[a][c]$ can change only on sending or receiving a response from child
+$c$
+\end{enumerate}
+\caption{State and directory changes: Preconditions}
+\label{stateChange}
+\end{figure}
+
+\floatstyle{plain}
+\restylefloat{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{Request to child $c$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item A request can be sent to child $c$ for address $a$ only if there is no
+pending response from child $c$ for $a$
+\item Request \Req{c}{a}{x} can be sent only if $x < dir[a][c]$
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Request to parent $P$ for address $a$}\\
+\hline
+\begin{enumerate}
+\item A request can be sent to the parent for address $a$ only if
+  \begin{enumerate}
+  \item there is no pending response from the parent for address $a$, and
+  \item line in address $a$ is not being replaced
+  \end{enumerate}
+\item Request \Req{P}{a}{x} can be sent only if $x > state[a]$
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Sending a request: Preconditions}
+\label{sendReq}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{Request \Req{c}{a}{x} from child $c$ is being handled}\\
+\hline
+\begin{itemize}
+\item[] If $x \le state[a] \wedge \forall c', c' \neq c \rightarrow isCompatible(x, dir[a][c])$\newline
+ then the node must send a response \Resp{c}{a}{x}
+to $c$
+\end{itemize}\\
+\hline
+\multicolumn{1}{|c|}{Address $a$ is marked as being replaced}\\
+\hline
+\begin{enumerate}
+\item[] If $\forall c, dir[a][c] \le \Inv$, then the node must send a response
+\Resp{P}{a}{\Inv} to the parent
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Request \Req{P}{a}{x} from parent $P$ is being
+handled}\\
+\hline
+\begin{enumerate}
+\item[] If $\forall c, dir[a][c] \le x$, then the node must send a response
+\Resp{P}{a}{x} to the parent
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Forced responses: Effects}
+\label{respForReq}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{Request \Req{c}{a}{x} from child $c$ is received}\\
+\hline
+\begin{enumerate}
+\item If $a$ is present in the node, handling of request \Req{c}{a}{x} can be
+started only if
+  \begin{enumerate}
+  \item no request \Req{n}{a}{x} from any node $n$ for address $a$ is being
+  handled
+  \item address $a$ is not currently being replaced
+  \end{enumerate}
+\item If $a$ is not present in the node, handling of request \Req{c}{a}{x} can be
+started only if there is a line with address $a'$ such that
+  \begin{enumerate}
+  \item no request \Req{n}{a'}{x} from any node $n$ for address $a'$ is being
+  handled
+  \item address $a'$ is not currently being evicted
+  \end{enumerate}
+\Req{n}{a'}{x} has started
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Request \Req{P}{a}{x} from parent $P$ is received}\\
+\hline
+\begin{enumerate}
+\item[] Handling of request \Req{P}{a}{x} can be started only if there are no
+pending responses from any child for address $a$
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Start handling a request: Preconditions}
+\label{respForReqPre}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{Request \Req{c}{a}{x} from child $c$ is received}\\
+\hline
+\begin{enumerate}
+\item Start handling the request \Req{c}{a}{x}
+\item If $a$ is not present in the node, get a line with address $a'$ such that
+  \begin{enumerate}
+  \item no request \Req{n}{a'}{x} from any node $n$ for address $a'$ is being
+  handled
+  \item address $a'$ is not currently being evicted
+  \end{enumerate}
+Mark $a'$ as being evicted
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Request \Req{P}{a}{x} from parent $P$ is received}\\
+\hline
+\begin{enumerate}
+\item[] Start handling the request \Req{P}{a}{x}
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Start handling a request: Effects}
+\label{respForReqEff}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{Request \Req{c}{a}{x} from child $c$ is being handled}\\
+\hline
+\begin{enumerate}
+\item[] If $x \le dir[a][c]$, remove the request
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Request \Req{P}{a}{x} from parent $P$ is being
+handled}\\
+\hline
+\begin{enumerate}
+\item[] If $x \ge state[a]$, remove the request
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Finish handling a request: Effects}
+\label{finishHandle}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+Request \Req{c}{a}{x} from child $c$ is being handled, and address $a'$ is
+replaced by $a$\\
+\hline
+\begin{enumerate}
+\item If $state[a'] <= \Inv$, replace address of the line for $a'$ as $a$,
+$state[a']$ as \Inv and $\forall c, dir(c, a)$ as \Inv
+\item Unmark $a'$ as being evicted
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Finish replacing line: Effects}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\begin{enumerate}
+\item[] If the state or dir of an address (either the requested address, or the
+evicted address in case of a replacement) for some node $n$ is not satisfactory,
+and there are no pending responses from $n$, send a request to make the state
+or dir satisfactory
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Handling of a request: Effects}
+\label{handling}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\begin{enumerate}
+\item[] The effects during sending a response or sending a request is atomic,
+\ie if there is no space available in the sending buffer, then the whole action
+is retried later
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Order of receiving messages}
+\label{atomicity}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\begin{enumerate}
+\item A request from a child should not block (\ie prevent start of the
+handling of) a request from the parent
+\item Requests for an address $a$ should not block (\ie prevent reception of)
+responses for address $a$, even from a different source
+\item A response for an address $a$ from a child $c$ should not be received
+before a response from the same $c$ for the same $a$ sent earlier has been
+received and removed
+\item The handling of a request for an address $a$ from a source $n$ should not
+be started before a response from the same $n$ for the same $a$ sent earlier
+has been received and removed
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Order of receiving messages}
+\label{mesgOrder}
+\end{figure}

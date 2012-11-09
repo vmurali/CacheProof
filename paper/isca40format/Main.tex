@@ -7,14 +7,18 @@
 
 \usepackage{algpseudocode}
 \algblockdefx[rule]{Rule}{EndRule}%
-   [2]{\textbf{rule} \textsc{#1}(#2)}%
-   {\textbf{end rule}}
+   [2]{\textbf{behavior} \textsc{#1}(#2) \textbf{\{}}%
+   {\textbf{\}}}
+\algblockdefx[if]{if}{endif}%
+   [1]{\textbf{if} (#1) \textbf{\{}}%
+   {\textbf{\}}}
 
 \usepackage{amsmath}
 
 \newcommand{\viz}{\textit{viz.,\ }}
 \newcommand{\ie}{\textit{i.e.,\ }}
 \newcommand{\eg}{\textit{e.g.,\ }}
+\newcommand{\etc}{\textit{etc}}
 \newcommand{\ala}{\textit{\`a la\ }}
 
 \usepackage{color}
@@ -27,6 +31,10 @@
 
 \usepackage{slashbox}
 
+\usepackage{multirow}
+
+\usepackage{tabularx}
+
 \begin{document}
 
 \input{Title}
@@ -37,7 +45,7 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-\input{Abstract}
+%\input{Abstract}
 \end{abstract}
 
 \input{Files}
