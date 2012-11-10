@@ -5,10 +5,10 @@
 
 \newcommand{\Req}[3]{\threeAngle{Req}{#1}{#2}{#3}}
 \newcommand{\Resp}[3]{\threeAngle{Resp}{#1}{#2}{#3}}
-\newcommand{\Inv}{\text{$Inv$} }
-\newcommand{\Dirty}{\text{$Dirty$} }
-\newcommand{\True}{\text{$True$} }
-\newcommand{\False}{\text{$False$} }
+\newcommand{\Inv}{\text{$Inv$}{}}
+\newcommand{\Dirty}{\text{$Dirty$}{}}
+\newcommand{\True}{\text{$True$}{}}
+\newcommand{\False}{\text{$False$}{}}
 
 The values of the coherence state (and hence the directory state) belong to a
 totally ordered set, \ie a set in which a \emph{less than} ($<$) relation is
@@ -122,7 +122,7 @@ $x:$ & Value from the set of coherence states\\
 the current node, \ie $isPresent(a)$
 \end{enumerate}\\
 \hline
-\multicolumn{1}{|c|}{Response to child $c$ for address $a$, \Resp{c}}\\
+\multicolumn{1}{|c|}{Response to child $c$ for address $a$}\\
 \hline
 \begin{enumerate}
 \item A response to child $c$ for address $a$ can be sent only if a
@@ -134,11 +134,11 @@ request from child $c$ for $a$ is being handled, \ie $isHandling(c, a)$
 \multicolumn{1}{|c|}{Response to parent $P$ for address $a$}\\
 \hline
 \begin{enumerate}
-\item If there is a pending response from the parent for address $a$, \ie $
+\item If there is a pending response from the parent for address $a$, \ie $\neg
 isWait(P, a)$, a response to the parent for $a$ can be sent only if a request
 from the parent for $a$ is being handled, \ie $isHandling(P, a)$
-\item If there is no pending response from the parent for address $a$, \ie
-$\neg isWait(P, a)$, a response to the parent for $a$ can be sent any time
+\item If there is no pending response from the parent for address $a$, a
+response to the parent for $a$ can be sent any time
 \item Response \Resp{P}{a}{x} can be sent only if $x < state[a]$
 % and $\forall c, x \ge dir[a][c]$
 \end{enumerate}\\
@@ -151,10 +151,8 @@ $\neg isWait(P, a)$, a response to the parent for $a$ can be sent any time
 \begin{figure}
 \begin{tabularx}{\linewidth}{|X|}
 \hline
-\begin{enumerate}
-\item[] A response for address $a$ can be sent only if the line for $a$ is
-present in the current node, \ie $isPresent(a)$
-\end{enumerate}\\
+A response for address $a$ can be sent only if the line for $a$ is present in
+the current node, \ie $isPresent(a)$\\
 \hline
 \multicolumn{1}{|c|}{Response to child $c$ for address $a$}\\
 \hline
@@ -176,7 +174,7 @@ present in the current node, \ie $isPresent(a)$
 \begin{figure}
 \begin{tabularx}{\linewidth}{|X|}
 \hline
-\multicolumn{1}{|c|}{On receiving a response \Resp{c}{a}{x}}\\
+\multicolumn{1}{|c|}{On receiving a response from child $c$ for address $a$}\\
 \hline
 \begin{enumerate}
 \item $dir[a][c]$ changes to $x$
@@ -184,7 +182,7 @@ present in the current node, \ie $isPresent(a)$
 \item $isWait(c, a)$ is set \False
 \end{enumerate}\\
 \hline
-\multicolumn{1}{|c|}{On receiving a response \Resp{P}{a}{x}}\\
+\multicolumn{1}{|c|}{On receiving a response from parent $c$ for address $a$}\\
 \hline
 \begin{enumerate}
 \item $state[a]$ changes to $x$
@@ -221,7 +219,7 @@ $c$
 \hline
 \begin{enumerate}
 \item A request can be sent to child $c$ for address $a$ only if there is no
-pending response from child $c$ for $a$, \ie $\neg isWait(c, a)$
+pending response from child $c$ for $a$, \ie $isWait(c, a)$
 \item Request \Req{c}{a}{x} can be sent only if $x < dir[a][c]$
 \end{enumerate}\\
 \hline
@@ -231,7 +229,7 @@ pending response from child $c$ for $a$, \ie $\neg isWait(c, a)$
 \item A request can be sent to the parent for address $a$ only if
   \begin{enumerate}
   \item there is no pending response from the parent for address $a$, \ie
-  $\neg isWait(P, a)$, and
+  $isWait(P, a)$, and
   \item line in address $a$ is not being evicted, \ie $isEvicting(a)$
   \end{enumerate}
 \item Request \Req{P}{a}{x} can be sent only if $x > state[a]$
@@ -282,17 +280,16 @@ parent if $x < state[a]$
 \multicolumn{1}{|c|}{Request \Req{c}{a}{x} from child $c$ is received}\\
 \hline
 \begin{enumerate}
-\item If address $a$ is present in the node, \ie $isPresent(a)$, handling of
-request \Req{c}{a}{x} can be started, \ie $isHandling(c, a)$ can be set \True
-only if
+\item If $a$ is present in the node, handling of request \Req{c}{a}{x} can be
+started, \ie $isHandling(c, a)$ can be set \True only if
   \begin{enumerate}
   \item no request \Req{n}{a}{x} from any node $n$ for address $a$ is being
   handled, \ie $\forall n, \neg isHandling(n, a)$
   \item address $a$ is not currently being evicted, \ie $\neg isEvicting(a)$
   \end{enumerate}
-\item If $a$ is not present in the node, \ie $\neg isPresent(a)$, handling of
-request \Req{c}{a}{x} can be started \ie $isHandling(c, a)$ can be set \True
-only if there is a line with address $a'$ such that
+\item If $a$ is not present in the node, handling of request \Req{c}{a}{x} can be
+started \ie $isHandling(c, a$ can be set \True only if there is a line with
+address $a'$ such that
   \begin{enumerate}
   \item no request \Req{n}{a'}{x} from any node $n$ for address $a'$ is being
   handled, \ie $\neg isHandling(n, a')$
@@ -321,8 +318,7 @@ address $a$, \ie $\forall c \in Children, \neg isWait(c, a)$
 \begin{enumerate}
 \item Handling of the request \Req{c}{a}{x} has started, \ie $isHandling(c, a)$
 is set \True
-\item If $a$ is not present in the node, \ie $\neg isPresent(a)$, a line with
-address $a'$ is found such that
+\item If $a$ is not present in the node, get a line with address $a'$ such that
   \begin{enumerate}
   \item no request \Req{n}{a'}{x} from any node $n$ for address $a'$ is being
   handled, \ie $\forall n, \neg isHandling(n, a')$
@@ -372,9 +368,8 @@ Request \Req{c}{a}{x} from child $c$ is being handled, and address $a'$ is
 replaced by $a$\\
 \hline
 \begin{enumerate}
-\item If $state[a'] <= \Inv$, address $a'$ for the line is replaced by $a$, \ie
-$isPresent(a')$ is set \False and $isPresent(a)$ is set \True
-\item $state[a']$ is set \Inv and $\forall c, dir(c, a)$ is set \Inv
+\item If $state[a'] <= \Inv$, address $a'$ for the line is replaced by $a$,
+$state[a']$ as \Inv and $\forall c, dir(c, a)$ as \Inv
 \item $a'$ is no longer being evicted, \ie set $isEvicted(a')$ to \False
 \end{enumerate}\\
 \hline
@@ -427,7 +422,7 @@ handling of) a request from the parent
 \item Requests for an address $a$ should not block (\ie prevent reception of)
 responses for address $a$, even from a different source
 \item A response for an address $a$ from a child $c$ should not be received
-before a response from the same $c$ and the same $a$ sent earlier has been
+before a response from the same $c$ for the same $a$ sent earlier has been
 received and removed
 \item The handling of a request for an address $a$ from a source $n$ should not
 be started before a response from the same $n$ for the same $a$ sent earlier
