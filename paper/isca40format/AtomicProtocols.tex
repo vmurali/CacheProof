@@ -1,0 +1,202 @@
+\section{Atomic protocols}
+\label{sec:atomic}
+
+We describe atomic protocols, where there are just multiple L1 caches, each
+talking to a shared L2 cache. The L2 cache does not have a directory. Instead,
+it can (magically) atomically read or write the coherence states and data of
+each cache line present in the L1 caches. An L1 cache receives load and store
+requests from the core. In turn, the L1 cache sends requests for coherence state
+upgrade (to get the required permission to service the requests from the core).
+The L2 cache picks one such request received for one of the cores and magically
+reads and writes the coherence states of the lines of several L1 caches,
+including the coherence state and data of the requesting L1 cache in order to
+service this request. When all the required states have been updated, the L2
+cache dequeues the received request. This is explained in greater detail for
+each protocol. The L1 cache dequeues the incoming request (from the core) only
+after servicing the request. All buffers are unbounded. L2 is connected to
+memory and can access the data in the memory atomically (magically).
+
+\newcommand{\threeAngle}[4]{\text{$#1\langle#2,#3,#4\rangle$}}
+
+\newcommand{\Req}[3]{\threeAngle{Req}{#1}{#2}{#3}}
+\newcommand{\Resp}[3]{\threeAngle{Resp}{#1}{#2}{#3}}
+
+\subsection{MSI}
+
+The following defines the permissions denoted by the coherence states for an
+address in the L1 cache with respect reading and writing the line corresponding
+to the address,
+
+\begin{itemize}
+\item $M:$ Read and write
+\item $S:$ Read only
+\item $I:$ No permission
+\end{itemize}
+
+$I < S, S < M$ and $I < M$
+
+\begin{itemize}
+\item $toCompatible(M) = I$
+\item $toCompatible(S) = S$
+\item $toCompatible(I) = M$
+\end{itemize}
+
+\begin{algorithmic}
+\If {L2 has Request $r = \Req{c}{a}{x}$ outstanding}
+  \ForAll {$c',\; s.t.\; c' \neq c \wedge$\\
+    \hspace{2cm}$state[c'][a] > toCompatible(x)$}
+    \If {$state[c'][a] = M$}
+       \State $line[L2][a] \gets line[c'][a]$
+    \EndIf
+    \State $state[c'][a] \gets toCompatible(x)$
+  \EndFor
+  \State $state[c][a] \gets x$
+  \If {$state[c][a] = I$}
+    \State $line[c][a] \gets line[L2][a]$
+  \EndIf
+  \State \textbf{remove} $r$
+\EndIf
+
+\If {L1 has Request $r = \Req{a}{x}{d}$ outstanding}
+  \If {$x = Ld$}
+    \If {$state[c][a] > I$}
+      \State \textbf{remove} $r$
+    \Else
+      \State \textbf{enq} $\Req{c}{a}{S}$
+    \EndIf
+  \ElsIf {$x = St$}
+    \If {$state[c][a] = M$}
+      \State $line[c][a] \gets d$
+      \State \textbf{remove} $r$
+    \Else
+      \State \textbf{enq} $\Req{c}{a}{M}$
+    \EndIf
+  \EndIf
+\EndIf
+\end{algorithmic}
+
+\subsection{MESI}
+
+The following defines the permissions denoted by the coherence states for an
+address in the L1 cache with respect reading and writing the line corresponding
+to the address,
+
+\begin{itemize}
+\item $M:$ Read and write
+\item $E:$ Read only
+\item $S:$ Read only
+\item $I:$ No permission
+\end{itemize}
+
+$I < S, I < E, I < M, S < E, S < M$ and $E < M$
+
+\begin{itemize}
+\item $toCompatible(M) = I$
+\item $toCompatible(E) = I$
+\item $toCompatible(S) = S$
+\item $toCompatible(I) = M$
+\end{itemize}
+
+\begin{algorithmic}
+\If {L2 has Request $r = \Req{c}{a}{x}$ outstanding}
+  \ForAll {$c',\; s.t.\; c' \neq c \wedge$\\
+    \hspace{2cm}$state[c'][a] > toCompatible(x)$}
+    \If {$state[c'][a] = M$}
+       \State $line[L2][a] \gets line[c'][a]$
+    \EndIf
+    \State $state[c'][a] \gets toCompatible(x)$
+  \EndFor
+  \If {$\forall c', c' \neq c \rightarrow state[c'][a] = I$}
+     \State $state[c][a] \gets E$
+  \Else
+    \State $state[c][a] \gets x$
+  \EndIf
+  \If {$state[c][a] = I$}
+    \State $line[c][a] \gets line[L2][a]$
+  \EndIf
+  \State \textbf{remove} $r$
+\EndIf
+
+\If {L1 has Request $r = \Req{a}{x}{d}$ outstanding}
+  \If {$x = Ld$}
+    \If {$state[c][a] > I$}
+      \State \textbf{remove} $r$
+    \Else
+      \State \textbf{enq} $\Req{c}{a}{S}$
+    \EndIf
+  \ElsIf {$x = St$}
+    \If {$state[c][a] > S$}
+      \If {$state[c][a] = E$}
+         \State $state[c][a] \gets M$
+      \EndIf
+      \State $line[c][a] \gets d$
+      \State \textbf{remove} $r$
+    \Else
+      \State \textbf{enq} $\Req{c}{a}{E}$
+    \EndIf
+  \EndIf
+\EndIf
+\end{algorithmic}
+
+
+Full version below:
+
+\begin{algorithmic}
+\If {L2 has Request $r = \Req{c}{a}{x}$ outstanding}
+  \If {$isPresent[a]$}
+    \ForAll {$c',\; s.t.\; c' \neq c \wedge$\\
+      \hspace{2cm}$state[c'][a] > toCompatible(x)$}
+      \If {$state[c'][a] = M$}
+         \State $line[L2][a] \gets line[c'][a]$
+      \EndIf
+      \State $state[c'][a] \gets toCompatible(x)$
+    \EndFor
+    \If $state[L2][a] = I$
+      \State $line[L2][a] \gets memory[a]$
+    \EndIf
+    \State $state[c][a] \gets x$
+    \If {$state[c][a] = I$}
+      \State $line[c][a] \gets line[L2][a]$
+    \EndIf
+    \State $isHandling[c][a] \gets False$
+    \State \textbf{remove} $r$
+  \Else
+    \State \textbf{let} $a' = getAddrToReplace(a)$
+    \ForAll $c', s.t. state[c'][a'] > I$
+      \If {$state[c'][a'] = M$}
+         \State $line[L2][a'] \gets line[c'][a']$
+      \EndIf
+      \State $state[c'][a'] \gets I$
+    \EndFor
+    \State $isPresent[a'] \gets False$
+    \State $isPresent[a] \gets True$
+    \State $line[L2][a] \gets memory[a]$
+    \State $state[c][a] \gets x$
+    \If {$state[c][a] = I$}
+      \State $line[c][a] \gets line[L2][a]$
+    \EndIf
+    \State $isHandling[c][a] \gets False$
+    \State \textbf{remove} $r$
+  \EndIf
+\EndIf
+
+\If {L1 has Request $r = \Req{a}{x}{d}$ outstanding and\\
+  \hspace{2cm}$\neg isHandling(a)$}
+  \If {$x = Ld$}
+    \If {$state[c][a] > I$}
+      \State \textbf{remove} $r$
+    \Else
+      \State \textbf{enq} $\Req{c}{a}{S}$
+      \State $isHandling[c][a] \gets True$
+    \EndIf
+  \ElsIf {$x = St$}
+    \If {$state[c][a] = M$}
+      \State $line[c][a] \gets d$
+      \State \textbf{remove} $r$
+    \Else
+      \State \textbf{enq} $\Req{c}{a}{S}$
+      \State $isHandling[c][a] \gets True$
+    \EndIf
+  \EndIf
+\EndIf
+\end{algorithmic}

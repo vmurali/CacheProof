@@ -1,0 +1,156 @@
+\section{Implementing variations of basic MSI protocol}
+\label{sec:variations}
+
+%\renewcommand{\fourAngle}[6]{\text{$#1\langle#2\rightarrow#3,#4,#5\rightarrow#6\rangle$}}
+
+\newcommand{\FwdReq}[2]{\text{$FwdReq\langle#1,#2\rangle$}}
+\newcommand{\FwdAck}{\text{$FwdAck$}}
+
+%\renewcommand{\Req}[5]{\fourAngle{Req}{#1}{#2}{#3}{#4}{#5}}
+%\renewcommand{\Resp}[5]{\fourAngle{Resp}{#1}{#2}{#3}{#4}{#5}}
+
+In this section we describe variations of the basic MSI hierarchical
+message-passing directory-based protocol and show how our framework can be used
+to design and argue their correctness easily.
+%The
+%arguments are based on the formally proven Invariants of Figure
+%\ref{invariants}. The ordering requirements in Figure \ref{ordering} are
+%handled at the protocol level by sending the state at which the sender was in
+%just before sending the message as discussed in Section \ref{sec:nofifoorder}
+
+\subsection{MESI optimization}
+We first describe the MESI variation of the message-passing MSI protocol for a
+two-level hierarchy containing multiple L1 caches and directory shared by all
+the L1 caches. On receiving a request from a cache $c$ to upgrade $c$'s state
+for address $a$ to $S$, the directory sends permission to upgrade the state of
+$c$ for address $a$ to ``exclusive'' ($E$), if the directory state of every
+other cache for that line is $I$ (and because of our Invariant
+\ref{conservative}, the coherence state of every other cache for that line is
+also $I$). Once cache $c$ has upgraded to $E$, it can automatically upgrade to
+$M$ on receiving a store request from the processor, without sending any
+notification to the directory.  However, if some other cache $c'$ sends a
+request to the directory for address $a$ to upgrade to state $S$, the directory
+has to ensure that the cache $c$ has downgraded its state from $E$ to $S$. If
+$c$ remains at $E$ without having upgraded to $M$, then it doesn't have to send
+the data back to the memory, while downgrading to $S$.
+
+From the directory's perspective, states $M$ and $E$ are equivalent -- the only
+distinction is that the cache would not send back the data while downgrading the
+state for an address from $E$. Thus MESI is simply an optimization over the MSI
+protocol in which the cache maintains an extra dirty bit for each address, and
+sends back the cache line data to the directory during a downgrade only if the
+dirty bit is set (the dirty bit can not be set for an address if the
+corresponding state is $S$). If the dirty bit is not set during a downgrade, the
+cache sends back a message denoting ``data unmodified'' in the place of actual
+data. In the hierarchical setting too, MESI is simply an optimization over MSI
+in which a child sends data back to its parent during a downgrade only if the
+dirty bit is set.
+
+\subsection{Cache-intervention based protocols}
+In the protocols discussed so far, caches can directly communicate only with
+their immediate children or with its immediate parent. In cache-intervention
+based protocols, communication and data transfer can also take place between
+nodes other than the immediate children or the immediate parent. Our framework
+can be easily extended to include cache-intervention based protocols where
+sibling caches, \ie caches that share the same immediate parent, can communicate
+with each other. We show 2 protocols with sibling cache-intervention: a) the MSI
+protocol with intervention by a cache in the $M$ state and b) the MOSI protocol. 
+Note that in both the protocols, the MESI optimization can be implemented
+whenever a child has to transfer data to its parent.
+
+We first describe the two protocols using a two-level hierarchy containing
+multiple L1 caches and a directory shared by all the L1 caches, and later
+describe the extension to a hierarchical system.
+
+\subsubsection{Intervention by a cache in the $M$ state:}
+A downgrade request sent from the directory to a cache $c$ for address $a$ can
+sometimes be augmented with a forwarding request \FwdReq{fwdDest}{toState},
+which directs the cache to send an upgrade response to $fwdDest$ to upgrade
+$fwdDest$'s state for address $a$ to $toState$, on the directory's behalf. A
+downgrade response from cache $c$ is also augmented with \FwdAck{}, which
+acknowledges the directory that the requested forwarding has been fulfilled.
+Note that normal downgrade requests from the directory without a forwarding
+request and normal responses from the cache without \FwdAck{} are also sent.
+
+When a directory receives a request from cache $c'$ for address $a$ to upgrade
+to state $x$ ($x$ = $M$ or $S$), it determines if some other cache is in
+state $M$ for address $a$. If no cache is in state $M$ for address $a$, then the
+directory behaves in the same manner as MSI -- we will not discuss this here
+again.  But if some cache $c$ is in state $M$ for address $a$, it sends a
+request to cache $c$ to downgrade its state for address $a$ to $toCompatible(x)$
+(either $I$ or $S$ for $x$ = $M$ or $S$, respectively) augmented with a
+forwarding request \FwdReq{c'}{x}. This forwarding request is essentially a
+response sent by the directory to cache $c'$ to upgrade the state of $c'$ for
+address $a$ to $x$, but it is sent via the cache $c$. The directory waits for a
+downgrade response along with a \FwdAck{} from $c$ before processing further
+requests for $a$.
+
+If cache $c$ receives the downgrade request from the directory along with the
+forward request \FwdReq{c'}{x}, while it is still in state $M$ for address $a$,
+$c$ will send a response to $c'$ authorizing the upgrade of $state[c'][a]$ to
+$x$, along with the data associated with address $a$. It will also send a
+downgrade response to the directory notifying that $c$ has downgraded state $a$
+to $toCompatible(x)$ along with a \FwdAck{}; it doesn't transfer the data to the
+directory/memory. However, if cache $c$ has already downgraded to a lower state
+than $M$ for address $a$ (because of eviction due to replacement), then the
+cache simply drops the request just like in the MSI protocol discussed earlier;
+when $c$ downgraded its state from $M$ for address $a$, it must have sent a
+downgrade response to the directory for address $a$ along with the data (subject
+to MESI optimization), just like in the MSI protocol discussed earlier,
+albeit without a \FwdAck{}.
+
+If the directory receives a downgrade response for address $a$ from cache $c$
+along with a \FwdAck{}, the directory knows that $c$ has sent a response to cache
+$c'$ authorizing $c'$ to upgrade its state for $a$ to $x$. But if the directory
+receives a downgrade response for address $a$ from cache $c$ without a \FwdAck{},
+the directory knows that $c$ has not sent a response to cache $c'$. In this
+case, the directory sends a response along with the data to $c'$ authorizing it
+to upgrade its state for address $a$ to $x$. Figure \ref{msi-inter} shows the
+order of messages transferred between the caches in the scenario when forwarding
+happens as well the in the scenario when no forwarding happens.
+
+$c'$ would eventually get the upgrade to $x$ response for address $a$ either
+from the directory or the cache $c$ -- it can not distinguish between the two
+cases.
+
+The protocol given above satisfies all the constraints \ref{} to \ref{}, except,
+potentially, Constraint \ref{orderreq}. Before the upgrade response for address
+$a$ sent from $c$ to $c'$ has reached $c'$, $c'$ could have received a downgrade
+request sent from the parent. This happens as follows (Figure
+\ref{msi-fifo-needed}, with the numbers indicating the order in which the
+messages are sent, for outgoing edges, and received for incoming edges). Cache
+$c$ sends the upgrade response (and data) to cache $c'$, and its own downgrade
+response along with the \FwdAck{} to the directory. The directory receives the
+downgrade response from $c$. Soon afterwards, the directory wants to downgrade
+the state of $a$ in $c'$ to $I$ (let's say, because some other cache wants to
+upgrade its state for $a$ to $M$).  The directory sends a downgrade to $I$
+request to $c'$ for address $a$. This downgrade request to $c'$ from the parent
+reaches $c'$ before the (forwarded) upgrade response from $c$, violating
+Constraint \ref{orderreq}. However, as we saw in Section \ref{sec:nofifoorder},
+Constraint \ref{orderreq} can be satisfied by tagging the downgrade request with
+the state the directory was in for cache $c'$ and address $a$ right before the
+request to $c'$ was sent -- FIFO ordering is not required from the network. $c'$
+will not process the downgrade request till it has received the upgrade response
+from $c$.
+
+Since the protocol satisfies all the constraints \ref{} to \ref{}, it satisfies
+all the invariants in Figure \ref{invariants}. Thus the directory is guaranteed
+to have a conservative version of the states of each of the caches for each
+address by Invariant \ref{conservative}. When the directory sends a downgrade
+request for address $a$ to $c$ tagged with a \FwdReq{c'}{x} (when $dir[c][a]$ is
+$M$), the directory assumes that both $c$ and $c'$ are in state $M$. However, it
+is guaranteed that $c'$ can not upgrade to $x$ unless $c$ has sent an upgrade
+response to $c'$, which guarantees that $c$ would have downgraded to
+$toCompatible(x)$. This ensures both the Single-writer Invariant
+\ref{singleWriter} as well as Read-from-last-writer Invariant \ref{readLast}.
+
+Note that in our protocol, \FwdAck is sent from the forwarding cache $c$ rather
+than the final cache $c'$ which is the case in commonly used protocols
+\cite{hammer, gems}. This unblocks the directory to serve further requests for
+the same address as soon as \FwdAck is received from $c$, instead of waiting for
+an acknowledgement from $c'$.
+
+Thus we have mapped the complex protocol with intervention by a cache in $M$
+state to a simpler MSI protocol and proved its correctness using our framework.
+
+\subsubsection{MOSI protocol}

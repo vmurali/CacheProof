@@ -1,0 +1,299 @@
+\section{Informal description of the proof}
+\label{sec:informal-proof}
+
+\newcommand{\msg}[5]{\text{$#1 \langle #2 \rightarrow #3, #4, #5 \rangle$}}
+\newcommand{\Req}[4]{\msg{Req}{#1}{#2}{#3}{#4}}
+\newcommand{\Resp}[4]{\msg{Resp}{#1}{#2}{#3}{#4}}
+\newcommand{\Data}[4]{\msg{Data}{#1}{#2}{#3}{#4}}
+\newcommand{\Mesg}[4]{\msg{Mesg}{#1}{#2}{#3}{#4}}
+\newcommand{\FirstInv}{\emph{FirstInv}}
+%\input{Atomic}
+
+Let us walk through our design methodology for our message-passing hierarchical
+directory based protocols.
+
+\subsection{Message-passing directory-based MSI protocol for 2-levels, no
+replacement evictions}
+For the sake of explanation, let us start with an MSI protocol, with just two
+levels of the memory hierarchy -- the L1 caches and the main memory. We will
+eventually build realistic protocols with various optimizations.
+
+Let us assume that the caches have enough capacity so that no line gets evicted
+for the sake of replacement. Lines may however get evicted to enforce the
+single-writer property for cache coherence, \ie when one L1 cache has
+permission to modify the data for an address, no other cache has read or write
+permission for that address.
+ 
+An L1 cache stores the information given in Figure \ref{table:lineinfo}. The
+coherence state for an address denotes the permission that a cache has for the
+address: $M = \{R, W\}, S = \{R\}, I = \{\}$. State $I$ is akin to the cache not
+having the data corresponding to $a$, since it can neither read or write that
+cache line.
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|cX|}
+\hline
+$state[c][a]$ & coherence state (from set $\{M, S, I\}$) of cache $c$ for
+address $a$\\
+$data[c][a]$ & data in cache $c$ for address $a$\\
+\hline
+\end{tabularx}
+\caption{Values stored by a cache for an address}
+\label{table:lineinfo}
+\end{figure}
+
+In order to serve a request from the processor, if a cache has to \emph{upgrade}
+its state for address $a$, \ie change from $x$ to $y$ where $x > y$
+(Figure \ref{table:fns}), it can do so only after ensuring that the new state is
+\emph{compatible} with the states of other caches for that address, \ie other
+caches are in a state less than or equal to $toCompatible(y)$
+(Figure \ref{table:fns}). This is needed to ensure the single-writer property of
+the MSI protocol -- if a cache's state is $M$ for an address $a$, every other cache
+must be in $I$ for address $a$. But, the caveat is that the L1 cache can access
+only its own state and data, as opposed to that of other caches.
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|cX|}
+\hline
+$toCompatible(s)$ & If the state of one cache is $s$ for address $a$, the
+highest state of another cache for the same $a$
+$\newline
+toCompatible(M) = I,\newline
+toCompatible(S) = S,\newline
+toCompatible(I) = M
+$\\
+\hline
+$x > y$ & Denotes if state $x$ has more permissions than state $y$.
+$M > S, M > I, S > I$. Relations $\le, >, \ge$ are also defined appropriately\\
+\hline
+\end{tabularx}
+\caption{Abstraction functions}
+\label{table:fns}
+\end{figure}
+
+The memory controller has access to the data from the memory but not to the
+state and data of the L1 caches. Instead, it only has access to a directory
+which has a version of the coherence states of the caches for each address. The
+version of the state in the directory may not be up to date, \ie may not be the
+same as the one in the caches, all the time. Figure \ref{table:dirinfo} shows
+the information stored in the memory and directory. We will use the word memory
+and directory interchangeably for the 2-level protocol. The caches can not
+communicate with each other but can communicate with the directory via messages.
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|cX|}
+\hline
+$dir[c][a]$ & directory's version of the coherence state of cache $c$ for address $a$\\
+$memory[a]$ & data in the memory address $a$\\
+\hline
+\end{tabularx}
+\caption{Values stored by a directory and memory for an address}
+\label{table:dirinfo}
+\end{figure}
+
+Let's us assume that we have a system which guarantees the invariants given
+in Figure \ref{FirstInv}.
+\floatstyle{boxed}
+\restylefloat{figure}
+
+\begin{figure}
+\begin{enumerate}
+\item The cache can upgrade $state[c][a]$ from $x$ to $y$ where $y > x$, \ie
+\emph{downgrade} its directory state only after it receives the appropriate
+authorization from the directory for address $a$. \label{cwaitresp}
+\item If the cache wants to upgrade $state[c][a]$ to $x$, there is a
+message \Req{c}{Dir}{a}{x} which cache $c$ can send to the directory requesting
+the upgrade authorization, and the cache will eventually be able to send
+the request. \label{csendreq}
+\item If the directory receives an upgrade request \Req{c}{Dir}{a}{x} from cache
+$c$ for address $a$, then just before receiving the request, $dir[c][a] < x$.
+\label{drecvreq}
+\item The directory can change $dir[c][a]$ from $x$ to $y$ where $y < x$, \ie
+\emph{downgrade} its directory state only after it receives the appropriate
+authorization from cache $c$ for address $a$. \label{dwaitresp}
+\item If the directory wants to downgrade $dir[c][a]$ to $x$, there is a
+message \Req{Dir}{c}{a}{x} which the directory can send to cache $c$ requesting
+the downgrade authorization, and the directory will eventually be able to send
+the request. \label{dsendreq}
+\item If the directory has sent a downgrade request for an address $a$ to cache
+$c$, it will eventually get the downgrade authorization response for address $a$
+from cache $c$ to downgrade to $x$, where $x$ is less than or equal to the state
+to which the directory sent a request to downgrade to. \label{drecvresp}
+\item If $dir[c][a] = M$ just before receiving a downgrade authorization from
+cache $c$ for address $a$, then the cache would have sent the data along with
+the authorization. \label{drecvdata}
+\item If the directory wants to send an authorization message to upgrade the
+state of address $a$ in cache $c$ to $x$ (\Resp{Dir}{c}{a}{x}), it will
+eventually be able to send it. \label{dsendresp}
+\item The directory can send the data from the memory along with the upgrade
+authorization message if it wants to. \label{dsenddata}
+\item The directory's version of the cache's state is always conservative, \ie
+$\forall c, a,\; dir[c][a] \ge state[c][a]$. \label{conservative}
+\end{enumerate}
+\caption{Initial set of invariants \FirstInv}
+\label{FirstInv}
+\end{figure}
+
+\floatstyle{plain}
+\restylefloat{figure}
+
+We will walk through how the MSI coherence protocol (with no replacement
+evictions) can be implemented using the above invariants and argue why it is a
+correct implementation.
+
+The directory's role is to ensure the single-writer property and that the last
+updated data is being read. In order to implement the cache coherence protocols
+using the invariants of Figure \ref{FirstInv}, the directory's ensures that at
+all times, if for some $c, dir[c][a] = M$, the for every other $c', dir[c'][a] =
+I$.
+
+If a cache gets a request from the core which can not be handled because of lack
+of permissions, it (eventually) sends an upgrade request to the directory.
+\FirstInv.\ref{csendreq} ensures that such a request can eventually be sent.
+
+If the directory receives a request from cache $c$ to upgrade the state of
+address $a$ to $x$, because of \FirstInv.\ref{drecvreq}, $dir[c][a] < x$ and
+since $cache[c][a] \le dir[c][a]$ because of \FirstInv.\ref{conservative},
+$cache[c][a] < x$ and hence the directory must send an upgrade authorization
+response. The directory sends a request \Req{Dir}{c'}{a}{toCompatible(x)} to
+every cache $c'$ for which $dir[c'][a] > toCompatible(x)$. Such a request can be
+sent eventually because of \FirstInv.\ref{dsendreq}.
+
+Because of \FirstInv.\ref{drecvresp}, the directory will eventually receive
+responses from each of the requested caches $c'$
+(\Resp{c'}{Dir}{a}{toCompatible(x)}) authorizing the downgrade of $dir[c'][a]$
+to $toCompatible(x)$. If $dir[c'][a] = M$ just before receiving the
+authorization, then by \FirstInv.\ref{drecvdata}, the directory would also
+receive data from $c'$. Because the directory maintains the single-writer
+invariant, every other cache $c''$ would have $dir[c''][a] = I$ just before
+receiving the authorization. This implies for every other cache $c''$,
+$state[c''][a] = I$ by the \FirstInv.\ref{conservative} invariant, and hence
+$c'$ has the most up-to-date copy for address $a$. Thus the memory is updated
+with the received up-to-date copy for address $a$.
+
+Once all the authorizations have been received, for every cache $c'$,
+$dir[c'][a] \le toCompatible(x)$ (other than the one that made the request $c$).
+Since the \FirstInv.\ref{conservative} invariant ensures that $cache[c'][a] \le
+dir[c'][a]$, we have $cache[c'][a] \le toCompatible(x)$, ensuring the
+single-writer property (because $toCompatible(M) = I$). The directory can now
+change $dir[c][a]$ to $x$ and send \Resp{Dir}{c}{a}{x} authorizing $c$ to
+upgrade state of address $a$ to $x$ (\FirstInv.\ref{dsendresp} ensures that such
+a message can be sent). Just before sending the authorization, if $dir[c][a] =
+I$, it implies that $state[c][a] = I$ because of the
+\FirstInv.\ref{conservative} invariant.  Thus the cache doesn't have data
+corresponding to address $a$ and the directory has to supply the most up to date
+version of the address (from memory, since the memory is up to date), which it
+can because of \FirstInv.\ref{dsenddata}.
+
+The \FirstInv\ invariants essentially makes it straight forward to design the
+behavior of the directory . For the sake of argument, let
+\FirstInv.\ref{drecvreq} not be guaranteed. Consider a scenario the cache $c$
+which has sent a request \Req{c}{Dir}{a}{M} earlier but hasn't received the
+upgrade authorization response yet. Meanwhile, $c$ sends another upgrade request
+\Req{c}{Dir}{a}{S}. Let us assume that the directory processed the requests in
+the order in which they were sent. Once the directory has finished processing
+the first request, it changes its directory state $dir[c][a]$ to $M$. When it
+receives the second request, it is not easy to decide if the directory has to
+drop the request or to send another response authorizing the cache to change to
+$S$.
+
+The difficulty in message passing protocols comes from the fact that it is
+difficult to guarantee the above invariants, even for a 2-level memory hierarchy
+discussed above as shown in the examples below.
+
+\subsubsection*{Example 1: Inability to send messages because of network
+congestion:}
+For instance, the ability of a cache or the directory to send messages
+(\FirstInv.\ref{dsendreq}, \FirstInv.\ref{dsendresp}, \FirstInv.\ref{csendreq},
+\etc) depends upon the availability of free buffers in the network; if the
+network remains congested all the time, then it would not be possible to send the
+messages, and the system would deadlock.
+
+\subsubsection*{Example 2: Multiple upgrade requests from the cache for the same
+address:}
+If a cache is allowed to make multiple requests to upgrade the state of an
+address (say to $M$ and then to $S$) before receiving the upgrade
+authorizations, then it might violate \FirstInv.\ref{drecvreq} if the requests
+were processed by the directory in the order they were received.
+
+\subsubsection*{Example 3: On sending an upgrade request, the cache waits till
+it gets an authorization:}
+If the behavior of the caches were such that if a cache $c$ has sent an
+upgrade request \Req{c}{Dir}{a}{x} to the directory, it keeps waiting for the
+upgrade authorization response \Resp{Dir}{c}{a}{x} before processing any
+requests from the directory for address $a$, then the cache coupled with our
+simple directory implementation would deadlock. Consider a scenario with two
+caches $X$ and $Y$, with both the caches in state $S$ for address $a$. Both the
+caches got a store request from the processor and want to upgrade their states
+to $M$, and hence send \Req{X}{Dir}{a}{M} and \Req{Y}{Dir}{a}{M}, respectively,
+to the directory. Let us say the directory receives \Req{Y}{Dir}{a}{M} first,
+and in order to process it, according to our implementation of the directory,
+sends a downgrade request \Req{Dir}{X}{a}{I} to cache $X$. But the cache 
+does not process any request from the directory for address $a$, according to
+our assumption, and hence will never send the downgrade authorization
+\Resp{X}{Dir}{a}{I} to the directory, violating \FirstInv.\ref{drecvresp}, and
+hence causing a deadlock.
+
+\subsubsection*{Example 4: At the directory, authorization responses are blocked
+by upgrade requests:}
+Consider a scenario where two caches $X$ and $Y$ are both in state $S$ for address
+$a$. $Y$ got a store request from the processor and sends an upgrade request
+\Req{Y}{Dir}{a}{M} to the directory. The directory receives that request, and
+sends a downgrade request \Req{X}{Dir}{a}{I} to $X$. $X$ sends a downgrade
+authorization \Resp{X}{Dir}{a}{I} to the directory on receiving the downgrade
+request. But the directory can not receive the authorization because it is
+blocked by other requests (including \Req{Y}{Dir}{a}{M}). This violates
+\FirstInv.\ref{drecvresp} and hence creates a deadlock.
+
+These examples show that if the \FirstInv\ invariants are violated, then it
+either breaks cache coherence (by creating deadlocks) or it makes correctly
+designing the directory very difficult.
+
+Before we show how the \FirstInv\ invariants can be guaranteed (which requires
+the description of the behavior of the L1 caches), let us consider a
+slightly more complicated system where caches can evict lines for replacement.
+
+\subsection{Message-passing directory-based MSI protocol for 2-levels, with
+replacement evictions}
+We again have just two levels of memory hierarchy -- the L1 caches and the main
+memory. But the caches have finite capacity. If receives a request from the core
+for an address $a$ and has no space to accommodate address $a$, it evicts
+another address $a'$ to make room for $a$.
+
+In the previous scenario, where the caches didn't have to evict for replacement,
+a cache only had to send downgrade authorizations to the directory on receiving
+a corresponding request. But in the new scenario, a cache can send a downgrade
+notification to the directory on evicting an address. Such a notification is
+useful in keeping the directory's version of the cache's state up to date, so we
+will restrict the family of directory-based protocols that we discuss to those
+where the caches send such a notification, voluntarily.
+
+The directory handles this notification in the exact manner by which it handled
+a downgrade authorization response from the cache, so the notification message
+is the same as a downgrade authorization message from cache $c$ for authorizing
+the downgrade of the $dir[c][a]$ to $I$ (\Resp{c}{Dir}{a}{I}).
+
+We will now discuss a behavior of the L1 cache that would violate the
+invariant that the directory's version of the states of the caches for each
+address is conservative.
+
+\subsubsection*{Example 5: Cache sends voluntary notifications
+(\Resp{c}{Dir}{a}{I}) indiscriminately}
+Consider a system with two caches $X$ and $Y$. Let $state[X][a] = S, state[Y][a]
+= I$ and let $dir[X][a] = S, dir[Y][a] = I$. $X$ receives a store request from
+the core, and hence sends an upgrade request \Req{X}{Dir}{a}{M} to the
+directory. Say $X$ was a non-blocking cache, and hence receives another load
+request for address $a'$ from the core before receiving an upgrade authorization
+for address $a$. $X$ does not have space in the cache for $a'$, and it decides
+to evict address $a$, and sends \Resp{X}{Dir}{a}{I} to the directory, changing
+$state[c][a]$ to $I$.  Meanwhile, the directory receives the request
+\Req{X}{Dir}{a}{M} and since $dir[Y][a] \le I$, it responds to $X$ with an
+upgrade authorization \Resp{Dir}{X}{a}{M} (along with the data). Later, the
+directory receives the notification \Resp{X}{Dir}{a}{I} from $X$, and downgrades
+$dir[X][a]$ to $I$. Meanwhile, $X$ receives the upgrade authorization
+\Resp{Dir}{X}{a}{M} and changes $state[X][a]$ to $M$. Now,
+\FirstInv.\ref{conservative} is broken, since $state[X][a] = M$ and $dir[X][a] =
+I$. Let $Y$ get a load request from its core, and hence sends a
+\Req{Y}{Dir}{a}{S} to the directory. The directory on receiving the request,
+sends an upgrade authorization to $Y$ because $dir[X][a] = I$. This violates the
+single-writer property and hence coherence.

@@ -1,6 +1,36 @@
 \section{Invariants}
 \label{sec:invariants}
 
+%\subsection{Desired goals}
+%\begin{enumerate}
+%\item Permissions can be Nothing, Read (only), Read and Write, \ie $\{\}, {R}, {R, W}$
+%\item To upgrade = to gain more permissions
+%\item To downgrade = to lose permissions
+%\item If the child cache wants to gain some permissions for an address, it can
+%do so only after the parent directory has authorized it
+%\end{enumerate}
+%
+%\begin{enumerate}
+%\item Permissions that a child cache has for an address is a subset of the
+%permissions that the parent directory believes the child has for that address
+%\item If the parent directory wants a child cache to lose some permissions for
+%an address, there is a message that the directory can send notifying the child
+%of the directory's intentions (this message is called a downgrade request)
+%\item If the cache wants to gain some permissions for an address, there is a
+%message that the child can send notifying the directory of the child's
+%intentions (this message is called an upgrade request)
+%\item If a node wants to send a message to some node, then it can send such the
+%message eventually (\ie it can never be blocked from sending the message
+%forever)
+%\item If the parent directory has sent a downgrade request for an address $a$
+%to a child cache $c$, the directory will eventually get a message from $c$
+%notifying the directory that the cache has given up the required permissions
+%for address $a$ in $c$
+%\item If the child cache has sent an upgrade request for an address $a$ to
+%parent directory, the child will eventually get a message from the directory
+%authorizing the upgrade
+%\end{enumerate}
+%
 \newcommand{\threeAngle}[4]{\text{$#1\langle#2,#3,#4\rangle$}}
 
 \newcommand{\Req}[3]{\threeAngle{Req}{#1}{#2}{#3}}
@@ -9,6 +39,103 @@
 \newcommand{\Dirty}{\text{$Dirty$} }
 \newcommand{\True}{\text{$True$} }
 \newcommand{\False}{\text{$False$} }
+
+The caches are assumed to be organized in the form of a tree
+(Figure~\ref{fig:hierarchy}). The leaves of this tree represent the L1 caches,
+with each L1 cache connected to exactly one core. The root of the tree is a
+single Last-level cache (LLC), connected to the main memory. A (cache) node can
+communicate only with its parents or with its children via a request or
+response message whose format is in Figure~\ref{message}.
+
+\begin{figure}
+%\centering
+\begin{minipage}{5.5cm}
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.5]{hierarchy}
+\caption{Cache hierarchy}
+\label{fig:hierarchy}
+\end{figure}
+\end{minipage}
+\begin{minipage}{3cm}
+\begin{figure}[H]
+\centering
+\includegraphics[scale=0.53]{network}
+\caption{One possible network organization}
+\label{fig:network}
+\end{figure}
+\end{minipage}
+\end{figure}
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|cX|}
+\hline
+\multicolumn{2}{|c|}{\Req{n}{a}{x}, \Resp{n}{a}{x}}\\
+\hline
+$n:$ & Source or destination node ID (parent $P$, or a child)\\
+$a:$ & Address of the line corresponding to the request\\
+$x:$ & Value from the set of coherence states\\
+\hline
+\end{tabularx}
+\caption{Incoming and outgoing message}
+\label{message}
+\end{figure}
+
+The restrictions of which messages can not block each other, and the order in
+which messages should be received and handled is given in
+Figure~\ref{receiveOrder}.
+
+One way to implement the ordering restrictions is to have a network which
+guarantees FIFO ordering between any two nodes. Having one virtual channel for
+the messages from the parent and another for the messages from the children
+enforces the blocking restriction between requests from the parent and the
+children. Among messages from the parent (or the children), having two virtual
+channels, one for requests and one for responses, with responses having higher
+priority than requests enforces the blocking restrictions and the ordering
+requirements between requests and responses. Such an organization is shown in
+Figure~\ref{fig:network}.
+
+Note that the organization in Figure~\ref{fig:network} requires finishing
+processing of a request from a child before starting the processing of the
+request from another child, or for a different address. It makes the node
+behave more like a blocking cache, whose performance may be low. The
+restrictions given in Figure~\ref{receiveOrder} however do not impose this
+organization. One can process requests to different addresses in any order,
+using MSHRs.
+
+The ordering requirements of Figure~\ref{receiveOrder} can be enforced using
+prioritized virtual channels which guarantee FIFO ordering between messages
+sent from the same source to the same destination (as discussed above).
+However, as we show later, the ordering requirements can be enforced even when
+the underlying network does not guarantee FIFO ordering between two nodes.
+
+\begin{figure}
+\begin{tabularx}{\linewidth}{|X|}
+\hline
+\multicolumn{1}{|c|}{Blocking restrictions}\\
+\hline
+\begin{enumerate}
+\item A request from a child should not block (\ie prevent start of the
+handling of) a request from the parent
+\item Requests for an address $a$ should not block (\ie prevent reception of)
+responses for address $a$, even from a different source
+\end{enumerate}\\
+\hline
+\multicolumn{1}{|c|}{Ordering requirements}\\
+\hline
+\begin{enumerate}
+\item A response for an address $a$ from a child $c$ should not be received
+before a response from the same $c$ and the same $a$ sent earlier has been
+received and removed
+\item The handling of a request for an address $a$ from a source $n$ should not
+be started before a response from the same $n$ for the same $a$ sent earlier
+has been received and removed
+\end{enumerate}\\
+\hline
+\end{tabularx}
+\caption{Blocking restrictions and order of receiving messages}
+\label{receiveOrder}
+\end{figure}
 
 The values of the coherence state (and hence the directory state) belong to a
 totally ordered set, \ie a set in which a \emph{less than} ($<$) relation is
@@ -62,20 +189,6 @@ parent $P$ or a child) that is being handled?\\
 \caption{Information that can be computed for each address (typically from the
 MSHR)}
 \label{table:functions}
-\end{figure}
-
-\begin{figure}
-\begin{tabularx}{\linewidth}{|cX|}
-\hline
-\multicolumn{2}{|c|}{\Req{n}{a}{x}, \Resp{n}{a}{x}}\\
-\hline
-$n:$ & Source or destination node ID (parent $P$, or a child)\\
-$a:$ & Address of the line corresponding to the request\\
-$x:$ & Value from the set of coherence states\\
-\hline
-\end{tabularx}
-\caption{Incoming and outgoing message}
-\label{message}
 \end{figure}
 
 %\begin{figure}
@@ -383,6 +496,23 @@ $isPresent(a')$ is set \False and $isPresent(a)$ is set \True
 \end{figure}
 
 \begin{figure}
+\centering
+\begin{subfigure}{\linewidth}
+\centering
+\includegraphics[scale=0.5]{reqFromP}
+\caption{Stages in handling a request from parent}
+\label{fig:reqFromP}
+\end{subfigure}
+
+\begin{subfigure}{\linewidth}
+\centering
+\includegraphics[scale=0.5]{reqFromC}
+\caption{Stages in handling a request from a child}
+\label{fig:reqFromC}
+\end{subfigure}
+\end{figure}
+
+\begin{figure}
 \begin{tabularx}{\linewidth}{|X|}
 \hline
 \begin{enumerate}
@@ -416,25 +546,4 @@ are available before starting the action
 \end{tabularx}
 \caption{Atomicity requirements}
 \label{atomicity}
-\end{figure}
-
-\begin{figure}
-\begin{tabularx}{\linewidth}{|X|}
-\hline
-\begin{enumerate}
-\item A request from a child should not block (\ie prevent start of the
-handling of) a request from the parent
-\item Requests for an address $a$ should not block (\ie prevent reception of)
-responses for address $a$, even from a different source
-\item A response for an address $a$ from a child $c$ should not be received
-before a response from the same $c$ and the same $a$ sent earlier has been
-received and removed
-\item The handling of a request for an address $a$ from a source $n$ should not
-be started before a response from the same $n$ for the same $a$ sent earlier
-has been received and removed
-\end{enumerate}\\
-\hline
-\end{tabularx}
-\caption{Order of receiving messages}
-\label{mesgOrder}
 \end{figure}

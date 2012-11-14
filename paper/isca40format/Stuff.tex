@@ -1,0 +1,32 @@
+
+\begin{enumerate}
+\item A cache can upgrade its state for an address $a$ only after it gets an
+appropriate authorization message for address $a$ from the directory.
+\item If a cache wants to upgrade its state to $x$ for an address, it will
+eventually be able to send a request message (\Req{c}{Dir}{a}{x}) to the directory
+intimating its intentions. \label{csendreq}
+\item If the directory wants to send an authorization message to upgrade the
+state of address $a$ in cache $c$ to $x$ (\Resp{Dir}{c}{a}{x}), it will eventually
+be able to send it. \label{dsendresp}
+\item If the directory wants to send data from the memory for address $a$ to
+cache $c$ (\Data{Dir}{c}{a}{d}), it will eventually be able to send it.
+\label{dsenddata}
+\item A directory can \emph{downgrade} its version of the state of a cache $c$
+for an address $a$, \ie change $dir[c][a]$ from $x$ to $y$ where $x > y$, only
+after getting the appropriate authorization for address $a$ from cache $c$.
+\item If a directory wants to downgrade its version of the state for a cache $c$
+and address $a$ to $x$ (\Req{Dir}{c}{a}{x}), it will eventually be able to send a
+\emph{request} message to the cache intimating its intentions. \label{dsendreq}
+\item If the directory has sent a downgrade request for an address $a$ to cache
+$c$, it will eventually get an authorization message for the downgrade of
+address $a$ from $c$ (\Resp{c}{Dir}{a}{x}). If $dir[c][a] = M$ just before
+receiving the authorization, the directory will also receive data from $c$ along
+with the authorization. \label{drecvresp}
+\item If a cache wants to send its data for address $a$ to the memory
+(\Data{c}{dir}{a}{d}), it will eventually be able to send it. \label{csenddata}
+\item If a cache wants to downgrade its state to $x$ for an address, it will
+eventually be able to send the notification for downgrade to the directory.
+\item The directory's version of a cache's state for an address is conservative
+at all times, \ie $\forall a, c,\; state[c][a] \le dir[c][a]$. \label{conservative}
+\end{enumerate}
+

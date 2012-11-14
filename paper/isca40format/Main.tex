@@ -9,8 +9,17 @@
 \algblockdefx[rule]{Rule}{EndRule}%
    [2]{\textbf{behavior} \textsc{#1}(#2) \textbf{\{}}%
    {\textbf{\}}}
-\algblockdefx[if]{if}{endif}%
+\algblockdefx{If}{EndIf}%
    [1]{\textbf{if} (#1) \textbf{\{}}%
+   {\textbf{\}}}
+\algcblockdefx{If}{ElsIf}{EndIf}%
+   [1]{\textbf{else if} (#1) \textbf{\{}}%
+   {\textbf{\}}}
+\algcblockdefx{If}{Else}{EndIf}%
+   [1]{\textbf{else if} (#1) \textbf{\{}}%
+   {\textbf{\}}}
+\algblockdefx{ForAll}{EndFor}%
+   [1]{\textbf{forall} (#1) \textbf{\{}}%
    {\textbf{\}}}
 
 \usepackage{amsmath}
@@ -34,6 +43,12 @@
 \usepackage{multirow}
 
 \usepackage{tabularx}
+
+\usepackage{boxedminipage}
+
+\usepackage{graphicx}
+\graphicspath{{./figures/}}
+\DeclareGraphicsExtensions{.pdf,.jpeg,.png}
 
 \begin{document}
 
