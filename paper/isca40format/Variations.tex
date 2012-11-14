@@ -116,7 +116,7 @@ cases.
 The protocol given above satisfies all the constraints \ref{} to \ref{}, except,
 potentially, Constraint \ref{orderreq}. Before the upgrade response for address
 $a$ sent from $c$ to $c'$ has reached $c'$, $c'$ could have received a downgrade
-request sent from the parent. This happens as follows (Figure
+request sent from the directory. This happens as follows (Figure
 \ref{msi-fifo-needed}, with the numbers indicating the order in which the
 messages are sent, for outgoing edges, and received for incoming edges). Cache
 $c$ sends the upgrade response (and data) to cache $c'$, and its own downgrade
@@ -124,7 +124,7 @@ response along with the \FwdAck{} to the directory. The directory receives the
 downgrade response from $c$. Soon afterwards, the directory wants to downgrade
 the state of $a$ in $c'$ to $I$ (let's say, because some other cache wants to
 upgrade its state for $a$ to $M$).  The directory sends a downgrade to $I$
-request to $c'$ for address $a$. This downgrade request to $c'$ from the parent
+request to $c'$ for address $a$. This downgrade request to $c'$ from the directory
 reaches $c'$ before the (forwarded) upgrade response from $c$, violating
 Constraint \ref{orderreq}. However, as we saw in Section \ref{sec:nofifoorder},
 Constraint \ref{orderreq} can be satisfied by tagging the downgrade request with
