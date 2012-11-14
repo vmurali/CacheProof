@@ -8,18 +8,32 @@
 \newcommand{\Resp}[5]{\fourAngle{Resp}{#1}{#2}{#3}{#4}{#5}}
 \newcommand{\RespOld}[4]{\threeAngle{Resp}{#1}{#2}{#3}{#4}}
 
-We already gave the ordering requirements between messages (Figure
-\ref{ordering}), and which messages should not be blocked by other
-messages (Figure \ref{blocking}). These are the minimum constraints to
-ensure correctness and deadlock-freedom of the hierarchical coherence
-protocols. Any practical implementation will restrict the ordering between
-messages further, but they must ensure that the messages that should not be
-blocked according to Figure \ref{blocking} are not blocked. In this
-section, we will discuss several such implementations. Note that the
-constraints in Figures \ref{ordering} are on messages for the same
-address; messages for different addresses can be processed in any order. This
-permits implementation of non-blocking caches using MSHRs.
- 
+%We already gave the ordering requirements between messages (Figure
+%\ref{ordering}), and which messages should not be blocked by other
+%messages (Figure \ref{blocking}). These are the minimum constraints to
+%ensure correctness and deadlock-freedom of the hierarchical coherence
+%protocols. Any practical implementation will restrict the ordering between
+%messages further, but they must ensure that the messages that should not be
+%blocked according to Figure \ref{blocking} are not blocked. In this
+%section, we will discuss several such implementations. Note that the
+%constraints in Figures \ref{ordering} are on messages for the same
+%address; messages for different addresses can be processed in any order. This
+%permits implementation of non-blocking caches using MSHRs.
+
+In this section, we show how the constraints of figures \ref{blocking} and
+\ref{ordering} can be implemented realistically.
+%We already gave the ordering requirements between messages (Figure
+%\ref{ordering}), and which messages should not be blocked by other
+%messages (Figure \ref{blocking}). These are the minimum constraints to
+%ensure correctness and deadlock-freedom of the hierarchical coherence
+%protocols. Any practical implementation will restrict the ordering between
+%messages further, but they must ensure that the messages that should not be
+%blocked according to Figure \ref{blocking} are not blocked. In this
+%section, we will discuss several such implementations. Note that the
+%constraints in Figures \ref{ordering} are on messages for the same
+%address; messages for different addresses can be processed in any order. This
+%permits implementation of non-blocking caches using MSHRs.
+
 \subsection{Virtual channels to prevent inadmissible blocking}
 
 Since responses should not be blocked by requests (Constraint \ref{blockresp}),
@@ -73,13 +87,13 @@ Instead of relying on the network to provide a point-to-point FIFO ordering for
 messages on different virtual channels, Constraint \ref{orderreq} can be
 guaranteed by the protocol.
 
-Request messages now have the format \Req{src}{dst}{addr}{fromState}{toState}.
 A downgrade request for an address from a parent to a child contains the
 directory state of the parent for the address just before the request was sent,
 in addition to value of the state to downgrade to. Similarly an upgrade request
 for an address from child to its parent should contain the state of the child
 for the address just before the request was sent, in addition to the value of
-the state to upgrade to.
+the state to upgrade to. Request messages have a $fromState$ tagged to it, and
+thus have a new format \Req{src}{dst}{addr}{fromState}{toState}.
 
 When a child $c$ receives a request \Req{P}{c}{a}{x}{y} from the parent, if
 $state[c][a] < x$, then handling of the request is postponed by the child till
@@ -93,10 +107,10 @@ request is postponed by the parent till it receives a response
 
 Response messages sent from a child to its parent can also avoid relying on the
 point-to-point FIFO ordering in the network using a similar approach. Response
-messages from the child to its parent will now have the format
-\Req{src}{P}{addr}{fromState}{toState}. A response \Resp{c}{P}{a}{x}{y} is not
-handled by the parent if $dir[c][a] > x$ until it receives another response
-\Resp{c}{P}{a}{w}{z} where $z \le x$.
+messages from the child to its parent will also have a $fromState$ field with
+the new format \Req{src}{P}{addr}{fromState}{toState}. A response
+\Resp{c}{P}{a}{x}{y} is not handled by the parent if $dir[c][a] > x$ until it
+receives another response \Resp{c}{P}{a}{w}{z} where $z \le x$.
 
 One issue with this for responses is that since only one virtual channel
 $RespChannel$ is used for responses throughout the system, a response sent
@@ -126,4 +140,4 @@ other than MSI.
 The implementation described above avoids the need for sending \emph{ack}
 messages to guarantee the required ordering, thus reducing the number of
 messages as well as unblocking a cache line (for handling further requests)
-without waiting for acks.
+ithout waiting for acks.
