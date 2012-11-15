@@ -1,5 +1,11 @@
-Systematic way of ensuring correctness from start instaed of ad hoc
-progressively give examples
-progressively show counter examples (avoid responses altogether in a cache
-intervention)
-
+1. Intro
+2. MSI - two level invariants
+3. MSI - hierarchical constraints, little explanations wrt 2 levels
+4. Maybe MSI protocol for 2 levels
+5. Hierarchical
+6. Fifo
+7. Variations
+8. Discussion
+9. Evaluation
+10. Related work
+11. Conclusion
