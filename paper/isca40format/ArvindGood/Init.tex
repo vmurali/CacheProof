@@ -1,0 +1,26 @@
+\section{Initialize}
+\label{sec:init}
+
+Cache coherence protocols maintain coherence by ensuring the following two
+invariants:
+
+\begin{inv}
+\textbf{Single-writer Invariant}: When a cache has permission to modify data for
+an address, no other cache has read or write permission for that
+address.
+\label{singleWriter}
+\end{inv}
+
+\begin{inv}
+\textbf{Read-from-last-writer}: When a cache reads data for an address, it reads
+the last modified version of the data for the address. If the data for an
+address has not been modified, the cache reads the data from memory.
+\label{lastRead}
+\end{inv}
+
+Because of the requirement to maintain the Single-writer property (Invariant
+\ref{singleWriter}), it makes sense to talk about compatibility of the states of
+two caches for an address. Two coherence states $x$ and $x$ are \emph{compatible}
+if two caches having the same address in states $x$ and $x$ do not violate the
+single-writer property.
+
