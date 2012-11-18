@@ -5,9 +5,20 @@
 
 \usepackage[normalem]{ulem}
 
+\newcommand{\glob}{\text{Global-Invariant}}
+\newcommand{\local}{\text{Local-Invariant}}
+\newcommand{\policy}{\text{Policy}}
+\newcommand{\naive}{na\"{\i}ve}
+
 \usepackage{algpseudocode}
 \algblockdefx[rule]{Rule}{EndRule}%
    [2]{\textbf{behavior} \textsc{#1}(#2) \textbf{\{}}%
+   {\textbf{\}}}
+\algblockdefx[proc]{Proc}{EndProc}%
+   [2]{\textbf{procedure} #1(#2) \textbf{\{}}%
+   {\textbf{\}}}
+\algblockdefx{While}{EndWhile}%
+   [1]{\textbf{while} (#1) \textbf{\{}}%
    {\textbf{\}}}
 \algblockdefx{If}{EndIf}%
    [1]{\textbf{if} (#1) \textbf{\{}}%
@@ -23,6 +34,7 @@
    {\textbf{\}}}
 
 \usepackage{amsmath}
+\usepackage{amssymb}
 
 \newcommand{\viz}{\textit{viz.,\ }}
 \newcommand{\ie}{\textit{i.e.,\ }}
@@ -53,7 +65,7 @@
 \usepackage{amsthm}
 \theoremstyle{definition}
 \newtheorem{inv}{Invariant}
-\newtheorem{cons}{Constraint}
+\newtheorem{cons}{Meta-Rule}
 \newtheorem{scen}{Scenario}
 
 \usepackage{setspace}
@@ -70,7 +82,7 @@
 \thispagestyle{empty}
 
 \begin{abstract}
-%\input{Abstract}
+\input{Abstract}
 \end{abstract}
 
 \input{Files}

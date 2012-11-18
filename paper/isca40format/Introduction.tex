@@ -19,64 +19,53 @@ caches are \emph{inclusive}, that is, if a cache contains address $a$ then its
 parent is guaranteed to contain address $a$, though the parent may have stale
 data for $a$. Every cache or node in the system has an associated directory
 which contains information about its children caches. The coherence state
-changes are orchestrated by passing messages in the form of \emph{upgrade} or
-\emph{downgrade} requests and responses between the caches via the directory.
-Unlike bus-based protocols which lock the bus till all the required state
-transitions are done thereby ensuring atomicity of state transitions, in a
-message-passing protocol, requests and responses are split leading to transient
-states. This creates scenarios not present in bus-based protocols, which can
-lead to coherence violations or deadlocks, if the protocol is not designed or
-implemented carefully.
+changes are orchestrated by passing requests and responses between the caches
+via the directory.  Unlike bus-based protocols which lock the bus till all the
+required state transitions are done thereby ensuring atomicity of state
+transitions, in a message-passing protocol, requests and responses are split
+leading to transient states. This creates scenarios not present in bus-based
+protocols, which can lead to coherence violations or deadlocks, if the protocol
+is not designed or implemented carefully.
 
 Several factors contribute to the difficulty of designing protocols for such
 distributed, hierarchical and message-passing systems:
 
 \begin{enumerate}
-
 \item Lots of concurrent events must be dealt with without a central authority
 to impose a sequence on events;
-
 \item The state on which transitions are based is physically distributed in
 space and cannot be accessed atomically;
-
 \item Physical network may block the transmission of a message because of lack
 of communication buffers or head-of-the-line blocking; 
-
-\item For each message type, determining which cache and directory states are
-possible (and therefore must be dealt) with is difficult. An incomplete set of
-transition rules may cause the protocol to deadlock.
-
+\item The cache or directory may reach a state which can not handle a
+particular message. An incomplete set of transition rules may cause the
+protocol to deadlock.
 \end{enumerate}
 
 As examples of problems in designing correct protocols, we describe several
 concrete and familiar scenarios from two-level systems (a private L1 cache for
-each processor and a shared L2 cache):
+each processor and a memory with a directory):
 
-\noindent \emph{Example 1:} A cache with a read permission for a line gets a
-store request from its processor and hence, requires a write permission for
-that line. The cache would send an upgrade request to the directory controller
-and may eventually get a response from the directory controller. The response
-would signify that the states in the other caches \emph{were} compatible with
-this cache having write permission for the line. That is, the other caches
-neither \emph{had} read nor write permissions for that line. But the messages
-take time to propagate and the response message is necessarily based on the old
-state bits (permissions) that the other caches had, not the permissions that
-the other caches have at the moment the original cache gets the response. If
-another cache gets a read or write permission for that line during the time the
-messages are in flight, coherence would be violated.
+\noindent \emph{Example 1:} A cache in state $S$ for a line gets a store request
+from the processor and sends a request for changing the line's state to $M$ to
+the directory controller. The controller may eventually send a response
+permitting the cache to go to $M$ state for that line. The response would
+signify that the states in the other caches for that line \emph{were} $I$. But
+the messages take time to propagate and the response is necessarily based on the
+old states of other caches -- the current state of another cache may not be $I$,
+violating the Single-writer-at-a-time invariant and hence breaking cache
+coherence.
 
-\noindent \emph{Example 2:} A cache, already having read permission for a line,
-gets a store request, and sends an upgrade request for write permission to the
-directory controller. Instead of getting a response, the cache may receive a
-request from the directory controller asking this cache to give up the read
-permission for the line \ie an invalidate request. This could happen if the
-directory controller received a request for write permission from another cache
-earlier. It is not easy to determine the correct behavior of the cache
-receiving the invalidate request -- whether it should ignore the invalidate
-request and wait till it receives a response from the directory controller for
-its request, or if it should invalidate its line. If it ignores the invalidate
-request, is there any guarantee that it would receive a response for its
-request for write permission, or would it deadlock?
+\noindent \emph{Example 2:} A cache in state $S$ for a line gets a store request
+from the processor and sends a request for changing the line's state to $M$ to
+the directory controller. Instead of getting a response permitting it to go to
+$M$ state, the cache may receive a request from the directory controller asking
+this cache to go to $I$ state (invalidate request)-- this could have happened if
+the directory is serving some other cache's request to go to $M$ state for the
+same line. It is not easy to determine the correct behavior of the former cache
+on receiving the invalidate request -- whether it should ignore the invalidate
+request and wait for a response to its request or whether it should invalidate
+the line. Would ignoring the invalidate request lead to a deadlock?
 
 \noindent \emph{Example 3:} A cache receives an invalidate request from the
 directory controller for a line that is not present in the cache. Is such a
@@ -86,21 +75,36 @@ cache handle this request; should it drop such a request, or respond saying
 that it does not have the line?
 
 These examples give a glimpse of the complexity of designing and implementing a
-correct cache coherence protocol in a message-passing, directory-based setting.
-Even for a 2-level cache hierarchy, designing and implementing the protocol is
-quite difficult. This problem is greatly exacerbated in a multi-level cache
-hierarchy, which is becoming the norm because of the increasing core counts. 
+correct cache coherence protocol in a directory-based non-bus setting.  Even for
+a 2-level cache hierarchy, designing and implementing the protocol is quite
+difficult. This problem is greatly exacerbated in a multi-level cache hierarchy,
+which is becoming the norm because of the increasing core counts. 
 
 In this paper, we present a substantially easier method to design
-cache-coherence protocols for such systems. The method essentially breaks down
-the design problem in two parts: a part that is an abstract protocol shared by
-a number of concrete protocols, and another part that is specific to the
-protocol to be designed and implemented. The abstract protocol is parameterized
-by the number of cache levels and the number of caches in each level of the
-hierarchy as well as by a predicate which involves a local ``compatibility of
-state'' test. We illustrate our methodology by designing multiple
-hierarchical cache-coherence protocols, notably MSI, MESI, MOSI, MOESI, both in
-the presence as well as in the absence of point-to-point FIFO networks.
+directory-based cache-coherence protocols for such systems. The method breaks
+down the design problem in two parts: a part that is shared by a number of
+concrete protocols which we call \glob{}s, and another part that is specific to
+the protocol to be designed and implemented, called \policy{}. \glob{}s provide
+guarantees such as every request will eventually get a response, the
+directory's notion of the cache states is ``conservative'' \ie a cache can not
+have more permissions for a line than what the directory thinks it has, \etc;
+\glob{} enables \policy{} to focus on the high level properties such as the
+set of actions a cache or a directory should perform to maintain the
+Single-writer-at-a-time and the Read-from-last-writer invariants.
+
+The \glob{}s can in turn be guaranteed using a set of (\policy{} independent)
+\local{}s which dictate local properties of a node such as when a request can be
+handled, what state changes happen on sending a response, properties about the network,
+\etc. We have formally proved that \local{}s ensure \glob{}s using the
+Coq Theorem Prover \cite{}, however, a presentation of the formal proof is
+beyond the scope of this paper. The \glob{}s and the \local{}s form the
+cornerstone of our framework. The separation of \glob{}s and \local{}s is akin
+to having an abstraction layer which hides low level details.
+
+The \glob{}s of our framework can be used to design a wide range of cache
+coherence protocols, notably MSI, MESI, MOSI, MOESI, as well as their
+hierarchical version. We will show how these are designed as \policy{}s,
+focusing on high-level details.
 
 Our method substantially reduces the design and proof burden for new protocols
 because of the common abstract protocol. The abstract protocol is a set of

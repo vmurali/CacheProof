@@ -1,39 +1,37 @@
-\section{A two-level message-passing directory-based MSI protocol}
+\section{MSI protocol}
 \label{sec:msi}
 
-\newcommand{\fourAngle}[6]{\text{$#1\langle#2\rightarrow#3,#4,#5\rightarrow#6\rangle$}}
-\newcommand{\threeAngle}[5]{\text{$#1\langle#2\rightarrow#3,#4,#5\rangle$}}
+\newcommand{\printall}[5]{\text{$#1 \langle #2 \rightarrow #3, #4, #5 \rangle$}}
+\newcommand{\Req}[4]{\printall{Req}{#1}{#2}{#3}{#4}}
+\newcommand{\Resp}[4]{\printall{Resp}{#1}{#2}{#3}{#4}}
+\newcommand{\Data}[5]{\printall{Data}{#1}{#2}{#3}{#4}{#5}}
 
-%\newcommand{\Req}[5]{\fourAngle{Req}{#1}{#2}{#3}{#4}{#5}}
-\newcommand{\Req}[4]{\threeAngle{Req}{#1}{#2}{#3}{#4}}
-\newcommand{\Resp}[4]{\threeAngle{Resp}{#1}{#2}{#3}{#4}}
+\newcommand{\lett}{\textbf{let}}
+\newcommand{\send}{\textbf{send}}
+\newcommand{\receive}{\textbf{receive}}
+\newcommand{\pop}{\textbf{pop}}
+\newcommand{\remove}{\textbf{remove}}
+\newcommand{\assert}{\textbf{assert}}
+\newcommand{\call}{\textbf{call}}
+\newcommand{\dReq}{\textsc{handleDownReq}}
+\newcommand{\uReq}{\textsc{handleUpReq}}
+\newcommand{\dReqL}{\textsc{sendDownReq}}
+\newcommand{\uReqL}{\textsc{sendUpReq}}
+\newcommand{\dResp}{\textsc{sendDownResp}}
+\newcommand{\uResp}{\textsc{sendUpResp}}
 
-\newcommand{\msg}[5]{\text{$#1 \langle #2 \rightarrow #3, #4, #5 \rangle$}}
-%\newcommand{\Req}[5]{\msg{Req}{#1}{#2}{#3}{#4}{#5}}
-%\newcommand{\Resp}[5]{\msg{Resp}{#1}{#2}{#3}{#4}{#5}}
-\newcommand{\Data}[4]{\msg{Data}{#1}{#2}{#3}{#4}}
-\newcommand{\Mesg}[4]{\msg{Mesg}{#1}{#2}{#3}{#4}}
-\newcommand{\DirInv}{\emph{DirInv}}
-%\input{Atomic}
-
-Let us walk through our framework using the example of an MSI protocol.  We will
-start with a simple system for the sake of explanation.  The system has two
-levels of memory hierarchy -- private L1 caches for each core and a shared
-memory. The L1 caches do not have direct access to the memory, and the memory
-does not have a direct access to the actual states in the  L1 caches, or L1's
-data. Instead, the main memory has direct access to a directory associated with
-it which keeps a version of the L1 cache states for each address. The L1 caches
-do not have direct access to this directory. The directory's version of the L1
-cache states may differ from the actual L1 cache states. We use the terms memory
-and directory interchangeably.
+Let us walk through our framework using the example of a hierarchical MSI
+protocol.
 
 \begin{figure}
 \begin{tabularx}{\linewidth}{|cX|}
 \hline
-$state[c][a]$ & coherence state (from set $\{M, S, I\}$) of cache $c$ for address $a$\\
-$data[c][a]$ & data in cache $c$ for address $a$\\
-\hline \end{tabularx}
-\caption{Values stored by an L1 cache $c$ for an address $a$}
+$c.state[a]$ & coherence state (from set $\{M, S, I\}$) of cache $c$ for address $a$\\
+$c.data[a]$ & data in cache $c$ for address $a$\\
+%$c.dir[n][a]$ & $c$'s notion of the coherence state of $n$ for address $a$\\
+\hline
+\end{tabularx}
+\caption{Notations}
 \label{table:lineinfo}
 \end{figure}
 
@@ -52,52 +50,12 @@ $I$ & $<$ & $<$ & $=$\\
 \label{msi<}
 \end{wrapfigure}
 
-Each L1 cache stores the information given in Figure \ref{table:lineinfo}. The
-coherence state for an address denotes the permission that a cache has for the
-address: $M = \{R, W\}, S = \{R\}, I = \{\}$. We can define a $<$ relation for
-coherence state values based on the permissions the states represent. This is
-shown in Figure \ref{msi<}. State $I$ is akin to the cache not having the data
-corresponding to $a$, since it can neither read or write the $a$'s data. Figure
-\ref{table:dirinfo} shows the information stored in the memory and directory. 
-
-\begin{figure}
-\begin{tabularx}{\linewidth}{|cX|}
-\hline
-$dir[c][a]$ & directory's version of the coherence state of cache $c$ for address $a$\\
-$memory[a]$ & data in the memory address $a$\\
-\hline
-\end{tabularx}
-\caption{Values stored by a directory and memory for an address}
-\label{table:dirinfo}
-\end{figure}
-
-The L1 caches and the directory communicate with each using via messages. Each
-L1 cache communicates with the memory directly via 4 buffers -- two incoming
-buffers from the memory, one each for requests and responses from the memory,
-and two outgoing buffers into the memory, one each for requests and responses to
-the memory. All these buffers converge into or diverge from 4 buffers of the
-memory -- two incoming buffers, one each for requests and responses from the
-children and two outgoing buffers, one each for requests and responses to the
-children (Figure \ref{fig:setup}). All these buffers have the FIFO property. Not
-only that, we will also assume that requests sent from a source will never reach
-its destination till an earlier response sent by the same source has been
-handled (and hence removed) by the destination. We will show in Section
-\ref{sec:fifo} about how these network requirements can be realistically
-implemented.
-
-\subsection{No replacement evictions}
-
-We will first design an MSI protocol in which the L1 caches have enough
-capacity (or rather associativity) so that no line gets evicted due to
-replacement. Lines may however get evicted to enforce the following invariant
-which is needed for maintaining cache coherence.
-
-\begin{inv}
-Single-writer: When a cache has permission to modify data for an address ($M$
-state), no other cache has read or write permission for that address. In other
-words, the other caches must be in $I$ state.
-\label{singleWriter}
-\end{inv}
+Each cache stores the information given in Figure \ref{table:lineinfo}. The
+coherence state for an address denotes the (usual) permission that a cache has
+for the address: $M = \{R, W\}, S = \{R\}, I = \{\}$. We can define a $<$
+relation for coherence state values based on the permissions the states
+represent. This is shown in Figure \ref{msi<}. State $I$ is akin to address $a$
+not present in the cache.
 
 \begin{wrapfigure}{r}{.46\linewidth}
 \begin{subfigure}{.27\linewidth}
@@ -109,7 +67,7 @@ $S$ & $\rightarrow$ & $S$\\
 $I$ & $\rightarrow$ & $I$\\
 \hline
 \end{tabular}
-\caption*{$toCompatible$}
+\caption{$toCompatible$}
 \label{toCompat}
 \end{subfigure}
 ~~~~~~~~~~~~~~
@@ -122,289 +80,236 @@ $S$ & $\times$\\
 $I$ & $\times$\\
 \hline
 \end{tabular}
-\caption*{$isModified$}
+\caption{$isModified$}
 \label{isModified}
 \end{subfigure}
 \caption{$toCompatible$ and $isModified$ mappings}
 \label{fig:msimap}
 \end{wrapfigure}
 
-Because of the Single-writer invariant, it makes sense to talk about
-compatibility of the states of two caches for an address. Two cache states $x$
-and $Y$ are \emph{compatible} if two caches having the same address in states
-$x$ and $y$ do not violate the Single-writer invariant. We define a mapping
-$toCompatible(x)$ which gives the highest state which is compatible with a given
-state $x$ (Figure \ref{fig:msimap}).
-
-In addition to Single-writer Invariant, maintaining cache coherence also
-requires the following invariant:
-
-\begin{inv}
-Read-from-last-writer: When a cache reads data for an address, it reads the last
-modified version of the data for the address. If the data for an address has not
-been modified, the cache reads the data from memory.
-\end{inv}
-
-Function $isModified(x)$ determines if data for an address state $x$ can
-potentially be modified or not (Figure \ref{fig:msimap}).
-
 If a cache $c$ receives a request for an address $a$ from the processor, it can
 service the request straightaway if it has enough permissions for address $a$.
-Otherwise, it has to get to a state for $a$, say $y$, which has enough
-permissions. In other words, it has to \emph{upgrade} its state to $y$. In order
-to maintain the Single-writer Invariant \ref{singleWriter}, cache $c$ has to
-ensure that the states of other caches are \emph{compatible} with $y$. But the
-caveat is that $c$ can access only its own state and data, as opposed to that of
-other caches (or the directory).
-
-Cache $c$ has to instead communicate with the directory to ensure that the
-states of other caches are compatible. $c$ must send a message
-\Req{c}{Dir}{a}{y} requesting the directory to tell if it can upgrade its state
-for address $a$ to $y$. We call this an \emph{upgrade request}. Let us now take
-for granted that such a message can be sent (and see how this in ensured later).
-
-\begin{inv}
-A cache will eventually be able to send an upgrade request.
-\label{csendreq}
-\end{inv}
-
-We will also assume that that a cache can upgrade its state to $y$ only after it
-receives a message from the directory \Resp{Dir}{c}{a}{y} permitting it to
-upgrade its state for address $a$ to $y$. We call such a message as an
-\emph{upgrade response}.
-
-\begin{inv}
-Cache $c$ can upgrade $state[c][a]$ from $x$ to $y$ where $y > x$ only after it
-receives an upgrade response \Resp{Dir}{c}{a}{y} from the directory.
-\label{cwaitresp}
-\end{inv}
-
-We introduce two other kinds of messages: \emph{downgrade request}
-\Req{Dir}{c'}{a}{y} sent from the directory to a cache $c'$ asking $c'$ to
-downgrade its state for address $a$ to $y$, and \emph{downgrade response}
-\Resp{c'}{Dir}{a}{y} sent from $c'$ to the directory informing the directory
-that $c'$ has changed its state $state[c'][a]$ from $x$ to $y$, where $x > y$.
-
-How can the behavior of the directory be designed (in terms of sending and
-receiving messages) to ensure that cache $c$ will get an upgrade response
-eventually. Let's say the invariants given in Figure \ref{DirInv} are
-somehow guaranteed. With these invariants, let us design the behavior of the
-directory.
+Otherwise, it has to \emph{upgrade} to a state $x$, which has enough
+permissions. The cache can not upgrade its state arbitrarily, it has to ensure
+that such a state change does not violate the single-writer property (Invariant
+\label{singleWriter}), by \emph{downgrading}, \ie lowering the states of other
+caches appropriately. We define a $toCompatible(x)$ mapping (Figure
+~\ref{toCompat}), which specifies the highest state a cache can be, if another
+cache is in state $x$ for the same address. We will also define a
+$isModified(x)$ mapping to specify if an address in state $x$ in a cache can
+have data different from what's present in the memory.
 
 \floatstyle{boxed}
 \restylefloat{figure}
+
 \begin{figure}
-\begin{inv}
-Just before receiving an upgrade request \Req{c}{Dir}{a}{y} from $c$ $dir[c][a]
-< y$.
-\label{drecvreq}
-\end{inv}
-\begin{inv}
-The directory will eventually be able to send any downgrade request to any cache
-$c$.
-\label{dsendreq}
-\end{inv}
-\begin{inv}
-The directory can change $dir[c][a]$ from $x$ to $y$ where $y < x$, \ie
-downgrade its directory state only after receiving a downgrade response
-\Resp{c}{Dir}{a}{y} from $c$.
-\label{dwaitresp}
-\end{inv}
-\begin{inv}
-If the directory has sent a downgrade request \Req{Dir}{c}{a}{y} to cache $c$,
-it will eventually get a downgrade response \Resp{Dir}{c}{a}{z} from cache $c$
-such that $z \le y$.
-\label{drecvresp}
-\end{inv}
-\begin{inv}
-Just before receiving a downgrade response from $c$, if $isModified(dir[c][a])$
-is true, then $c$ would have sent the data along with the downgrade response.
-\label{drecvdata}
-\end{inv}
-\begin{inv}
-The directory will eventually be able to send any upgrade response to any cache
-$c$. It can also send the data to cache $c$ along with the upgrade response.
-\label{dsendresp}
-\end{inv}
-\begin{inv}
-Conservative directory:
-\begin{spacing}{.1}
-\begin{equation*}
-\forall c, a,\; dir[c][a] \ge state[c][a]
-\end{equation*}
-\end{spacing}
-\label{conservative}
-\end{inv}
-\caption{Directory invariants}
-\label{DirInv}
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uReq}{$c , p, a, x$}
+  \If {$a$ is not present in $p$}
+    \State Choose address $a'$ for eviction;
+    \ForAll {$c' \in p.children$}
+      \State \call{} \dReq($p , c', a', I$);
+    \EndFor
+    \State \call{} \dResp($p , p.parent, a', I$);
+    \State Replace $a'$ with $a$ (initializing $p.state[a]$ to $I$);
+  \EndIf
+  \ForAll {$c' \in p.children, s.t., c' \neq c$}
+    \State \dReq($p , c', a, toCompatible(x)$);
+  \EndFor
+  \State \uReqL($p , p.parent, a, x$);
+  \State \uResp($p , c, a, x$);
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Handling upgrade to $x$ request from $c$ to $p$ for address $a$}
+\label{uReq}
+\end{subfigure}
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dReq}{$p , c, a, x$}
+  \ForAll {$c' \in c.children$}
+    \State \dReqL($c , c', a, x$);
+  \EndFor
+  \State \dResp($c , p, a, x$);
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Handling downgrade to $x$ request from $p$ to $c$ for address $a$}
+\label{dReq}
+\end{subfigure}
+
+\caption{MSI protocol}
+\label{msi}
 \end{figure}
-\floatstyle{plain}
-\restylefloat{figure}
 
-%The directory ensures that the states of any two caches for an address are
-%compatible by the following behavior.
-%When the directory receives an upgrade request
-%\Req{c}{Dir}{a}{x}, Invariant \ref{drecvreq} guarantees that $dir[c][a] < x$ and
-%because of Invariant \ref{conservative}, $cache[c][a] le dir[c][a]$, resulting
-%in $cache[c][a] < x$. Unless the directory sends an upgrade response to $c$
-%permitting it to upgrade to $x$, $c$ will remain in state $cache[c][a]$ forever
-On receiving an upgrade request \Req{c}{Dir}{a}{x}, the directory sends a
-downgrade request \Req{Dir}{c'}{a}{toCompatible(x)} to every cache $c'$
-for which $dir[c'][a] > toCompatible(x)$. Such a request can be sent eventually
-because of Invariant \ref{dsendreq}. The incoming upgrade request is not
-removed and no further upgrades requests are processed till an appropriate
-upgrade response is sent back from the directory to $c$.
+\begin{figure}
 
-Because of Invariant \ref{drecvresp}, the directory will eventually receive
-downgrade responses \Resp{c'}{Dir}{a}{z} from each of the requested caches $c'$
-such that $z \le toCompatible(x)$ (since the directory made a downgrade request
-to go to $toCompatible(x)$). Just before receiving the downgrade response, if
-$isModified(dir[c'][a])$ is true (\ie $dir[c'][a] = M$), then by Invariant
-\ref{drecvdata}, the directory would also receive data from $c'$ and the memory
-for address $a$ is updated with the received data.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uReqL}{$c , p, a, x$}
+  \State \call{} \uReq($c, p, a, x$);
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ request from $c$ to $p$ for address $a$}
+\label{uReq}
+\end{subfigure}
 
-Once all the downgrade responses have been received, since no upgrade responses
-have been sent to any cache meanwhile, we have $\forall c' \neq c, dir[c'][a] \le
-toCompatible(x)$. Because of Invariant \ref{conservative}, it is guaranteed that
-$\forall c' \neq, cache[c'][a] \le toCompatible(x)$. The directory now changes
-$dir[c][a]$ to $x$ and sends an upgrade response \Resp{Dir}{c}{a}{x} to $c$. If
-$dir[c][a] = I$ right before the upgrade response is sent, then it implies that
-$cache[c][a] = I$. So the data from the memory for address $a$ is also sent
-along with the upgrade response. Note that such an upgrade response, along with
-the data, can always be sent eventually by the directory because of Invariant
-\ref{dsendresp}. Finally, the upgrade response from $c$ is removed by the
-directory.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dReq}{$p , c, a, x$}
+  \State \call{} \dReq($p, c, a, x$);
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending downgrade to $x$ request from $p$ to $c$ for address $a$}
+\label{dReq}
+\end{subfigure}
 
-The above behavior for the directory ensures that the states of any two caches
-for every address are compatible, as can seen by induction.  This property is
-true initially because every cache is in state $I$ for every address. If this
-property is true before a request is started received, it will be true by the
-time the request is removed and an upgrade response is sent. This is because an
-upgrade response is sent only when every cache other than the one requesting is
-at a state $\le toCompatible(x)$, where $x$ is the state the requesting cache
-wants to go to, and $toCompatible(x)$ is the highest state that a cache can be
-in to be compatible with another cache in state $x$ for an address.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uResp}{$p , c, a, x$}
+  \If {$c.state[a] < x$}
+    \If {$c.state[a] = I$}
+      \State $c.data[a] \gets p.data[a]$;
+    \EndIf
+    \State $c.state[a] \gets x$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ response from $p$ to $c$ for address $a$}
+\label{uResp}
+\end{subfigure}
 
-Whenever the directory receives a downgrade response from a cache $c'$, just
-before receiving the response if $isModified(dir[c'][a])$ is true, \ie
-$dir[c'][a] = M$, $c'$ must have been the only cache with permission to modify
-address $a$. This is because the directory ensures that the states of any two
-caches for address $a$ is compatible at all times (as shown above). Thus, to
-ensure the Read-from-last-writer Invariant, the potentially modified data from
-$c'$ is written back from into the memory on receiving the downgrade response
-from $c'$ as seen in our design.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dResp}{$c , p, a, x$}
+  \If {$c.state[a] > x$}
+    \If {$isModified(c.state[a])$}
+      \State $p.data[a] \gets c.data[a]$;
+    \EndIf
+    \State $c.state[a] \gets x$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending downgrade to $x$ response from $c$ to $p$ for address $a$}
+\label{dResp}
+\end{subfigure}
 
-The invariants \ref{drecvreq} to \ref{conservative} in Figure \ref{DirInv}
-essentially makes it straight forward to design the behavior of the directory.
-For the sake of argument, let us assume Invariant \ref{drecvreq} not be
-guaranteed. Consider a scenario in which the cache $c$ which has sent a request
-\Req{c}{Dir}{a}{M}. Before receiving an upgrade response for this request, $c$
-sends another upgrade request \Req{c}{Dir}{a}{S}. Let us assume that the
-directory processed the requests in the order in which they were sent. Once the
-directory has finished processing the first request, it changes its directory
-state $dir[c][a]$ to $M$. When it receives the second request, it is not easy to
-decide if the directory has to drop the request or to send another response
-authorizing the cache to change to $S$. But if Invariant \ref{drecvreq} is
-guaranteed, it's guaranteed that such a scenario will never arise.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uResp}{$p , core, a, x$}
+  \State $c.data[a] \gets p.data[a]$;
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ response from $p$ to $core$ for address $a$}
+\label{uResp}
+\end{subfigure}
 
-The difficulty in message passing protocols comes from the fact that it is
-difficult to guarantee the above invariants, even for a 2-level memory hierarchy
-discussed above as shown in the following scenarios.
 
-%\begin{scen}
-%\emph{Inability to send messages because of network congestion:}
-%The ability of a cache or the directory to send messages (Invariants
-%\ref{dsendreq}, \ref{dsendresp} and \ref{csendreq}) depends upon the
-%availability of free buffers in the network; if the network remains congested
-%all the time, then it would not be possible to send the messages, and the system
-%would deadlock.
-%\end{scen}
-%
-%\begin{scen}
-%\emph{Multiple upgrade requests from the cache for the same address:}
-%If a cache is allowed to make multiple requests to upgrade the state of an
-%address (say to $M$ and then to $S$) before receiving the upgrade responses,
-%then it might violate Invariant \ref{drecvreq} if the requests were processed by
-%the directory in the order they were received. This makes the decision on
-%whether the directory drops the second request or not hard to reason about, as
-%shown above.
-%\end{scen}
+\caption{Atomic MSI}
+\label{atomic}
+\end{figure}
 
-\begin{scen}
-\emph{On sending an upgrade request, the cache stops processing downgrade
-requests it gets an upgrade response:}
-Consider a scenario with two caches $c$ and $c'$, with both the caches in state
-$S$ for address $a$. Both the caches get a store request from the processor and
-send \Req{c}{Dir}{a}{M} and \Req{c'}{Dir}{a}{M}, respectively, to the directory.
-Let's say \Req{c'}{Dir}{a}{M} arrives at the directory first. The directory
-sends a downgrade request to cache $c$, but since $c$ does not process any
-downgrade requests till it gets its upgrade response, it will never send back a
-downgrade response to the directory, violating Invariant \ref{drecvresp},
-resulting in a deadlock. Note that this deadlock would occur even if a cache is
-waiting for the upgrade response, and stops processing downgrade requests for
-any address, even if the address corresponding to the downgrade request is not
-the same as the one corresponding to the upgrade response.
-\end{scen}
 
-\begin{scen}
-\emph{At the directory, downgrade responses from children are blocked by upgrade
-requests:}
-Consider a scenario where two caches $c$ and $c'$ are both in state $S$ for
-address $a$. $c'$ gets a store request from the processor and sends an upgrade
-request \Req{c'}{Dir}{a}{M} to the directory. The directory receives that
-request, and sends a downgrade request \Req{c}{Dir}{a}{I} to $c$. $c$ sends a
-downgrade authorization \Resp{c}{Dir}{a}{I} to the directory on receiving the
-downgrade request. But the directory can not receive the authorization because
-it is blocked by other requests (including \Req{c'}{Dir}{a}{M}). This violates
-Invariant \ref{drecvresp} and hence creates a deadlock.
-\end{scen}
+\begin{figure}
 
-These scenarios show that if the invariants of Figure \ref{DirInv} are violated,
-then it either breaks cache coherence (by creating deadlocks) or it makes
-it hard to reason about the behavior of the directory.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uReqL}{$c , p, a, x$}
+  \State \send{} \Req{c}{p}{a}{x};
+  \State \pop{} \Resp{p}{c}{a}{z};
+  \If {$c.state[a] = I$}
+    \State \pop{} \Data{p}{c}{a}{d};
+    \State $c.data[a] \gets d$;
+  \EndIf
+  \State $c.state[a] \gets z$;
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ request from $c$ to $p$ for address $a$}
+\label{uReqLocal}
+\end{subfigure}
 
-Before we show how the invariants of Figure \ref{DirInv} can be guaranteed, let
-us consider a slightly more complicated system where caches can evict lines for
-replacement.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dReqL}{$p , c, a, x$}
+  \State \send{} \Req{p}{c}{a}{x};
+  \State \pop{} \Resp{c}{p}{a}{z};
+  \If {$isModified(p.dir[c][a])$}
+    \State \pop{} \Data{c}{p}{a}{d};
+    \State $p.data[a] \gets d$;
+  \EndIf
+  \State $p.dir[c][a] \gets z$;
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending downgrade to $x$ request from $p$ to $c$ for address $a$}
+\label{dResp}
+\end{subfigure}
 
-\subsection{Replacement evictions are allowed}
-If a cache receives a request from the core for an address $a$ and has no space
-to accommodate address $a$, it evicts another address $a'$ to make room for $a$.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uResp}{$p , c, a, x$}
+  \If {$p.dir[c][a] < x$}
+    \If {$p.dir[c][a] = I$}
+      \State \send{} \Data{p}{c}{a}{p.data[a]};
+    \EndIf
+    \State $p.dir[c][a] \gets x$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ response from $p$ to $c$ for address $a$}
+\label{uResp}
+\end{subfigure}
 
-In the previous scenario, the caches didn't have to evict for replacement; a
-cache had to send downgrade responses to the directory only on receiving a
-corresponding request. But in the new scenario, a cache can send a downgrade
-notification voluntarily to the directory on evicting an address. Such a
-notification is useful in keeping the directory's version of the cache's state
-up to date. We will restrict the family of directory-based protocols that that
-we discuss to those in which the caches send such notifications.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dResp}{$c , p, a, x$}
+  \If {$c.state[a] > x$}
+    \If {$isModified(c.state[a])$}
+      \State \send{} \Data{c}{p}{a}{c.data[a]};
+    \EndIf
+    \State $c.state[a] \gets x$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending downgrade to $x$ response from $c$ to $p$ for address $a$}
+\label{dResp}
+\end{subfigure}
 
-Since the directory can not distinguish between the downgrade notification sent
-voluntarily and a downgrade response sent because of a downgrade request from
-the directory, we will use the same message to denote both.
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uResp}{$p , core, a, x$}
+  \State \send{} \Data{p}{c}{a}{p.data[a]};
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ response from $p$ to $core$ for address $a$}
+\label{uResp}
+\end{subfigure}
 
-We will first discuss an example of the behavior of the L1 cache that would
-violate Invariant \ref{conservative}.
+\caption{Realistic MSI protocol}
+\label{realistic}
+\end{figure}
 
-\begin{scen}
-\emph{Cache sends voluntary downgrade responses indiscriminately:}
-Consider a system with only two caches $c$ and $c'$ (Figure \ref{fig:cross})
-such that $state[c][a] = dir[c][a] = S$, and $state[c'][a] = dir[c'][a] = I$.
-Let $c$ be a non-blocking cache, so it can process requests from the core even
-if there are pending misses. $c$ receives a store request for address $a$ from
-the core and sends \Req{c}{Dir}{a}{M} to the directory.  Before it gets back an
-upgrade response from the directory, it receives another load request for
-address $a'$ from the core. Suppose the line for $a'$ is not present in $c$ and
-$c$ has no space for $a'$, it decides to evict address $a$ to make room for
-$a'$. It voluntarily sends a downgrade response \Resp{c}{Dir}{a}{I} to the
-directory. Meanwhile, the directory receives the upgrade request
-\Req{c}{Dir}{a}{M}, and since the directory state of the only other cache is $I$
-for address $a$, the directory sends back an upgrade response. The directory
-then receives the downgrade response \Resp{c}{Dir}{a}{I} and changes $dir[c][a]$
-to $I$. $c$ finally receives the upgrade response \Resp{Dir}{c}{a}{M} and
-upgrades $state[c][a]$ to $M$. This breaks Invariant \ref{conservative}, since
-$state[c][a] = M$ and $dir[c][a] = I$. If the directory gets an upgrade to $M$
-request for address $a$ from $c'$, it will assume that $c$ is in state $I$ for
-address $a$ and send an upgrade to $M$ response to $c'$. This will violate the
-Single-writer invariant, thereby violating coherence.
-\end{scen}
