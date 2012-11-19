@@ -21,7 +21,7 @@
 \newcommand{\uReqL}{\textsc{doUpgrade}}
 \newcommand{\dResp}{\textsc{doneDowngrade}}
 \newcommand{\uResp}{\textsc{doneUpgrade}}
-\newcommand{\dRespL}{\textsc{doneDowngrade}}
+\newcommand{\dRespL}{\textsc{handleDowngrade}}
 \newcommand{\sendMem}{\textsc{doMemAccess}}
 \newcommand{\receive}{\textbf{receive}}
 \newcommand{\remove}{\textbf{remove}}
@@ -37,7 +37,7 @@
 
 \usepackage{algpseudocode}
 \algblockdefx[proc]{Proc}{EndProc}%
-   [2]{\textbf{procedure} #1(#2) \textbf{\{}}%
+   [2]{\textbf{method} #1(#2) \textbf{\{}}%
    {\textbf{\}}}
 \algblockdefx{While}{EndWhile}%
    [1]{\textbf{while} (#1) \textbf{\{}}%

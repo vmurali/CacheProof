@@ -17,6 +17,13 @@ If a thread sends a request, it will eventually get a response.
 \end{theorem}
 
 \begin{theorem}
+If a thread is waiting for a line to be allocated, \ie for any address to become
+available for eviction, then some address will eventually become available for
+eviction
+\label{evictDead}
+\end{theorem}
+
+\begin{theorem}
 If $p$ sends \Resp{p}{c}{a}{x} to $c$, where $p = c.parent$, then $p.dir[c][a]$
 just before $p$ sends the response is the same as $c.state[a]$ just before $c$
 receives the response.

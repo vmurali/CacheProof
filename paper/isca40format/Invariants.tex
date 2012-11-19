@@ -4,13 +4,6 @@
 \floatstyle{boxed}
 \restylefloat{figure}
 
-The caches are assumed to be organized in the form of a tree
-(Figure~\ref{fig:hierarchy}). The leaves of this tree represent the L1 caches,
-with each L1 cache connected to exactly one core. The root of the tree is a
-single Last-level cache (LLC), connected to the main memory. A node can
-communicate only with its parents or with its children via a request or
-response message whose format is in Figure~\ref{message}.
-
 \begin{figure}
 \begin{inv}
 An incoming request message from a child should not block an incoming request
