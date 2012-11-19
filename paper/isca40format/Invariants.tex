@@ -4,21 +4,22 @@
 \floatstyle{boxed}
 \restylefloat{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
-An incoming request message from a child should not block an incoming request
-message from the parent, even for a different address\label{cReqNoBlockPReq}
+An incoming request message from a child or the core should not block an
+incoming request message from the parent, even for a different
+address\label{cReqNoBlockPReq}
 \end{inv}
 \begin{inv}
 An incoming request messages for an address $a$ should not block an incoming
 response message for address $a$, even from a different
-source.\label{reqNoBlockReq}
+source.\label{reqNoBlockResp}
 \end{inv}
 \caption{Blocking restrictions}
 \label{blocking}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 An incoming response message for an address $a$ from a child $c$ should not be
 received before another incoming response message from the same $c$ and the
@@ -33,7 +34,7 @@ same $a$ sent earlier has been received\label{reqNoOvertakeResp}
 \label{order}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 A response \Resp{p}{c}{a}{x}, where $p = c.parent$, can be sent from $p$ only
 if
@@ -68,7 +69,7 @@ If \Resp{c}{p}{a}{x} is sent $c.state[a] \gets x$
 \label{sendResp}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 On receiving a response \Resp{c}{p}{a}{x}, where $p = c.parent$, $p.dir[c][a]
 \gets x$
@@ -83,7 +84,7 @@ On receiving a response \Resp{p}{c}{a}{x}, where $p = c.parent$, $c.state[c]
 \label{recvResp}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 $c.state[a]$ can change only on $c$ sending a response to or receiving a
 response from $c.parent$
@@ -98,7 +99,7 @@ its child $c$
 \label{stateChange}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 \Req{p}{c}{a}{x}, where $p = c.parent$, can be sent only if $x < p.dir[c][a]$
 \label{pSendReqPre}
@@ -111,7 +112,7 @@ its child $c$
 \label{sendReq}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 $p$ can not receive a request \Req{c}{p}{a}{x} from $c$, where $p = c.parent$,
 if either
@@ -141,7 +142,7 @@ $a$ from one of $p$'s children $c'$, and that thread will not send any
 \label{recvReq}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
 \begin{inv}
 Address $a$ present in node $c$ can not be chosen for eviction by a thread
 executing in $c$ if either
@@ -156,9 +157,25 @@ $a$ from any source
 \end{inv}
 \end{figure}
 
-\begin{figure}
+\begin{figure}\small
+\begin{inv}
+Each node has 
+\begin{enumerate}
+\item at least one dedicated thread resource for handling only messages (requests or
+responses) from the parent,
+\item at least one dedicated thread resource for handling only requests from any
+child, and
+\item at least one dedicated thread resource for handling only responses (from children
+or from the parent).
+\end{enumerate}
+\label{dedicate}
+\end{inv}
+\caption{Dedicated resources in a node}
+\end{figure}
+
+\begin{figure}\small
 \begin{inv}
 Starvation-freedom: A thread that keeps becoming ready to execute will
-eventually be scheduled by the scheduler to execute.
+eventually be scheduled to execute.
 \end{inv}
 \end{figure}

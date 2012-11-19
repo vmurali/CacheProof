@@ -1,33 +1,128 @@
 \section{Introduction} 
 
-Large shared-memory multicores are likely to use cache-coherence protocols which are directory-based, hierarchical, and implemented using message passing.  Even though such protocols have been around for two decades (see, for example, DASH\cite{DASH}, Alewife\cite{Anant}, ...) correct design and implementation of such protocols remains a challenge. It is difficult to convince oneself that all corner cases have been handled adequately without a formal proof. And yet formal proofs of real implementations are practically non-existent. One can't settle for conservative choices in cache-coherence protocol designs because performance (\eg the number of messages needed to maintain coherence, the buffer requirements, etc) is as important as correctness. Consequently proving a simple protocol for a small number of caches, under unbounded buffer assumption is of limited use in gaining confidence in the correctness of a real protocol. 
+Large shared-memory multicores are likely to use cache-coherence protocols
+which are directory-based, hierarchical, and implemented using message passing.
+Even though such protocols have been around for two decades (see, for example,
+DASH\cite{DASH}, Alewife\cite{Anant}, ...) correct design and implementation of
+such protocols remains a challenge. It is difficult to convince oneself that
+all corner cases have been handled adequately without a formal proof. And yet
+formal proofs of real implementations are practically non-existent. One can't
+settle for conservative choices in cache-coherence protocol designs because
+performance (\eg the number of messages needed to maintain coherence, the
+buffer requirements, etc) is as important as correctness. Consequently proving
+a simple protocol for a small number of caches, under unbounded buffer
+assumption is of limited use in gaining confidence in the correctness of a real
+protocol. 
 
-In this paper we will consider systems where caches form a tree hierarchy and caches are \emph{inclusive}, that is, if a cache contains address $a$ then its parent is guaranteed to contain address $a$, though the parent may have stale data for $a$. Every cache or node in the system has an associated directory which contains information about its children caches. The coherence state changes are orchestrated by passing requests and responses between the caches via the directory.  Unlike bus-based protocols which lock the bus till all the required state transitions are done thereby ensuring atomicity of state transitions, in a message-passing protocol, requests and responses are split leading to transient states. This creates scenarios not present in bus-based protocols, which can lead to coherence violations or deadlocks, if the protocol is not designed or implemented carefully.
+In this paper we will consider systems where caches form a tree hierarchy and
+caches are \emph{inclusive}, that is, if a cache contains address $a$ then its
+parent is guaranteed to contain address $a$, though the parent may have stale
+data for $a$. Every cache or node in the system has an associated directory
+which contains information about its children caches. The coherence state
+changes are orchestrated by passing requests and responses between the caches
+via the directory.  Unlike bus-based protocols which lock the bus till all the
+required state transitions are done thereby ensuring atomicity of state
+transitions, in a message-passing protocol, requests and responses are split
+leading to transient states. This creates scenarios not present in bus-based
+protocols, which can lead to coherence violations or deadlocks, if the protocol
+is not designed or implemented carefully.
 
-Several factors contribute to the difficulty of designing protocols for such distributed, hierarchical and message-passing systems:
+Several factors contribute to the difficulty of designing protocols for such
+distributed, hierarchical and message-passing systems:
 
-\begin{enumerate} \item Lots of concurrent events must be dealt with without a central authority to impose a sequence on events; \item The state on which transitions are based is physically distributed in space and cannot be accessed atomically; \item Physical network may block the transmission of a message because of lack of communication buffers or head-of-the-line blocking; \item The cache or directory may reach a state which can not handle a particular message. An incomplete set of transition rules may cause the protocol to deadlock.  \end{enumerate}
+\begin{enumerate} \item Lots of concurrent events must be dealt with without a
+central authority to impose a sequence on events; \item The state on which
+transitions are based is physically distributed in space and cannot be accessed
+atomically; \item Physical network may block the transmission of a message
+because of lack of communication buffers or head-of-the-line blocking; \item
+The cache or directory may reach a state which can not handle a particular
+message. An incomplete set of transition rules may cause the protocol to
+deadlock.  \end{enumerate}
 
-As examples of problems in designing correct protocols, we describe several concrete and familiar scenarios from two-level systems (a private L1 cache for each processor and a memory with a directory). States $M, S$ and $I$ have their usual meaning in MSI protocol ($M$ represents read and write permissions for an address, $S$, read-only permissions and $I$, no permission)
+As examples of problems in designing correct protocols, we describe several
+concrete and familiar scenarios from two-level systems (a private L1 cache for
+each processor and a memory with a directory). States $M, S$ and $I$ have their
+usual meaning in MSI protocol ($M$ represents read and write permissions for an
+address, $S$, read-only permissions and $I$, no permission)
 
-\noindent \emph{Example 1:} A cache in state $S$ for a line gets a store request from the processor and sends a request for changing the line's state to $M$ to the directory controller. The controller may eventually send a response permitting the cache to go to $M$ state for that line. The response would signify that the states in the other caches for that line \emph{were} $I$. But the messages take time to propagate and the response is necessarily based on the old states of other caches -- the current state of another cache may not be $I$, violating the Single-writer-at-a-time invariant and hence breaking cache coherence.
+\noindent \emph{Example 1:} A cache in state $S$ for a line gets a store
+request from the processor and sends a request for changing the line's state to
+$M$ to the directory controller. The controller may eventually send a response
+permitting the cache to go to $M$ state for that line. The response would
+signify that the states in the other caches for that line \emph{were} $I$. But
+the messages take time to propagate and the response is necessarily based on
+the old states of other caches -- the current state of another cache may not be
+$I$, violating the Single-writer-at-a-time invariant and hence breaking cache
+coherence.
 
-\noindent \emph{Example 2:} A cache in state $S$ for a line gets a store request from the processor and sends a request for changing the line's state to $M$ to the directory controller. Instead of getting a response permitting it to go to $M$ state, the cache may receive a request from the directory controller asking this cache to go to $I$ state (invalidate request)-- this could have happened if the directory is serving some other cache's request to go to $M$ state for the same line. It is not easy to determine the correct behavior of the former cache on receiving the invalidate request -- whether it should ignore the invalidate request and wait for a response to its request or whether it should invalidate the line. Would ignoring the invalidate request lead to a deadlock?
+\noindent \emph{Example 2:} A cache in state $S$ for a line gets a store
+request from the processor and sends a request for changing the line's state to
+$M$ to the directory controller. Instead of getting a response permitting it to
+go to $M$ state, the cache may receive a request from the directory controller
+asking this cache to go to $I$ state (invalidate request)-- this could have
+happened if the directory is serving some other cache's request to go to $M$
+state for the same line. It is not easy to determine the correct behavior of
+the former cache on receiving the invalidate request -- whether it should
+ignore the invalidate request and wait for a response to its request or whether
+it should invalidate the line. Would ignoring the invalidate request lead to a
+deadlock?
 
-\noindent \emph{Example 3:} A cache receives an invalidate request from the directory controller for a line that is not present in the cache. Is such a request even possible? The directory does not have access to the up-to-date state of the cache, and so can potentially make this request. How should a cache handle this request; should it drop such a request, or respond saying that it does not have the line?
+\noindent \emph{Example 3:} A cache receives an invalidate request from the
+directory controller for a line that is not present in the cache. Is such a
+request even possible? The directory does not have access to the up-to-date
+state of the cache, and so can potentially make this request. How should a
+cache handle this request; should it drop such a request, or respond saying
+that it does not have the line?
 
-These examples give a glimpse of the complexity of designing and implementing a correct cache coherence protocol in a directory-based non-bus setting.  Even for a 2-level cache hierarchy, designing and implementing the protocol is quite difficult. This problem is greatly exacerbated in a multi-level cache hierarchy, which is becoming the norm because of the increasing core counts. 
+These examples give a glimpse of the complexity of designing and implementing a
+correct cache coherence protocol in a directory-based non-bus setting.  Even
+for a 2-level cache hierarchy, designing and implementing the protocol is quite
+difficult. This problem is greatly exacerbated in a multi-level cache
+hierarchy, which is becoming the norm because of the increasing core counts. 
 
-In this paper, we present a substantially easier method to design directory-based cache-coherence protocols for such systems. The method breaks down the design problem in two parts: a part that is shared by a number of concrete protocols which we call \glob{}s, and another part that is specific to the protocol to be designed and implemented, called \policy{}. \glob{}s provide guarantees such as every request will eventually get a response, the directory's notion of the cache states is ``conservative'' \ie a cache can not have more permissions for a line than what the directory thinks it has, \etc; \glob{} enables \policy{} to focus on the high level properties such as the set of actions a cache or a directory should perform to maintain the Single-writer-at-a-time and the Read-from-last-writer invariants.
 
-The \glob{}s can in turn be guaranteed using a set of (\policy{} independent) \local{}s which dictate local properties of a node such as when a request can be handled, what state changes happen on sending a response, properties about the network, \etc. We have formally proved that \local{}s ensure \glob{}s using the Coq Theorem Prover \cite{}, however, a presentation of the formal proof is beyond the scope of this paper. The \glob{}s and the \local{}s form the cornerstone of our framework. The separation of \glob{}s and \local{}s is akin to having an abstraction layer which hides low level details.
+In this paper, we present a substantially easier method to design cache
+coherence protocols for such systems. The user specifies a protocol for a
+two-level system without message passing. The protocol rules can simultaneously
+or \emph{atomically} examine and change the state of all the caches in the
+system. For example, the MSI protocol may be described as follows: 
 
-The \glob{}s of our framework can be used to design a wide range of cache coherence protocols, notably MSI, MESI, MOSI, MOESI, as well as their hierarchical version. We will show how these are designed as \policy{}s, focusing on high-level details.
+***** Murli insert the description of MSI **** We give a procedure that
+transforms such simple and global protocol descriptions into a distributed,
+message-passing protocol for hierarchal caches. Our procedure is based on
+preserving some invariants in rule transformations and has been shown to be
+sound and complete with respect the global description using the coq theorem
+prover \cite{}, however, a discussion of the formal proof is beyond the scope
+of this paper. Both the procedure and the proof are parameterized by the number
+of cache levels and the number of caches in each level of the hierarchy as well
+as by a predicate which involves a local ``compatibility of state'' test. 
 
-Our method substantially reduces the design and proof burden for new protocols because of the common abstract protocol. The abstract protocol is a set of transitions that the caches and directories follow to send or receive a request or a response. We have formally proved that these transitions ensure the following properties: a) the directory's notion of a cache's state is ``conservative'' in that a cache is never going to have more permissions that what the directory thinks the cache has; and b) any request will eventually get a corresponding response. A formal proof of the abstract protocol was written using the Coq theorem prover \cite{}, however, a presentation of the formal proof is beyond the scope of this paper.
+It should be noted that the flexibility of our procedure comes from the fact
+that we do not assign any meaning to the value of a coherence state beyond
+upgrades or downgrades. Thus, how or why a particular cache state implies that
+a particular address may not be present in any other cache stems from protocol
+specific ``compatibility of state'' check. 
 
-It should be noted that the flexibility of our methodology to design multiple cache coherence protocols comes from the fact that we do not assign any meaning to the value of a coherence state beyond upgrades or downgrades. Thus, how or why a particular cache state implies that a particular address may not be present in any other cache stems from protocol specific ``compatibility of state'' check. 
+The main contributions of this paper are: 1. An automatic procedure to refine
+centralized protocols without message passing into protocols for distributed,
+hierarchal, cache system with message-passing; 2. Specification of the
+invariants to be preserved by the procedure; and 3. Showing that our procedure
+does not introduce any overhead over direct implementation of these protocols.
+We think that our method of designing protocols substantially reduces the
+required effort, and that our procedure is flexible enough to implement (while
+ensuring correctness of) most, if not all, inclusive message-passing
+directory-based protocols.
 
-The main contributions of this paper are: 1. A new abstract protocol that satisfies two important invariants for distributed and hierarchal message-passing protocols; 2. Instantiation of the abstract protocol to implement four well-known protocols (MSI, MESI, MOSI, MOESI) and their variations and showing why their correctness is guaranteed as long as the abstract protocol is correct, \ie it provably implements the two invariants; and 3. Our method does not introduce any overhead over direct implementation of these protocols.  We think that this new method of designing protocols substantially reduces the required effort, and that our abstract protocol is flexible enough to implement (while ensuring correctness of) most if not all inclusive, message-passing, directory-based protocols.
-
-\paragraph{Paper organization:} Section \ref{sec:abstract} describes the abstract protocol; Section \ref{sec:properties} gives the two properties that are guaranteed by the abstract protocol and provides some intuition for proving these properties. We also discuss the communication buffer requirements for the abstract protocol and show that the requirement is only proportional to the number of levels and not to the number of processors. In Section \ref{sec:protocols}, we show how the abstract protocol can be used to implement MSI, MESI, MOSI and MOESI protocols and their variants. In Section \ref{sec:performance}, we show that these formally verified family of protocols require no extra state bits, nor extra message transfers compared to other published implementations. In Section \ref{sec:related}, we present some of the related work and finally in Section \ref{sec:conclusion}, we present some directions for the future work.
+\paragraph{Paper organization:} *** to be redone *** Section \ref{sec:abstract}
+describes the abstract protocol; Section \ref{sec:properties} gives the two
+properties that are guaranteed by the abstract protocol and provides some
+intuition for proving these properties. We also discuss the communication
+buffer requirements for the abstract protocol and show that the requirement is
+only proportional to the number of levels and not to the number of processors.
+In Section \ref{sec:protocols}, we show how the abstract protocol can be used
+to implement MSI, MESI, MOSI and MOESI protocols and their variants.  In
+Section \ref{sec:performance}, we show that these formally verified family of
+protocols require no extra state bits, nor extra message transfers compared to
+other published implementations.  In Section \ref{sec:related}, we present some
+of the related work and finally in Section \ref{sec:conclusion}, we present
+some directions for the future work.

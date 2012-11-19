@@ -44,11 +44,13 @@ p.dir[c][a] \ge c.state[a]$.
 \end{theorem}
 
 These theorems are needed to guarantee that Figure \ref{realistic} protocol is
-indeed correct. If, for instance, a thread wants to send a message in the output
-channel of the node and is not able to send one forever, then the thread can not
-proceed further. Similarly, if a thread is waiting for a response (for a request
+indeed correct. If, for instance, a thread wants to send a message in the
+output channel of the node and is not able to send one forever, then the thread
+can not proceed further. If a thread is waiting for a response (for a request
 previously sent), and it never gets the response, the thread can never proceed
-further. These scenarios create a deadlock.
+further. A thread can also not proceed if it's waiting for being allocated in a
+free line but never gets one because all the lines are locked up. These
+scenarios create a deadlock.
 
 We will illustrate the need for Theorems \ref{pcSame}, \ref{cpSame} and
 \ref{conservative} using a 2-level of caches having two L1 caches $c_1$ and
