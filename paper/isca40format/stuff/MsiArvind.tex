@@ -108,8 +108,57 @@ have data different from what's present in the memory.
 \begin{subfigure}{\linewidth}
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
-\Proc {\uReq}{$c , p, a, x$}
+\Proc {\uReq{L1}}{$core , c, a, x$}
+    \If {$a$ is not present in $c$}
+      \If {$c$ has no space for $a$}
+        \State Choose address $a'$ for eviction;
+        \State \textbf{if} ($c.state[a'] = M$)
+        \State \;\;\;\; $(c.parent).data[a'] \gets c.data[a']$;
+        \State $c.state[a'] \gets I$;
+      \EndIf
+      \State Allocate a line for $a$;
+    \EndIf
+    \State // $a$ is already present in $c$
+    \State \call{} \uReq($c, c.parent, a, x$);
   \If {$x > c.state[a]$}
+    \State \textbf{if} ($c.state[a] = I$)
+    \State \;\;\;\; $c.data[a] \gets (c.parent).data[a]$;
+    \State $c.state[a] \gets x$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Handling upgrade to $x$ request from $core$ to $c$ for address $a$}
+\label{uReq1Core}
+\end{subfigure}
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dReq{L1}}{$p , c, a, x$}
+  \If {$x < c.state[a]$}
+    \State \textbf{if} ($c.state[a] = M$)
+    \State \;\;\;\; $p.data[a] \gets c.data[a]$;
+    \State $c.state[a] \gets x$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Handling downgrade to $x$ request from $p$ to $c$ for address $a$}
+\label{dReq1Core}
+\end{subfigure}
+
+\caption{MSI protocol -- handling L1 caches only}
+\label{msi-simple-core}
+\end{figure}
+
+\begin{figure}
+\small
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uReq}{$c , p, a, x$}
     \If {$a$ is not present in $p$}
       \If {$p$ has no space for $a$}
         \State Choose address $a'$ for eviction;
@@ -128,106 +177,90 @@ have data different from what's present in the memory.
     \State \textbf{forall} ($c' \in p.children$)
     \State \;\;\;\; \textbf{if} ($c'.state[a] > toCompatible(x)$)
     \State \;\;\;\;\;\;\;\; \call{} \dReq($p, c', a', toCompatible(x)$);
-    \State \textbf{if} ($p$ is Last-Level-Cache \&\& $p.state[a] = I$) \bopen
+    \State \textbf{if} ($p$ is Last-Level-Cache \&\& $p.state[a] = I$)
     \State \;\;\;\; $p.data[a] \gets memory[a]$;
-    \State \;\;\;\; $p.state[a] \gets M$;
-    \State \bclose \;\textbf{else}
+    \State \textbf{else}
     \State \;\;\;\; \call{} \uReq($p, p.parent, a, x$);
-  \State \textbf{if} ($c \neq core$)
-  \State \;\;\;\; \textbf{if} ($c.state[a] = I$)
-  \State \;\;\;\;\;\;\;\; $c.data[a] \gets p.data[a]$;
-  \State \;\;\;\; $c.state[a] \gets x$;
-  \EndIf
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Handling upgrade to $x$ request from $c$ to $p$ for address $a$}
-\label{atomicUReq1}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\dReq}{$p , c, a, x$}
-  \If {$c.state[a] > x$}
-    \State \textbf{forall} ($c' \in c.children$)
-    \State \;\;\;\; \textbf{if} (c'.state[a] > x)
-    \State \;\;\;\;\;\;\;\; \call{} \dReq($c, c', a, x$);
-    \State \textbf{if} ($c.state[a] = M$)
-    \State \;\;\;\; $p.data[a] \gets c.data[a]$;
+  \If {$x > c.state[a]$}
+    \State \textbf{if} ($c.state[a] = I$)
+    \State \;\;\;\; $c.data[a] \gets p.data[a]$;
     \State $c.state[a] \gets x$;
   \EndIf
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Handling downgrade to $x$ request from $p$ to $c$ for address $a$}
-\label{atomicDReq1}
-\end{subfigure}
-
-\caption{Atomic MSI protocol}
-\label{msi-simple}
-\end{figure}
-
-\begin{figure}
-\small
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\uReq}{$c , p, a, x$}
-  \If {$x > c.state[a]$}
-    \If {$a$ is not present in $p$}
-      \If {$p$ has no space for $a$}
-        \State Choose address $a'$ for eviction;
-        \State \textbf{forall} ($c' \in p.children$)
-        \State \;\;\;\; \textbf{if} ($c'.state[a] > I$)
-        \State \;\;\;\;\;\;\;\; \call{} \dReqL($p, c', a', I$);
-        \State \textbf{if} ($p.state[a'] > I$)
-        \State \;\;\;\; \call{} \dResp{}($p, p.parent, a', I$);
-      \EndIf
-      \State Allocate a line for $a$;
-    \EndIf
-    \State // $a$ is already present in $p$
-    \State \textbf{forall} ($c' \in p.children$)
-    \State \;\;\;\; \textbf{if} ($c'.state[a] > toCompatible(x)$)
-    \State \;\;\;\;\;\;\;\; \call{} \dReqL($p, c', a', toCompatible(x)$);
-    \State \textbf{if} ($p$ is Last-Level-Cache \&\& $p.state[a] = I$)
-    \State \;\;\;\; \call{} \sendMem{}($a$);
-    \State \textbf{else}
-    \State \;\;\;\; \call{} \uReqL($p, p.parent, a, x$);
-  \State \textbf{if} ($c \neq core$)
-  \State \;\;\;\; \call{} \uResp(p, c, a, x);
-  \EndIf
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
 \caption{Handling upgrade to $x$ request from $c$ to $p$ for address $a$}
-\label{atomicUReq1}
+\label{uReq1Core}
 \end{subfigure}
 
 \begin{subfigure}{\linewidth}
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\dReq}{$p , c, a, x$}
-  \If {$c.state[a] > x$}
-    \State \textbf{forall} ($c' \in c.children$)
-    \State \;\;\;\; \textbf{if} (c'.state[a] > x)
-    \State \;\;\;\;\;\;\;\; \call{} \dReqL($c, c', a, x$);
-    \State \call{} \dResp($c, p, a, x$);
-  \EndIf
+  \State \textbf{forall} ($c' \in c.children$)
+  \State \;\;\;\; \textbf{if} (c'.state[a] > x)
+  \State \;\;\;\;\;\;\;\; \call{} \dReq($c, c', a, x$);
+  \State \textbf{if} ($c.state[a] = M$)
+  \State \;\;\;\; $p.data[a] \gets c.data[a]$;
+  \State $c.state[a] \gets x$;
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
 \caption{Handling downgrade to $x$ request from $p$ to $c$ for address $a$}
-\label{atomicDReq1}
+\label{dReq1Core}
 \end{subfigure}
 
-\caption{MSI protocol -- general template}
-\label{msi-template}
+\caption{MSI protocol -- handling higher level caches}
+\label{msi-simple-core}
 \end{figure}
 
 \begin{figure}
-\small
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uReq}{$c , p, a, x$}
+  \If {$a$ is not present in $p$}
+    \State Choose address $a'$ for eviction;
+    \ForAll {$c' \in p.children$}
+      \State \call{} \dReqL($p , c', a', I$);
+    \EndFor
+    \State \call{} \dResp($p , p.parent, a', I$);
+    \State Replace $a'$ with $a$;
+    \State // $p.state[a]$ has been $I$, and remains $I$
+  \EndIf
+  \ForAll {$c' \in p.children, s.t., c' \neq c$}
+    \State \call{} \dReqL($p , c', a, toCompatible(x)$);
+  \EndFor
+  \State \call{} \uReqL($p , p.parent, a, x$);
+  \State \call{} \uResp($p , c, a, x$);
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Handling upgrade to $x$ request from $c$ to $p$ for address $a$}
+\label{uReq}
+\end{subfigure}
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\dReq}{$p , c, a, x$}
+  \ForAll {$c' \in c.children$}
+    \State \dReqL($c , c', a, x$);
+  \EndFor
+  \State \dResp($c , p, a, x$);
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Handling downgrade to $x$ request from $p$ to $c$ for address $a$}
+\label{dReq}
+\end{subfigure}
+
+\caption{MSI protocol}
+\label{msi}
+\end{figure}
+
+\begin{figure}
 
 \begin{subfigure}{\linewidth}
 \begin{boxedminipage}{\linewidth}
@@ -237,7 +270,7 @@ have data different from what's present in the memory.
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Upgrading address $a$ of $c$ to $x$, by invoking $c$'s parent $p$'s update handler}
+\caption{Sending upgrade to $x$ request from $c$ to $p$ for address $a$}
 \label{uReq}
 \end{subfigure}
 
@@ -249,7 +282,7 @@ have data different from what's present in the memory.
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Downgrading address $a$ of $p$'s child $c$ to $x$, by invoking $c$'s downgrade handler}
+\caption{Sending downgrade to $x$ request from $p$ to $c$ for address $a$}
 \label{dReq}
 \end{subfigure}
 
@@ -257,14 +290,16 @@ have data different from what's present in the memory.
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\uResp}{$p , c, a, x$}
-  \If {$c.state[a] = I$}
-    \State $c.data[a] \gets p.data[a]$;
+  \If {$c.state[a] < x$}
+    \If {$c.state[a] = I$}
+      \State $c.data[a] \gets p.data[a]$;
+    \EndIf
+    \State $c.state[a] \gets x$;
   \EndIf
-  \State $c.state[a] \gets x$;
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{$p$ finally upgrading address $a$ of its child $c$ to $x$}
+\caption{Sending upgrade to $x$ response from $p$ to $c$ for address $a$}
 \label{uResp}
 \end{subfigure}
 
@@ -272,27 +307,28 @@ have data different from what's present in the memory.
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\dResp}{$c , p, a, x$}
-  \If {$isModified(c.state[a])$}
-    \State $p.data[a] \gets c.data[a]$;
+  \If {$c.state[a] > x$}
+    \If {$isModified(c.state[a])$}
+      \State $p.data[a] \gets c.data[a]$;
+    \EndIf
+    \State $c.state[a] \gets x$;
   \EndIf
-  \State $c.state[a] \gets x$;
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{$c$ finally downgrading address $a$ of its parent $p$ to $x$}
+\caption{Sending downgrade to $x$ response from $c$ to $p$ for address $a$}
 \label{dResp}
 \end{subfigure}
 
 \begin{subfigure}{\linewidth}
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
-\Proc {\sendMem{}}{$c, a$}
-  \State $c.data[a] \gets memory[a]$;
-  \State $c.state[a] \gets M$;
+\Proc {\uResp}{$p , core, a, x$}
+  \State $c.data[a] \gets p.data[a]$;
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Last-Level-Cache getting data from memory for address $a$}
+\caption{Sending upgrade to $x$ response from $p$ to $core$ for address $a$}
 \label{uResp}
 \end{subfigure}
 
@@ -302,7 +338,6 @@ have data different from what's present in the memory.
 
 
 \begin{figure}
-\small
 
 \begin{subfigure}{\linewidth}
 \begin{boxedminipage}{\linewidth}
@@ -318,7 +353,7 @@ have data different from what's present in the memory.
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Upgrading state of address $a$ in $c$ to $x$ by sending a request to $c$'s parent $p$}
+\caption{Sending upgrade to $x$ request from $c$ to $p$ for address $a$}
 \label{uReqLocal}
 \end{subfigure}
 
@@ -336,21 +371,24 @@ have data different from what's present in the memory.
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Downgrading state of address $a$ in $c$ to $x$ by $c$'s parent $p$ sending a request to $c$}
-\label{dReqLocal}
+\caption{Sending downgrade to $x$ request from $p$ to $c$ for address $a$}
+\label{dResp}
 \end{subfigure}
 
 \begin{subfigure}{\linewidth}
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\uResp}{$p , c, a, x$}
-  \State \textbf{if} ($p.dir[c][a] = I$)
-  \State \;\;\;\; \send{} \Data{p}{c}{a}{p.data[a]};
-  \State $p.dir[c][a] \gets x$;
+  \If {$p.dir[c][a] < x$}
+    \If {$p.dir[c][a] = I$}
+      \State \send{} \Data{p}{c}{a}{p.data[a]};
+    \EndIf
+    \State $p.dir[c][a] \gets x$;
+  \EndIf
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Sending upgrade to $x$ response from $p$ to its child $c$ for address $a$}
+\caption{Sending upgrade to $x$ response from $p$ to $c$ for address $a$}
 \label{uResp}
 \end{subfigure}
 
@@ -358,14 +396,29 @@ have data different from what's present in the memory.
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\dResp}{$c , p, a, x$}
-  \State \textbf{if} ($isModified(c.state[a])$)
-  \State \;\;\;\; \send{} \Data{c}{p}{a}{c.data[a]};
-  \State $c.state[a] \gets x$;
+  \If {$c.state[a] > x$}
+    \If {$isModified(c.state[a])$}
+      \State \send{} \Data{c}{p}{a}{c.data[a]};
+    \EndIf
+    \State $c.state[a] \gets x$;
+  \EndIf
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
-\caption{Sending downgrade to $x$ response from $c$ to its parent $p$ for address $a$}
+\caption{Sending downgrade to $x$ response from $c$ to $p$ for address $a$}
 \label{dResp}
+\end{subfigure}
+
+\begin{subfigure}{\linewidth}
+\begin{boxedminipage}{\linewidth}
+\begin{algorithmic}
+\Proc {\uResp}{$p , core, a, x$}
+  \State \send{} \Data{p}{c}{a}{p.data[a]};
+\EndProc
+\end{algorithmic}
+\end{boxedminipage}
+\caption{Sending upgrade to $x$ response from $p$ to $core$ for address $a$}
+\label{uResp}
 \end{subfigure}
 
 \begin{subfigure}{\linewidth}
@@ -380,21 +433,6 @@ have data different from what's present in the memory.
 \end{algorithmic}
 \end{boxedminipage}
 \caption{Handling downgrade to $x$ response from $c$ to $p$ for address $a$}
-\label{uResp}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\sendMem{}}{$c, a$}
-  \State \send{} \Req{c}{Memory}{a}{-};
-  \State \receive{} \Data{Memory}{c}{a}{d};
-  \State $c.data[a] \gets d$;
-  \State $c.state[a] \gets M$;
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Last-Level-Cache getting data from memory for address $a$}
 \label{uResp}
 \end{subfigure}
 

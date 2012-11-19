@@ -7,7 +7,7 @@
 The caches are assumed to be organized in the form of a tree
 (Figure~\ref{fig:hierarchy}). The leaves of this tree represent the L1 caches,
 with each L1 cache connected to exactly one core. The root of the tree is a
-single Last-level cache (LLC), connected to the main memory. A (cache) node can
+single Last-level cache (LLC), connected to the main memory. A node can
 communicate only with its parents or with its children via a request or
 response message whose format is in Figure~\ref{message}.
 
@@ -160,5 +160,12 @@ $a$ from any source
 \end{enumerate}
 \label{evict}
 \caption{Invariants for suspending a thread during choosing an address for eviction}
+\end{inv}
+\end{figure}
+
+\begin{figure}
+\begin{inv}
+Starvation-freedom: A thread that keeps becoming ready to execute will
+eventually be scheduled by the scheduler to execute.
 \end{inv}
 \end{figure}

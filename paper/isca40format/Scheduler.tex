@@ -5,13 +5,12 @@
 \newcommand{\lIf}{\textbf{if}}
 \newcommand{\lElsIf}{\textbf{else if}}
 \newcommand{\lElse}{\textbf{else}}
-\newcommand{\bopen}{\textbf{\{}}
-\newcommand{\bclose}{\textbf{\}}}
 
 \floatstyle{plain}
 \restylefloat{figure}
 
 \begin{figure}
+\small
 \begin{boxedminipage}{\linewidth}
 \begin{alltt}
 \normalfont
@@ -43,11 +42,8 @@
                    \receive{} \Req{p}{n}{a}{x};
                    \start{} \dReq(\(p, n, a, x\));
              \bclose
-      \bclose \lElse \bopen
-             \lIf (suspended thread \(t\) is ready to execute) \bopen
-                   \resume{} \(t\);
-             \bclose
-      \bclose
+      \bclose \lElsIf (suspended thread \(t\) is ready to execute) 
+             \resume{} \(t\);
 \bclose
 \end{alltt}
 \end{boxedminipage}

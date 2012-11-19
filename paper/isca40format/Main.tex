@@ -13,19 +13,22 @@
 \newcommand{\lett}{\textbf{let}}
 \newcommand{\procedure}{\textbf{procedure}}
 \newcommand{\send}{\textbf{send}}
-\newcommand{\call}{\textbf{call}}
+\newcommand{\call}{\textbf{\kern-.6ex}}
 \newcommand{\start}{\textbf{start}}
 \newcommand{\dReq}{\textsc{handleDownReq}}
 \newcommand{\uReq}{\textsc{handleUpReq}}
-\newcommand{\dReqL}{\textsc{sendDownReq}}
-\newcommand{\uReqL}{\textsc{sendUpReq}}
-\newcommand{\dResp}{\textsc{sendDownResp}}
-\newcommand{\uResp}{\textsc{sendUpResp}}
-\newcommand{\dRespL}{\textsc{handleDownResp}}
+\newcommand{\dReqL}{\textsc{doDowngrade}}
+\newcommand{\uReqL}{\textsc{doUpgrade}}
+\newcommand{\dResp}{\textsc{doneDowngrade}}
+\newcommand{\uResp}{\textsc{doneUpgrade}}
+\newcommand{\dRespL}{\textsc{doneDowngrade}}
+\newcommand{\sendMem}{\textsc{doMemAccess}}
 \newcommand{\receive}{\textbf{receive}}
 \newcommand{\remove}{\textbf{remove}}
 \newcommand{\resume}{\textbf{resume}}
 \newcommand{\assert}{\textbf{assert}}
+\newcommand{\bopen}{\textbf{\{}}
+\newcommand{\bclose}{\textbf{\}}}
 
 \newcommand{\glob}{\text{Global-Invariant}}
 \newcommand{\local}{\text{Local-Invariant}}
@@ -43,10 +46,10 @@
    [1]{\textbf{if} (#1) \textbf{\{}}%
    {\textbf{\}}}
 \algcblockdefx[If]{If}{ElsIf}{EndIf}%
-   [1]{\textbf{else if} (#1) \textbf{\{}}%
+   [1]{\textbf{\} else if} (#1) \textbf{\{}}%
    {\textbf{\}}}
 \algcblockdefx{If}{Else}{EndIf}%
-   [1]{\textbf{else if} (#1) \textbf{\{}}%
+   [0]{\textbf{\} else} \textbf{\{}}%
    {\textbf{\}}}
 \algblockdefx{ForAll}{EndFor}%
    [1]{\textbf{forall} (#1) \textbf{\{}}%
@@ -85,9 +88,9 @@
 \DeclareGraphicsExtensions{.pdf,.jpeg,.png}
 
 \usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
 \theoremstyle{definition}
 \newtheorem{inv}{Invariant}
-\newtheorem{cons}{Meta-Rule}
 \newtheorem{scen}{Scenario}
 
 \usepackage{setspace}

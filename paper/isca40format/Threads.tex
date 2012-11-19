@@ -63,9 +63,9 @@ blocks till the channel has space to send.\\
 \receive{} $m$ & Receive and remove a message $m$ from the node's input channel.
 This action blocks till a message is received.\\
 $x \gets value$ & Local state $x$ of the node gets updates to $value$.\\
-\call{} $f(args)$ & Execute \textbf{procedure} $f$ with $args$ arguments.\\
-\start{} $f(args)$ & Start a new thread that executes \textbf{procedure} $f$
-with $args$ arguments. This action is performed only by the scheduler.\\
+%\call{} $f(args)$ & Execute \textbf{procedure} $f$ with $args$ arguments.\\
+%\start{} $f(args)$ & Start a new thread that executes \textbf{procedure} $f$
+%with $args$ arguments. This action is performed only by the scheduler.\\
 \resume{} $t$ & Resume thread $t$ from where it stopped execution. This action
 is performed only by the scheduler\\
 \hline
@@ -78,7 +78,7 @@ When a new message arrives in an input channel that requires creation of a
 thread, the scheduler first removes the message from the channel and then
 creates a thread that starts executing the \procedure{} specific to the type of
 the incoming message. Figure \ref{actions} show the notations we use to
-describe the actions performed by an executing thread. Procedures can \call{}
+describe the actions performed by an executing thread. Procedures can call
 other procedures but they can not be recursive. We usually denote the execution
 of actions \receive{} and \send{} using their verb forms, for instance,
 ,``receiving'' or ``sending''. We also denote the thread created by the
