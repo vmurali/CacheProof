@@ -1,25 +1,46 @@
 
 %Automatic Generation of Distributed Coherence Protocols for Hierarchical Caches
 
-It is straightforward to define MSI and many other protocols for a two-level
-system where the protocol engine has a global view of all caches in the system.
-The design problem gets much harder when one wants to refine these protocols to
-multi-level hierarchal cache systems where protocol engine is distributed and
-each cache controller can examine only its local state, and state transitions
-are caused by exchanging messages with other caches controllers. We present a
-procedure to automatically generate such distributed implementations from simple
-two-level global protocol descriptions and apply it to four well know protocols
-– MSI, MESI, MOSI and MOESI. Our procedure is based on preserving two
-invariants: a) the directory's notion of the permissions for the caches it
-serves is ``conservative'', \ie the caches do not have more permission than what
-is assumed by the directory; and b) every request by a cache or a directory will
-eventually get a response. It has been shown, using the Coq theorem prover, that
-our procedure preserves these invariants. The protocols we generate can be
-implemented using $2N + 1$ virtual channels where $N$ is the number of levels
-and each channel can have as few as one buffer. We finally show that our
-protocols have no extra overhead (in terms of state bits or the number of
-messages passed to service each request) compared to the published
-implementations of these protocols. 
+
+It is straightforward to define MSI and many other protocols where the protocol
+engine has a global view of all caches in the system.  The design problem gets
+much harder when one wants to refine these protocols to multi-level hierarchal
+cache systems where protocol engine is distributed and each cache controller
+can examine only its local state, and state transitions are caused by
+exchanging messages with other caches controllers. We present a procedure to
+automatically generate a distributed implementation from a global MSI protocol
+description for hierarchical caches.  Our procedure is based on preserving two
+important invariants: a) the directory's notion of the permissions for the
+caches it serves is ``conservative'', \ie the caches do not have more
+permission than what is assumed by the directory; and b) every request by a
+cache or a directory will eventually get a response. It has been shown
+elsewhere, using the Coq theorem prover, that our distributed protocol
+preserves these invariants.  The protocols we generate can be implemented using
+$2N + 1$ virtual channels where $N$ is the number of levels and each channel
+can have as few as one buffer. We finally show that our protocols have no extra
+overhead (in terms of state bits or the number of messages passed to service
+each request) compared to the published implementations of this protocol. 
+ 
+
+%It is straightforward to define MSI and many other protocols for a two-level
+%system where the protocol engine has a global view of all caches in the system.
+%The design problem gets much harder when one wants to refine these protocols to
+%multi-level hierarchal cache systems where protocol engine is distributed and
+%each cache controller can examine only its local state, and state transitions
+%are caused by exchanging messages with other caches controllers. We present a
+%procedure to automatically generate such distributed implementations from simple
+%two-level global protocol descriptions and apply it to four well know protocols
+%– MSI, MESI, MOSI and MOESI. Our procedure is based on preserving two
+%invariants: a) the directory's notion of the permissions for the caches it
+%serves is ``conservative'', \ie the caches do not have more permission than what
+%is assumed by the directory; and b) every request by a cache or a directory will
+%eventually get a response. It has been shown, using the Coq theorem prover, that
+%our procedure preserves these invariants. The protocols we generate can be
+%implemented using $2N + 1$ virtual channels where $N$ is the number of levels
+%and each channel can have as few as one buffer. We finally show that our
+%protocols have no extra overhead (in terms of state bits or the number of
+%messages passed to service each request) compared to the published
+%implementations of these protocols. 
 
 %We provide a framework for designing hierarchical directory-based cache-coherence protocols. We reduce the cache-coherence design problem into two parts: a) a common substrate shared between most directory-based cache coherence protocols and b) the part specific to each cache-coherence protocol. The common substrate includes a set of ``\glob{}s'' which provide the framework over which protocol-specific parts, the ``\policy{}'' can be designed. \glob{}s can be thought of as a high-level abstraction layer, which allows \policy{} to focus on high-level properties, instead of worrying about corner cases. \glob{}s include guarantees like every request from any node getting a response eventually, \etc.  \policy{} includes the actions the directory takes in order to preserve cache coherence, \viz to preserve the single-writer-at-a-time invariant, and the reader-reads-last-updated-value invariant. We have formally proven that a set of (\policy{} independent) ``\local{}s'' guarantee \glob{}s using the Coq theorem prover. The \local{}s dictate constraints and actions local to a cache or to the directory as well as properties of the network.
 %

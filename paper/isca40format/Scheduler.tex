@@ -32,13 +32,13 @@
             \bclose
       \bclose \lElsIf (\Req{c}{n}{a}{x} is in the input channel,
                      where \(n = c.parent\)) \bopen
-             \lIf (Invariant \ref{pHandleReq} is satisfied) \bopen
+             \lIf (Local-Property \ref{pHandleReq} is satisfied) \bopen
                    \receive{} \Req{c}{n}{a}{x};
                    \start{} \uReq(\(c, n, a, x\));
              \bclose
       \bclose \lElsIf (\Req{p}{n}{a}{x} is in the input channel,
                   where \(p = n.parent\)) \bopen
-             \lIf (Invariant \ref{cHandleReq} is satisfied) \bopen
+             \lIf (Local-Property \ref{cHandleReq} is satisfied) \bopen
                    \receive{} \Req{p}{n}{a}{x};
                    \start{} \dReq(\(p, n, a, x\));
              \bclose

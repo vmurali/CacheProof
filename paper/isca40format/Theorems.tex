@@ -1,9 +1,8 @@
-\section{Theorems}
-\label{sec:theorems}
+\section{Invariants}
+\label{sec:properties}
 
-If Invariants \ref{blocking} to \ref{evict} are obeyed, then we have formally
-proved that the following theorems hold. The formal proof is beyond the scope of
-the paper.
+We give a list of invariants or global properties that are needed to ensure that
+the distributed, hierarchical, MSI protocol in Figure \ref{realistic} is correct.
 
 \begin{theorem}
 It a thread has to send a message, it will eventually be able to send the
@@ -43,30 +42,29 @@ p.dir[c][a] \ge c.state[a]$.
 \label{conservative}
 \end{theorem}
 
-These theorems are needed to guarantee that Figure \ref{realistic} protocol is
-indeed correct. If, for instance, a thread wants to send a message in the
-output channel of the node and is not able to send one forever, then the thread
-can not proceed further. If a thread is waiting for a response (for a request
-previously sent), and it never gets the response, the thread can never proceed
-further. A thread can also not proceed if it's waiting for being allocated in a
-free line but never gets one because all the lines are locked up. These
-scenarios create a deadlock.
+The need for these invariants is intuitive. If, for instance, a thread wants to
+send a message in the output channel of the node and is not able to send one
+forever, then the thread can not proceed further. If a thread is waiting for a
+response (for a request previously sent), and it never gets the response, the
+thread can never proceed further. A thread can also not proceed if it's waiting
+for being allocated in a free line but never gets one because all the lines are
+locked up. These scenarios create a deadlock.
 
-We will illustrate the need for Theorems \ref{pcSame}, \ref{cpSame} and
+We will illustrate the need for Invariants \ref{pcSame}, \ref{cpSame} and
 \ref{conservative} using a 2-level of caches having two L1 caches $c_1$ and
 $c_2$, and one shared L2 cache $p$.
 
-Theorem \ref{pcSame} and \ref{cpSame} are important to make sure that the data
+Invariant \ref{pcSame} and \ref{cpSame} are important to make sure that the data
 transfers happen correctly. Let $p.dir[c_1][a] = S$, $p.dir[c_2][a] = I$,
 $c_1.state[a] = S$, and $c_2.state[a] = I$. $c_2$ gets a store request, and
 sends \Req{c_1}{p}{a}{M} to $p$. $p$ receives the request, but assumes that
-$c_1$ already has data for $a$ since $p.dir[c_1][a] = S$. Theorem \ref{pcSame}
+$c_1$ already has data for $a$ since $p.dir[c_1][a] = S$. Invariant \ref{pcSame}
 is violated. So, it does not transfer the data to $c_1$, resulting in $c_1$
 waiting for data, and hence deadlock. A dual condition can be constructed
 similarly, in which $c_1$ downgrades its state for address $a$ from $S$ to $I$,
 and the parent assumes that $c_1$ is in state $M$, and keeps waiting for data.
 
-Theorem \ref{conservative} is important because a parent node consults its
+Invariant \ref{conservative} is important because a parent node consults its
 directory to decide the children it needs to send a downgrade request to.  Let
 $p.dir[c_1][a] = S$, $c_1.state[a] = S$, $p.dir[c_2][a] = I$ but
 $c_2.state[a] = S$. If $c_1$ gets a store request from the processor and sends
@@ -75,9 +73,15 @@ is also $I$ and hence sends \Resp{p}{c_1}{a}{M} to $c_1$. But since the real
 state of  $c_2$ for address $a$ is $S$, it will break Single-writer Invariant
 \ref{singleWriter}.
 
-If Theorems \ref{canSend}, to \ref{cpSame} holds, then the procedures given in
+If Invariants \ref{canSend}, to \ref{cpSame} holds, then the procedures given in
 Figure \ref{realistic} can not deadlock because it will always be able to a)
 send a request, b) send back a response, c) get back a response for a request it
 sent, d) receive data when required. Procedure \uReq{} in Figure
-\ref{msi-template} relies on Theorem \ref{conservative} to maintain the
+\ref{msi-template} relies on Invariant \ref{conservative} to maintain the
 Single-writer Invariant \ref{singleWriter}.
+
+In order to guarantee these invariants, we need each node to obey certain local
+properties that we describe in the next section. Since these properties are
+localized to a node, it's easy to see that the distributed, hierarchical, MSI
+protocol we derive in Section \ref{sec:DistributedMsi} obeys these properties
+just by inspection.

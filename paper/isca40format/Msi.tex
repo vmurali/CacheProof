@@ -1,5 +1,5 @@
 \section{MSI protocol}
-\label{sec:msi}
+\label{sec:GlobalMsi}
 
 Let us walk through our framework using the example of a hierarchical MSI
 protocol.
@@ -95,12 +95,12 @@ at most one of its children can be in $M$ state. This guarantees that at most
 one of the L1 caches can have write permissions, ensuring the following
 invariant:
 
-\begin{inv}
+\begin{theorem}
 \textbf{Single-writer Invariant}: When a cache has permission to modify data for
 an address, no other cache has read or write permission for that
 address.
 \label{singleWriter}
-\end{inv}
+\end{theorem}
 
 We define a $toCompatible(x)$ mapping (Figure ~\ref{toCompat}), which specifies
 the highest state a cache can be to not violate the Single-writer Invariant, if
@@ -125,12 +125,12 @@ If a cache having no permission for an address requires read or write
 permissions for that address, then the most up-to-date value must be supplied,
 \ie:
 
-\begin{inv}
+\begin{theorem}
 \textbf{Read-from-last-writer}: When a cache reads data for an address, it reads
 the last modified version of the data for the address. If the data for an
 address has not been modified, the cache reads the data from memory.
 \label{lastRead}
-\end{inv}
+\end{theorem}
 
 Invariants \ref{singleWriter} and \ref{lastRead} together ensure cache coherence
 \cite{Patterson}.
@@ -176,6 +176,7 @@ line is updated in case of a store.
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\uReq}{$c , a, x$}
+  \If {$c.state[a] < x$}
     \If {$a$ is not present in $this$}
       \If {$this$ has no space for $a$}
         \State Choose address $a'$ for eviction;
@@ -197,6 +198,7 @@ line is updated in case of a store.
     \State \;\;\;\; \call{} $this.$\uReqL{}($this.parent, a, x$);
   \State \textbf{if} ($c \neq core$)
   \State \;\;\;\; \call{} $this$.\uResp{}($c, a, x$);
+  \EndIf
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}

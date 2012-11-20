@@ -1,8 +1,8 @@
 \section{Introduction} 
 
-Large shared-memory multicores are likely to use cache-coherence protocols
-which are directory-based, hierarchical, and implemented using message passing.
-Even though such protocols have been around for two decades (see, for example,
+Large cache-coherent shared-memory multicores are likely to use protocols which
+are directory-based, hierarchical, and implemented using message passing.  Even
+though such protocols have been around for two decades (see, for example,
 DASH\cite{DASH}, Alewife\cite{Anant}, ...) correct design and implementation of
 such protocols remains a challenge. It is difficult to convince oneself that
 all corner cases have been handled adequately without a formal proof. And yet
@@ -14,30 +14,39 @@ a simple protocol for a small number of caches, under unbounded buffer
 assumption is of limited use in gaining confidence in the correctness of a real
 protocol. 
 
-In this paper we will consider systems where caches form a tree hierarchy and
-caches are \emph{inclusive}, that is, if a cache contains address $a$ then its
-parent is guaranteed to contain address $a$, though the parent may have stale
-data for $a$. Every cache or node in the system has an associated directory
-which contains information about its children caches. The coherence state
-changes are orchestrated by passing requests and responses between the caches
-via the directory.  Unlike bus-based protocols which lock the bus till all the
-required state transitions are done thereby ensuring atomicity of state
-transitions, in a message-passing protocol, requests and responses are split
-leading to transient states. This creates scenarios not present in bus-based
-protocols, which can lead to coherence violations or deadlocks, if the protocol
-is not designed or implemented carefully.
+In this paper we will consider systems where caches logically form a tree
+hierarchy and caches are \emph{inclusive}, that is, if a cache contains address
+$a$ then its parent is guaranteed to contain address $a$, though the parent may
+have stale data for $a$ (Figure \ref{hierarchy}). Physically the system looks
+like a collection of caches connected to a message passing network (Figure
+\ref{physical}). Caches typically contain data and state for each cache line,
+and have two pairs of channels for communicating with parent and children
+caches. For the lowest level caches (L1's) the channels for communicating with
+children are connected to processors, while for the last-level caches the
+channels for communicating with the parents are connected to the memory. 
+
+Every cache, unless it is an L1 cache, has a directory which contains
+information about the state of its children caches. The cache state changes to
+maintain coherence are orchestrated by passing requests and responses between
+the caches using the local directory information.  Unlike bus-based protocols
+which lock the bus till all the required state transitions are done thereby
+ensuring atomicity of state transitions, in a message-passing protocol,
+requests and responses are split leading to transient states. This creates
+scenarios not present in bus-based protocols, which can lead to coherence
+violations or deadlocks, if the protocol is not designed or implemented
+carefully.
 
 Several factors contribute to the difficulty of designing protocols for such
 distributed, hierarchical and message-passing systems:
 
 \begin{enumerate} \item Lots of concurrent events must be dealt with without a
 central authority to impose a sequence on events; \item The state on which
-transitions are based is physically distributed in space and cannot be accessed
-atomically; \item Physical network may block the transmission of a message
-because of lack of communication buffers or head-of-the-line blocking; \item
-The cache or directory may reach a state which can not handle a particular
-message. An incomplete set of transition rules may cause the protocol to
-deadlock.  \end{enumerate}
+transitions are based conceptually is physically distributed and cannot be
+accessed atomically; \item Physical network may block the transmission of a
+message because of lack of communication buffers or head-of-the-line blocking;
+\item The cache or directory may reach a state in which a particular message
+cannot be handled. An incomplete set of transition rules may cause the protocol
+to deadlock.  \end{enumerate}
 
 As examples of problems in designing correct protocols, we describe several
 concrete and familiar scenarios from two-level systems (a private L1 cache for
@@ -75,54 +84,60 @@ cache handle this request; should it drop such a request, or respond saying
 that it does not have the line?
 
 These examples give a glimpse of the complexity of designing and implementing a
-correct cache coherence protocol in a directory-based non-bus setting.  Even
-for a 2-level cache hierarchy, designing and implementing the protocol is quite
-difficult. This problem is greatly exacerbated in a multi-level cache
-hierarchy, which is becoming the norm because of the increasing core counts. 
-
+correct cache coherence protocol in a distributed setting.  Even for a 2-level
+cache hierarchy, designing and implementing the protocol is non-trivial; the
+problem gets greatly exacerbated in large multi-level cache system. 
 
 In this paper, we present a substantially easier method to design cache
-coherence protocols for such systems. The user specifies a protocol for a
-two-level system without message passing. The protocol rules can simultaneously
-or \emph{atomically} examine and change the state of all the caches in the
-system. For example, the MSI protocol may be described as follows: 
+coherence protocols for such systems. The user specifies a protocol for a cache
+hierarchy as sequential methods to process requests. There is no message
+passing so the protocol procedure can simultaneously or \emph{atomically}
+examine and change the state of all the caches in the system. We then
+systematically transform such a protocol description into a distributed,
+message-passing protocol. The resulting protocol is presented as a collection
+of cooperating sequential methods which operate on ``cache objects''.  These
+sequential methods communicate with each other via blocking \emph{send} and
+\emph{receive} commands and thus can get suspended. Our transformation is based
+on preserving some invariants which guarantee that each request eventually gets
+a response and thus, our threads can never wait indefinitely.  It has been
+shown using the Coq theorem prover \cite{}, that the distributed protocol we
+derive is correct.  Both the transformation procedure and the proof are
+parameterized by the number of cache levels and the number of caches in each
+level of the hierarchy as well as by a predicate which involves a local
+``compatibility of state'' test. A discussion of the formal proof is beyond the
+scope of this paper. 
 
-***** Murli insert the description of MSI **** We give a procedure that
-transforms such simple and global protocol descriptions into a distributed,
-message-passing protocol for hierarchal caches. Our procedure is based on
-preserving some invariants in rule transformations and has been shown to be
-sound and complete with respect the global description using the coq theorem
-prover \cite{}, however, a discussion of the formal proof is beyond the scope
-of this paper. Both the procedure and the proof are parameterized by the number
-of cache levels and the number of caches in each level of the hierarchy as well
-as by a predicate which involves a local ``compatibility of state'' test. 
+It should be noted that the generality of our procedure comes from the fact
+that we do not assign any meaning to a coherence state beyond upgrades and
+downgrades. Thus, how or why a particular cache state implies that a particular
+address may not be present in any other cache stems from protocol specific
+``compatibility of state'' check. 
 
-It should be noted that the flexibility of our procedure comes from the fact
-that we do not assign any meaning to the value of a coherence state beyond
-upgrades or downgrades. Thus, how or why a particular cache state implies that
-a particular address may not be present in any other cache stems from protocol
-specific ``compatibility of state'' check. 
+The main contributions of this paper are: 1. An automatic procedure to refine a
+centralized MSI protocol without message passing into protocols for
+distributed, hierarchical, cache system with message-passing; 2. Specification
+of the invariants that ensure the correctness of the transformation procedure;
+and 3. Giving a provable lower bound on network virtual channels and buffers to
+avoid deadlocks; and 4. Showing that our procedure does not introduce any
+overhead over direct implementation of these protocols.  We think that our
+method of designing protocols substantially reduces the required effort in
+implementing provably correct protocols. 
 
-The main contributions of this paper are: 1. An automatic procedure to refine
-centralized protocols without message passing into protocols for distributed,
-hierarchal, cache system with message-passing; 2. Specification of the
-invariants to be preserved by the procedure; and 3. Showing that our procedure
-does not introduce any overhead over direct implementation of these protocols.
-We think that our method of designing protocols substantially reduces the
-required effort, and that our procedure is flexible enough to implement (while
-ensuring correctness of) most, if not all, inclusive message-passing
-directory-based protocols.
-
-\paragraph{Paper organization:} *** to be redone *** Section \ref{sec:abstract}
-describes the abstract protocol; Section \ref{sec:properties} gives the two
-properties that are guaranteed by the abstract protocol and provides some
-intuition for proving these properties. We also discuss the communication
-buffer requirements for the abstract protocol and show that the requirement is
-only proportional to the number of levels and not to the number of processors.
-In Section \ref{sec:protocols}, we show how the abstract protocol can be used
-to implement MSI, MESI, MOSI and MOESI protocols and their variants.  In
-Section \ref{sec:performance}, we show that these formally verified family of
-protocols require no extra state bits, nor extra message transfers compared to
-other published implementations.  In Section \ref{sec:related}, we present some
-of the related work and finally in Section \ref{sec:conclusion}, we present
-some directions for the future work.
+\paragraph{Paper organization:} Section \ref{sec:GlobalMsi} describes the MSI
+protocol for a hierarchy of caches using nonsuspensive sequential methods. We
+use it a specification for proving the correctness of distributed MSI
+protocols. Section \ref{sec:DistributedMsi} systematically transforms the
+protocol in Section \ref{sec:GlobalMsi} into a distributed protocol. Section
+\ref{sec:properties} gives a set of global properties or invariants that are
+needed to preserve the correctness of the transformation procedure. The
+desirability of these invariants is intuitively obvious. Section
+\ref{sec:localProperties} describes local properties that are needed to
+guarantee the desirable invariants discussed in Section \ref{sec:properties};
+it can be easily seen by inspection (because of the local nature of the
+properties) that the distributed protocol obeys these properties. Section
+\ref{sec:network} specifies the minimum virtual channel requirements to ensure
+the local properties specified in Section \ref{sec:localProperties}. We show
+that these formally verified family of protocols require no extra state bits,
+nor extra message transfers compared to other published implementations.  In
+Section \ref{sec:related}, we present some of the related work and finally in
+Section \ref{sec:conclusion}, we present some directions for the future work.
