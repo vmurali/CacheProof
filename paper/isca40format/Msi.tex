@@ -87,7 +87,7 @@ Figure \ref{msi<}.
 %equivalent to the state of that address being $I$.
 
 For a non L1 cache, the meaning of coherence states is different. For an
-internal node $n$, if $n.state[a] = I$, then, the entire sub-tree rooted at $n$
+internal cache node $n$, if $n.state[a] = I$, then, the entire sub-tree rooted at $n$
 will have coherence state $I$ for address $a$. In particular, no L1 cache in
 this subtree will have any permission for $a$. If $n.state[a] = S$, then its
 children can either be in $S$ or $I$ state. Finally, if $n.state[a] = M$, then
@@ -361,12 +361,14 @@ handlers, or change the states of other caches.
 \begin{algorithmic}
 \Proc {\uReqL}{$p, a, x$}
   \State \send{} \Req{this}{p}{a}{x};
+  \While {$this.state[a] < x$}
   \State \receive{} \Resp{p}{this}{a}{z};
   \If {$this.state[a] = I$}
     \State \receive{} \Data{p}{this}{a}{d};
     \State $this.data[a] \gets d$;
   \EndIf
   \State $this.state[a] \gets z$;
+  \EndWhile
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
@@ -380,12 +382,14 @@ $this$'s parent $p$}
 \begin{algorithmic}
 \Proc {\dReqL}{$c, a, x$}
   \State \send{} \Req{this}{c}{a}{x};
+  \While {$this.dir[c][a] > x$}
   \State \receive{} \Resp{c}{this}{a}{z};
   \If {$isModified(this.dir[c][a])$}
     \State \receive{} \Data{c}{this}{a}{d};
     \State $this.data[a] \gets d$;
   \EndIf
   \State $this.dir[c][a] \gets z$;
+  \EndWhile
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}

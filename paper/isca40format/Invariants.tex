@@ -1,76 +1,18 @@
-\section{Local Properties}
+\subsection{Local Properties}
 \label{sec:localProperties}
-
-In this section we list the local properties that are required to ensure the
-invariants in Section \ref{sec:properties}. We can easily see by inspection that the distributed MSI protocol in Figure \ref{realistic} does not violate the local properties in this section.
-
- which in turn makes the 
-distributed cache coherence protocol given in Figure \ref{realistic} correct. We
- give the intuition behind the these invariants whenever applicable, though the
-formal proof on why these local properties guarantee the invariants of Section
-\ref{sec:theorem} is beyond the scope of this paper.
-
-In all the scenarios that we present below, we will use a system containing two
-levels of caches, L1 and L2. There are 2 L1 caches $c_1$ and $c_2$, and both are
-connected to the shared L2. Both $c_1$ and $c_2$ can handle multiple outstanding
-requests from the cores.
 
 \floatstyle{boxed}
 \restylefloat{figure}
 
 \begin{figure}\small
 \begin{inv}
-An incoming response message for an address $a$ from a child $c$ should not be
-received before another incoming response message from the same $c$ and the
-same $a$ sent earlier has been received\label{cRespFifo}
-\end{inv}
-\begin{inv}
-An incoming request message for an address $a$ from a source $n$ should not be
-received before another incoming response message from the same $n$ and the
-same $a$ sent earlier has been received\label{reqNoOvertakeResp}
-\end{inv}
-\caption{Ordering requirements}
-\label{order}
-\end{figure}
-
-Let's illustrate the need for Local-Property \ref{cRespFifo}. Let's say $c_1$ is
-in state $M$ and $c_2$ in state $I$ for address $a$, and the corresponding
-directory states in L2 match with their actual states. $c_2$ gets a store
-request from its processor and sends an upgrade request to L2. L2 sends a
-downgrade to $S$ request to $c_1$. $c_1$ receives the downgrade to $S$ request
-and downgrades to $S$, sending a downgrade response to L2. Let's say $c_1$
-decides to evict address $a$ to make room for another address. $c_1$ sends a
-downgrade to $I$ response to L2. Let's say the second response (downgrade to
-$I$) reaches L2 first, violating Local-Property \ref{cRespFifo}. L2 sends a
-upgrade to $S$ response to $c_2$. Let's say $c_2$ received the upgrade response
-and changed state to $S$.  L2 then receives the second downgrade to $S$ response
-from $c_1$.  Now L2 will change its directory state to $S$ for $c_1$ because it
-received a downgrade to $S$ response last. Now let's say $c_2$ sent an upgrade
-to $M$ request to L2 because of a store from its core. L2 will send an downgrade
-to $I$ request to $c_1$, but $c_1$ drops the request since it's already in state
-$I$.  Hence L2 will never receive a response from $c_1$ leading to a deadlock.
-This is illustrated in Figure \ref{complicated}.
-
-Let's illustrate the need for Local-Property \ref{reqNoOvertakeResp}. Let's say
-$c_1$ is in state $S$ and $c_2$ in state $I$ for address $a$. Suppose $c_1$
-receives a store request and sends an upgrade to $M$ request to L2. L2 sends
-back an upgrade to $M$ response to $c_1$. $c_2$ gets a load request for address
-$a$ and sends an upgrade to $S$ request to L2. L2 sends a request to $S$ to
-$c_1$. Suppose Local-Property \ref{reqNoOvertakeResp} is violated and the
-request to $S$ reaches $c_1$ before the response to $M$. $c_1$ will drop the
-request since its already in state $S$, and L2 will never get a response leading
-to a deadlock. This is illustrated in Figure \ref{lessComplicated}.
-
-\begin{figure}\small
-\begin{inv}
 A response \Resp{p}{c}{a}{x}, where $p = c.parent$, can be sent from $p$ only
 if
 \begin{enumerate}
-\item a thread that handling a request from $c$ to $p$ for
-address $a$ is executing, and
+\item a request \Req{c}{p}{a}{z} was received from $c$
 \item $x > y$, where $p.dir[c][a] = y$ just before sending the response
 \end{enumerate}
-\label{cSendRespPre}
+\label{pSendRespPre}
 \end{inv}
 \begin{inv}
 A response \Resp{c}{p}{a}{x}, where $p = c.parent$, can be sent from $c$ only
@@ -78,45 +20,15 @@ if $x < y$, where $c.state[a] = y$ just before sending the
 response\label{pSendRespPre1}
 \end{inv}
 \begin{inv}
-If there is a thread in node $c$ that is waiting to receive a response from its
-parent $p$ for an address $a$, then response \Resp{c}{p}{a}{x} can be sent only
-on executing a thread that is handling a request from $p$ to $c$ for address
-$a$. For instance, $a$ can not be evicted from $c$, if there is a thread
-handling a request from $p$ to $c$ for address $a$.
-\label{pSendRespPre2}
+If $c$ has sent a request \Req{c}{p}{a}{x}, then $c$ can send a response
+\Resp{c}{p}{a}{y} only on receiving a request from $p$ for address $a$.
+\label{cSendRespPre2}
 \end{inv}
-\caption{Local-Properties for sending responses}
-\label{sendResp}
-\end{figure}
-
-We will illustrate why Local-Properties \ref{cSendRespPre} and
-\ref{pSendRespPre2} are important. Let's say $c_1$ is in $S$ and $c_2$ is in $I$
-for address $a$ the corresponding directory states match with the actual states.
-
-In the first scenario, let $c_1$ receive a store request for address $a$. It
-sends an upgrade to $M$ request to L2. Then $c_1$ gets another load request from
-the core for a different address $a'$ which is not present in $c_1$. If $c_1$
-violates \ref{cSendRespPre} and evicts address $a$ to allocate a line for
-address $a$, then it sends a downgrade to $I$ response for address $a$ to L2.
-Meanwhile L2 has sent an upgrade to $M$ response to $c_1$. After sending the
-response, L2 receives the downgrade to $I$ response form $c_1$. So L2 now
-assumes that $c_1$ is in $I$ while in reality, $c_1$ is in $M$. This breaks
-Invariant \ref{conservative} which creates the problems described earlier. This
-is shown in Figure \ref{checkit}
-
-In the second scenario, let's say L2 violates \ref{pSendRespPre2} and
-voluntarily sends an upgrade to $M$ response for address $a$ to $c_1$.
-Meanwhile, $c_1$ receives a load request from the core for a different address
-$a'$ which is not present in $c_1$, and hence evicts $a$ to allocate a line for
-$a$. $c_1$ then gets the upgrade to $M$ response from L2 while L2 gets the
-downgrade to $I$ response, breaking Invariant \ref{conservative} again. This is
-shown in Figure \ref{checkit2}.
-
-In general, any crossing of response messages between a cache and its parent,
-like the ones shown in Figures \ref{checkit} and \ref{checkit2} results in
-violation of Invariant \ref{conservative}.
-
-\begin{figure}\small
+%\caption{Local-Properties for sending responses}
+%\label{sendResp}
+%\end{figure}
+%
+%\begin{figure}\small
 \begin{inv}
 If a response \Resp{p}{c}{a}{x} is sent from $p$, then $p.dir[c][a] \gets x$\label{cSendRespPost}
 \end{inv}
@@ -139,11 +51,11 @@ response from $c.parent$\label{cState}
 $p.dir[c][a]$ can change only on $p$ sending or receiving a response from
 its child $c$\label{pState}
 \end{inv}
-\caption{Local-Properties for state changes}
-\label{stateChange}
-\end{figure}
-
-\begin{figure}\small
+%\caption{Local-Properties for state changes}
+%\label{stateChange}
+%\end{figure}
+%
+%\begin{figure}\small
 \begin{inv}
 \Req{p}{c}{a}{x}, where $p = c.parent$, can be sent only if $x < p.dir[c][a]$\label{pSendReqPre}
 \end{inv}
@@ -158,143 +70,37 @@ then the request is dropped\label{pSendReqPost}
 If \Req{c}{p}{a}{x}, where $p = c.parent$, is received, it $x \le p.state[a]$,
 then the request is dropped\label{cSendReqPost}
 \end{inv}
+\begin{inv}
+A request can be sent by a cache node $n$ for address $n$ to another cache node $m$ only if
+no thread in $n$ is waiting for a response for address $a$ from $m$.
+\end{inv}
 \caption{Local-Properties for sending and receiving a request}
 \label{sendReq}
 \end{figure}
 
-Local-Properties \ref{pSendReqPre} and \ref{pSendReqPost} are needed together
-because an incoming request is dropped if the state is already lower than or
-equal to the requested state without sending a response. So, the cache waiting
-for a response will never receive one, causing a deadlock.  Similarly,
-Local-Properties \ref{cSendReqPre} and \ref{cSendReqPost} are also needed
-together.
+The Local-Properties capture the core properties of the distributed MSI
+protocol given in Section \ref{sec:distributedMsi}, and the requirements
+mentioned in Section \ref{sec:Network}.  We will use the violation of
+Local-Properties \ref{cSendRespPre} and \ref{pSendRespPre2} as examples to
+illustrate the importance of local properties.  In our usual system, let's say
+$c_1.state[a] = p.dir[c_1][a] = I$, $c_2.state[a] = p.dir[c_2][a] = I$.
 
-\begin{figure}\small
-\begin{inv}
-An incoming request message from a child or the core should not block an
-incoming request message from the parent, even for a different
-address\label{cReqNoBlockPReq}
-\end{inv}
-\begin{inv}
-An incoming request messages for an address $a$ should not block an incoming
-response message for address $a$, even from a different
-source.\label{reqNoBlockResp}
-\end{inv}
-\caption{Blocking restrictions}
-\label{blocking}
-\end{figure}
+Let $c_1$ receive a store request for address $a$. It sends an upgrade to $M$
+request to $p$. Then $c_1$ violates \ref{cSendRespPre} and evicts $a$ to
+replace it with another address. It sends a downgrade to $I$ response for
+address $a$ to $p$.  Meanwhile $p$ has sent an upgrade to $M$ response to
+$c_1$. $c_1$ receives the response and upgrades address $a$ to $M$. $p$ then
+receives the downgrade to $I$ response form $c_1$. So $p$ now assumes that
+$c_1$ is in $I$ while in reality, $c_1$ is in $M$. This breaks Invariant
+\ref{conservative} which creates the problems described earlier. This is shown
+in Figure \ref{checkit}
 
-\begin{figure}\small
-\begin{inv}
-$p$ can not receive a request \Req{c}{p}{a}{x} from $c$, where $p = c.parent$,
-if either
-\begin{enumerate}
-\item address $a$ has been chosen for eviction by some thread and that thread
-has not yet replaced $a$, or
-\item a thread in $p$ is handling a request for address
-$a$ from any source
-\end{enumerate}
-\label{pHandleReq}
-\end{inv}
-\begin{inv}
-$c$ can not receive a request \Req{p}{c}{a}{x} from $p$, where $p = c.parent$,
-if either
-\begin{enumerate}
-\item address $a$ has been chosen for eviction by some thread and that thread
-has not yet replaced $a$, or
-\item a thread in $p$ is handling a request for address
-$a$ from $p$, or
-\item a thread in $p$ is handling a request for address
-$a$ from one of $p$'s children $c'$, and that thread will not send any
-(downgrade) request to any child for address $a$ anymore
-\end{enumerate}
-\label{cHandleReq}
-\end{inv}
-\caption{Local-Properties for receiving a request (used by the scheduler)}\label{recvReq}
-\end{figure}
+Let's say $p$ violates \ref{pSendRespPre2} and voluntarily sends an upgrade to
+$M$ response for address $a$ to $c_1$.  Meanwhile, $c_1$ evicts $a$ to replace
+it with another address. $c_1$ then gets the upgrade to $M$ response from $p$
+while $p$ gets the downgrade to $I$ response, breaking Invariant
+\ref{conservative} again. This is shown in Figure \ref{checkit2}.
 
-\begin{figure}\small
-\begin{inv}
-Address $a$ present in node $c$ can not be chosen for eviction by a thread
-executing in $c$ if either
-\begin{enumerate}
-\item address $a$ has been chosen for eviction by some thread and that thread
-has not yet replaced $a$, or
-\item a thread in $c$ is handling a request for address
-$a$ from any source
-\end{enumerate}\label{evict}
-\caption{Local-Properties for suspending a thread during choosing an address for eviction}
-\end{inv}
-\end{figure}
-
-\begin{figure}\small
-\begin{inv}
-Each node has at least one dedicated thread resource for handling only messages
-(requests or responses) from the parent\label{dedicate1}
-\end{inv}
-\begin{inv}
-Each node has at least one dedicated thread resource for handling only responses
-(from children or from the parent)\label{dedicate2}
-\end{inv}
-\begin{inv}
-Each node has at least three thread resources\label{dedicate3}
-\end{inv}
-\caption{Dedicated resources in a node}
-\end{figure}
-
-Local-Properties \ref{evict}, \ref{pHandleReq} and \ref{cHandleReq} are needed
-because once a thread has finished up-to a point in its execution, it can not
-re-execute that portion. For instance, consider a thread handling an upgrade
-request from a child. Let's say thread $t$ has progressed to the point where it
-is simply waiting to send an upgrade response to the child. Now, if the line
-gets evicted because it was chosen for replacement, or it got downgraded by the
-parent, then thread $t$ can not re-execute its procedure again. To prevent this,
-only one thread is allowed to operate on a particular address, except in the
-case of downgrade requests from the parent. In this case, a thread is created to
-handle the downgrade request from the parent even if there is another thread
-handling a request for the same address from a child, if the latter thread is
-just waiting for a response from the parent. This is done to avoid the deadlock
-shown in the following scenario.
-
-Let's illustrate the need for Local-Properties \ref{cReqNoBlockPReq},
-\ref{dedicate1}, \ref{cReqNoBlockPReq} and \ref{dedicate2}. Let's say both $c_1$
-and $c_2$ are in state $S$ for address $a$, and the corresponding directory
-states in L2 match with their actual states. Both $c_1$ and $c_2$ get store
-requests from the processor for address $a$, and they send upgrade to $M$
-requests to L2. Let's say that L2 received the request from $c_2$ first.  L2
-sends a downgrade to $I$ request to $c1$.
-
-Let's first say Local-Property \ref{cReqNoBlockPReq} is not held, and instead some
-request from the core is blocking $c_1$ from receiving the request. The $c_1$
-will never respond back to L2. But L2 will never start handling the request from
-$c_1$ because of Local-Property \ref{cHandleReq}. This will create a deadlock.
-The same deadlock is also created when $c_1$ is out of thread resources to
-create a thread to handle the downgrade request from $L2$ (violating Local-Property
-\ref{dedicate1}).%Figure \ref{deadlockByPBlock} depicts this scenario.
-
-Let's extend this scenario further. Instead of violating Local-Properties
-\ref{cReqNoBlockPReq} or \ref{dedicate1} and $c_1$ not responding, let $c_1$
-send a downgrade to $I$ response to L2. Let's instead assume that Local-Property
-\ref{reqNoBlockResp} is violated in L2. So, the downgrade to $I$ response from
-$c_1$ is not received by L2, leading to the same deadlock. In the same
-manner, if Local-Property \ref{dedicate2} is violated, the response can not be
-handled by L2 creating the same deadlock yet again.
-
-The need for Local-Property \ref{dedicate3} can be shown easily. Let's say that a
-cache has exactly 2 thread resources, one for handling messages from parents,
-and one for handling responses from either the parent or the children. Now, if
-it receives a request from one of its children, it can not use either of the
-thread resources. Thus, at least one more thread resource is needed for
-handling requests from children. This thread resource can also be used for
-handling any type of incoming message.
-
-\begin{figure}\small
-\begin{inv}
-Starvation-freedom: A thread that keeps becoming ready to execute will
-eventually be scheduled to execute.\label{starvation}
-\end{inv}
-\end{figure}
-
-Local starvation-freedom is required in each cache node. If a node never
-executes a particular suspended thread, even if it keeps getting ready to
-execute, then the thread will not progress, leading to a deadlock.
+In general, any crossing of response messages between a cache and its parent,
+like the ones shown in Figures \ref{checkit} and \ref{checkit2} results in
+violation of Invariant \ref{conservative}.
