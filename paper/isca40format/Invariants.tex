@@ -17,7 +17,7 @@ if
 \begin{inv}
 A response \Resp{c}{p}{a}{x}, where $p = c.parent$, can be sent from $c$ only
 if $x < y$, where $c.state[a] = y$ just before sending the
-response\label{pSendRespPre1}
+response\label{cSendRespPre1}
 \end{inv}
 \begin{inv}
 If $c$ has sent a request \Req{c}{p}{a}{x}, then $c$ can send a response
@@ -72,21 +72,21 @@ then the request is dropped\label{cSendReqPost}
 \end{inv}
 \begin{inv}
 A request can be sent by a cache node $n$ for address $n$ to another cache node $m$ only if
-no thread in $n$ is waiting for a response for address $a$ from $m$.
+no $n$ is not waiting for a response for address $a$ from $m$.
 \end{inv}
-\caption{Local-Properties for sending and receiving a request}
+\caption{Local-Properties useful in proving the correctness of MSI protocol}
 \label{sendReq}
 \end{figure}
 
 The Local-Properties capture the core properties of the distributed MSI
 protocol given in Section \ref{sec:distributedMsi}, and the requirements
-mentioned in Section \ref{sec:Network}.  We will use the violation of
-Local-Properties \ref{cSendRespPre} and \ref{pSendRespPre2} as examples to
+mentioned in Section \ref{sec:network}. We will use the violation of
+Local-Properties \ref{pSendRespPre} and \ref{cSendRespPre2} as examples to
 illustrate the importance of local properties.  In our usual system, let's say
 $c_1.state[a] = p.dir[c_1][a] = I$, $c_2.state[a] = p.dir[c_2][a] = I$.
 
 Let $c_1$ receive a store request for address $a$. It sends an upgrade to $M$
-request to $p$. Then $c_1$ violates \ref{cSendRespPre} and evicts $a$ to
+request to $p$. Then $c_1$ violates \ref{cSendRespPre2} and evicts $a$ to
 replace it with another address. It sends a downgrade to $I$ response for
 address $a$ to $p$.  Meanwhile $p$ has sent an upgrade to $M$ response to
 $c_1$. $c_1$ receives the response and upgrades address $a$ to $M$. $p$ then
@@ -95,7 +95,7 @@ $c_1$ is in $I$ while in reality, $c_1$ is in $M$. This breaks Invariant
 \ref{conservative} which creates the problems described earlier. This is shown
 in Figure \ref{checkit}
 
-Let's say $p$ violates \ref{pSendRespPre2} and voluntarily sends an upgrade to
+Let's say $p$ violates \ref{pSendRespPre} and voluntarily sends an upgrade to
 $M$ response for address $a$ to $c_1$.  Meanwhile, $c_1$ evicts $a$ to replace
 it with another address. $c_1$ then gets the upgrade to $M$ response from $p$
 while $p$ gets the downgrade to $I$ response, breaking Invariant

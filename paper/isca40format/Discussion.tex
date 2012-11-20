@@ -4,7 +4,7 @@
 \subsection{Efficient bit encoding in directories}
 The directory of a node store its version of the state for each of the node's
 children. The directory encoding can be optimized using the Single-writer
-Invariant \ref{singlewriter}.
+Invariant \ref{singleWriter}.
 
 For the MSI protocol, if a child is in $M$ state, every other child will be in
 $I$ state, so just storing the index of the child in $M$ state is sufficient.

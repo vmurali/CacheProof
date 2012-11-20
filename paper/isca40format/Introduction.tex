@@ -14,6 +14,23 @@ a simple protocol for a small number of caches, under unbounded buffer
 assumption is of limited use in gaining confidence in the correctness of a real
 protocol. 
 
+\begin{figure}
+\centering
+\begin{subfigure}{.45\linewidth}
+\centering
+\includegraphics[scale=.4]{hierarchy}
+\caption{Logical topology}
+\label{hierarchy}
+\end{subfigure}
+\begin{subfigure}{.45\linewidth}
+\centering
+\includegraphics[scale=.4]{physical}
+\caption{Physical topology}
+\label{hierarchy}
+\end{subfigure}
+\caption{Logical and physical topology of cache hierarchies}
+\end{figure}
+
 In this paper we will consider systems where caches logically form a tree
 hierarchy and caches are \emph{inclusive}, that is, if a cache contains address
 $a$ then its parent is guaranteed to contain address $a$, though the parent may
@@ -39,49 +56,49 @@ carefully.
 Several factors contribute to the difficulty of designing protocols for such
 distributed, hierarchical and message-passing systems:
 
-\begin{enumerate} \item Lots of concurrent events must be dealt with without a
-central authority to impose a sequence on events; \item The state on which
-transitions are based conceptually is physically distributed and cannot be
-accessed atomically; \item Physical network may block the transmission of a
-message because of lack of communication buffers or head-of-the-line blocking;
+\begin{enumerate}
+\item Lots of concurrent events must be dealt with without a central authority
+to impose a sequence on events;
+\item The state on which transitions are based conceptually is physically
+distributed and cannot be accessed atomically;
+\item Physical network may block the transmission of a message because of lack
+of communication buffers or head-of-the-line blocking;
 \item The cache or directory may reach a state in which a particular message
 cannot be handled. An incomplete set of transition rules may cause the protocol
-to deadlock.  \end{enumerate}
+to deadlock.
+\end{enumerate}
 
 As examples of problems in designing correct protocols, we describe several
 concrete and familiar scenarios from two-level systems (a private L1 cache for
-each processor and a memory with a directory). States $M, S$ and $I$ have their
+each processor and a shared L2 with a directory). States $M, S$ and $I$ have their
 usual meaning in MSI protocol ($M$ represents read and write permissions for an
 address, $S$, read-only permissions and $I$, no permission)
 
 \noindent \emph{Example 1:} A cache in state $S$ for a line gets a store
-request from the processor and sends a request for changing the line's state to
-$M$ to the directory controller. The controller may eventually send a response
-permitting the cache to go to $M$ state for that line. The response would
-signify that the states in the other caches for that line \emph{were} $I$. But
-the messages take time to propagate and the response is necessarily based on
-the old states of other caches -- the current state of another cache may not be
-$I$, violating the Single-writer-at-a-time invariant and hence breaking cache
-coherence.
+request from the processor and sends an upgrade to $M$ request to L2.  L2 may
+eventually send an upgrade to $M$ response. The response would signify that the
+states in the other caches for that line \emph{were} $I$. But the messages take
+time to propagate and the response is necessarily based on the old states of
+other caches -- the current state of another cache may be $M$, which means two
+cores can write to the same location simultaneously, violating cache coherence.
 
 \noindent \emph{Example 2:} A cache in state $S$ for a line gets a store
-request from the processor and sends a request for changing the line's state to
-$M$ to the directory controller. Instead of getting a response permitting it to
-go to $M$ state, the cache may receive a request from the directory controller
+request from the processor and sends an upgrade to $M$ request to L2. Instead
+of getting an upgrade to $M$ response, the cache may receive a request from L2
 asking this cache to go to $I$ state (invalidate request)-- this could have
-happened if the directory is serving some other cache's request to go to $M$
-state for the same line. It is not easy to determine the correct behavior of
-the former cache on receiving the invalidate request -- whether it should
+happened if the directory in L2 is serving some other cache's request to go to
+$M$ state for the same line. It is not easy to determine the correct behavior
+of the former cache on receiving the invalidate request -- whether it should
 ignore the invalidate request and wait for a response to its request or whether
 it should invalidate the line. Would ignoring the invalidate request lead to a
 deadlock?
 
 \noindent \emph{Example 3:} A cache receives an invalidate request from the
-directory controller for a line that is not present in the cache. Is such a
-request even possible? The directory does not have access to the up-to-date
-state of the cache, and so can potentially make this request. How should a
-cache handle this request; should it drop such a request, or respond saying
-that it does not have the line?
+L2 for a line that is not present in the cache. Is such a request even
+possible? The directory does not have access to the up-to-date state of the
+cache, and so can potentially make this request. How should a cache handle this
+request; should it drop such a request, or respond saying that it does not have
+the line?
 
 These examples give a glimpse of the complexity of designing and implementing a
 correct cache coherence protocol in a distributed setting.  Even for a 2-level
@@ -116,10 +133,12 @@ address may not be present in any other cache stems from protocol specific
 The main contributions of this paper are: 1. An automatic procedure to refine a
 centralized MSI protocol without message passing into protocols for
 distributed, hierarchical, cache system with message-passing; 2. Specification
-of the invariants that ensure the correctness of the transformation procedure;
-and 3. Giving a provable lower bound on network virtual channels and buffers to
-avoid deadlocks; and 4. Showing that our procedure does not introduce any
-overhead over direct implementation of these protocols.  We think that our
+of the requirements that ensure the correctness of the generated protocol;
+3. A discussion of the invariants that simplifies the proof of correctness of
+the protocol considerably;
+4. Giving a provable lower bound on network virtual channels and buffers to
+avoid deadlocks; and 5. Showing that our procedure does not introduce any
+overhead over direct implementation of these protocols. We think that our
 method of designing protocols substantially reduces the required effort in
 implementing provably correct protocols. 
 
@@ -128,16 +147,15 @@ protocol for a hierarchy of caches using nonsuspensive sequential methods. We
 use it a specification for proving the correctness of distributed MSI
 protocols. Section \ref{sec:DistributedMsi} systematically transforms the
 protocol in Section \ref{sec:GlobalMsi} into a distributed protocol. Section
-\ref{sec:properties} gives a set of global properties or invariants that are
-needed to preserve the correctness of the transformation procedure. The
-desirability of these invariants is intuitively obvious. Section
-\ref{sec:localProperties} describes local properties that are needed to
-guarantee the desirable invariants discussed in Section \ref{sec:properties};
-it can be easily seen by inspection (because of the local nature of the
-properties) that the distributed protocol obeys these properties. Section
-\ref{sec:network} specifies the minimum virtual channel requirements to ensure
-the local properties specified in Section \ref{sec:localProperties}. We show
-that these formally verified family of protocols require no extra state bits,
-nor extra message transfers compared to other published implementations.  In
-Section \ref{sec:related}, we present some of the related work and finally in
-Section \ref{sec:conclusion}, we present some directions for the future work.
+\ref{sec:network} specifies the network, resource and other requirements that
+are needed for the distributed MSI protocol. Section \ref{sec:properties} gives
+a set of desirable global properties or invariants that are needed to easily
+establish the correctness of the distributed protocol.
+%It also lists core properties of the distributed protocol that are needed to establish the invariants.
+Section \ref{sec:implementation} specifies the minimum virtual
+channel requirements to ensure the local properties specified in Section
+\ref{sec:localProperties}. We show that these formally verified family of
+protocols require no extra state bits, nor extra message transfers compared to
+other published implementations.  In Section \ref{sec:related}, we present some
+of the related work and finally in Section \ref{sec:conclusion}, we present
+some directions for future work.
