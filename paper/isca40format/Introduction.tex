@@ -3,7 +3,7 @@
 Large cache-coherent shared-memory multicores are likely to use protocols which
 are directory-based, hierarchical, and implemented using packet-switched networks.  Even
 though such protocols have been around for two decades (see, for example,
-DASH\cite{DASH}, Alewife\cite{Anant}, ...) correct design and implementation of
+DASH\cite{DASH}, Alewife\cite{Anant}) correct design and implementation of
 such protocols remains a challenge. It is difficult to convince oneself that
 all corner cases have been handled adequately without a formal proof. And yet
 formal proofs of real implementations are practically non-existent. One can't
@@ -135,7 +135,7 @@ of the requirements that ensure the correctness of the generated protocol;
 3. A discussion of the invariants that simplifies the proof of correctness of
 the protocol considerably;
 4. Giving a provable lower bound on the number of network virtual channels and
-buffers to avoid deadlocks; and 5. Showing that our procedure does not
+other resources to avoid deadlocks; and 5. Showing that our procedure does not
 introduce any overhead over direct implementation of these protocols. We think
 that our method of designing protocols substantially reduces the required
 effort in implementing provably correct protocols. 
@@ -148,11 +148,11 @@ protocol in Section \ref{sec:GlobalMsi} into a distributed protocol. Section
 \ref{sec:network} specifies the network, resource and other requirements that
 are needed for the distributed MSI protocol. We also give the minimum virtual
 channel requirements to ensure the requirements specified in Section
-\ref{sec:network}. We show that these formally verified family of protocols
+\ref{sec:network}. In Section \ref{sec:implementation}, we show that these formally verified family of protocols
 require no extra state bits, nor extra message transfers compared to other
-published implementations.  Section \ref{sec:properties} gives a set of
-desirable global properties or invariants that are needed to easily establish
-the correctness of the distributed protocol.
+published implementations. Section \ref{sec:properties} gives the local
+properties of the distributed protocol that we rely on to easily establish its
+correctness, and show how it can be generalized to design other protocols like MOSI.
 %It also lists core properties of the distributed protocol that are needed to establish the invariants.
 In Section \ref{sec:related}, we present some of the related work and finally
 in Section \ref{sec:conclusion}, we present some directions for future work.

@@ -1,5 +1,13 @@
-\subsection{Local Properties}
-\label{sec:localProperties}
+\section{Local properties that ensure global invariants}
+\label{sec:properties}
+
+In this section, we will show some of the core properties that are extracted
+from the requirements spelt out in Section \ref{sec:network} as well as the
+implementation of the distributed protocol's auxiliary functions given in Figure
+\ref{realistic}. These properties can be independently used to prove the
+invariants presented in Section \ref{sec:DistributedMsi} (Invariants
+\ref{conservative} to \ref{cpSame}). We do not present the proof here, but give
+some intuition. Figure \ref{sendReq} lists these local properties.
 
 \floatstyle{boxed}
 \restylefloat{figure}
@@ -80,19 +88,17 @@ no $n$ is not waiting for a response for address $a$ from $m$.
 \label{sendReq}
 \end{figure}
 
-The Local-Properties capture the core properties of the distributed MSI
-protocol given in Section \ref{sec:DistributedMsi}, and the requirements
-mentioned in Section \ref{sec:network}. We will use the violation of
-Local-Properties \ref{pSendRespPre} and \ref{cSendRespPre2} as examples to
-illustrate the importance of local properties.  In our usual system, let's say
-$c_1.state[a] = p.dir[c_1][a] = S$, $c_2.state[a] = p.dir[c_2][a] = I$.
+ We will use the violation of Local-Properties \ref{pSendRespPre} and
+\ref{cSendRespPre2} as examples to illustrate the importance of local
+properties.  In our usual system, let's say $c_1.state[a] = p.dir[c_1][a] = S$,
+$c_2.state[a] = p.dir[c_2][a] = I$.
 
 \floatstyle{plain}
 \restylefloat{figure}
 \begin{figure}
 \centering
-\includegraphics[scale=0.34]{checkit}
-\caption{Effect of violating Invariant \ref{cSendRespPre2} (child evicts a ``pending'' line)}
+\includegraphics[scale=0.4]{checkit}
+\caption{Effect of violating Local-Property \ref{cSendRespPre2} (child evicts a ``pending'' line)}
 \label{checkit}
 \end{figure}
 \floatstyle{boxed}
@@ -112,8 +118,8 @@ in Figure \ref{checkit}
 \restylefloat{figure}
 \begin{figure}
 \centering
-\includegraphics[scale=0.34]{checkit2}
-\caption{Effect of violating Invariant \ref{pSendRespPre} (parent sends a voluntary response)}
+\includegraphics[scale=0.4]{checkit2}
+\caption{Effect of violating Local-Property \ref{pSendRespPre} (parent sends a voluntary response)}
 \label{checkit2}
 \end{figure}
 \floatstyle{boxed}
@@ -125,6 +131,91 @@ to replace it with another address. $c_1$ then gets the upgrade-to-$M$ response
 from $p$ while $p$ gets the downgrade to $I$ response, breaking Invariant
 \ref{conservative} again. This is shown in Figure \ref{checkit2}.
 
-In general, any crossing of response messages between a cache and its parent,
-like the ones shown in Figures \ref{checkit} and \ref{checkit2} results in
-violation of Invariant \ref{conservative}.
+In general, any if response messages from both a cache to its parent and from
+the parent to the same cache are in flight together, like the scenarios in
+Figures \ref{checkit} and \ref{checkit2} Invariant \ref{conservative} will be
+violated.
+
+\begin{figure}
+\begin{subfigure}{.25\linewidth}
+\centering
+\begin{tabular}{|ccc|}
+\hline
+$M$ & $\rightarrow$ & $I$\\
+$O$ & $\rightarrow$ & $S$\\
+$S$ & $\rightarrow$ & $O$\\
+$I$ & $\rightarrow$ & $I$\\
+\hline
+\end{tabular}
+\subcaption*{$toCompatible$}
+\end{subfigure}
+\begin{subfigure}{.25\linewidth}
+\centering
+\begin{tabular}{|c|c|}
+\hline
+$M$ & $\checkmark$\\
+$O$ & $\checkmark$\\
+$S$ & $\times$\\
+$I$ & $\times$\\
+\hline
+\end{tabular}
+\subcaption*{$dataToUpper$}
+\end{subfigure}
+\begin{subfigure}{.48\linewidth}
+\centering
+\begin{tabular}{|c|cccc|}
+\hline
+& $M$ & $O$ & $S$ & $I$\\
+\hline
+$M$ & $=$ & $>$ & $>$ & $>$\\
+$O$ & $<$ & $=$ & $>$ & $>$\\
+$S$ & $<$ & $<$ & $=$ & $>$\\
+$I$ & $<$ & $<$ & $<$ & $=$\\
+\hline
+\end{tabular}
+\subcaption*{$<$ (and other) relations}
+\end{subfigure}
+\caption{MOSI protocol mappings and $<$ relations}
+\label{mosi}
+\end{figure}
+
+These properties do not require messages to physically come from the sources as
+indicated by the requests or responses -- some other cache node can forward
+these messages. These can be used to generalize our procedure to
+cache-intervention based protocols like MOSI. We generalize the states of MOSI
+using the $<$ relation and auxiliary functions $maxCompatible$ and $isModified$,
+as shown in Figure \ref{mosi}. 
+
+In a hierarchical setting for the MOSI protocol, any cache can send data
+with the response granting permissions to the requesting L1 cache, instead of
+going through the hierarchy.  On a load request, L1 cache $c$ sends an
+upgrade-to-$O$ request, instead of an upgrade-to-$S$ request. The request keeps
+going up the hierarchy, sending an upgrade-to-$O$ request to each of the parent
+on the way, till it reaches a cache $p$ which has that line in $M$ or $O$
+state. If some other child is in $O$ or $M$ state, this node sends a
+upgrade-$c$-to-$O$ in addition to a downgrade-to-$S$ request to that cache.
+This upgrade-$c$-to-$O$ + downgrade-to-$S$ keeps propogating down the tree till
+it reaches a node $n$ whose children are all in a state $< O$. $n$ then
+downgrades its state, forwards the upgrade-to-$O$ response to $c$ and
+simultaneously sends a fwd-and-downgrade-to-$S$ response to its parent, which
+keeps forwarding that till it reaches $p$. If $c$ gets a store request, it will
+send an upgrade-to-$M$ request, and $p$ would send a downgrade-to-$I$ request
+instead, to its children.
+
+The caches encountered on the way from $n$ to $p$ should handle an extra
+scenario where it gets a downgrade response, without a forward response.In this
+case, the data and permission forwarding has to be done from this cache to $c$.
+It is the designer's responsibility to ensure that this case is handled. 
+
+This protocol obeys all the local properties and the requirements mentioned in
+this section except that a request sent to a cache might overtake a response
+forwarded to that cache. To avoid this, once the forwarding message is
+delivered to the intended destination ($c$ in our case), then $c$ sends back an
+ACK. $c$'s parent is allowed to to start sending downgrade requests for that
+address only after receiving this ACK. This ACK is sent back to each of the
+parents till it reaches $p$, which allows each of these caches to send
+downgrade requests for that address towards $c$.  This satisfies all the
+requirements of Section \ref{sec:network} and the local properties given in
+Figure \ref{sendReq}, thereby automatically being correct. The reasoning for
+its correctness gets localized to checking if the ordering Requirement
+\ref{reqNoOvertakeResp} is maintained.

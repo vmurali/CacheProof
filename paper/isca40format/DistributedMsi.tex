@@ -1,0 +1,263 @@
+\section{Distributed MSI}
+\label{sec:DistributedMsi}
+
+
+In order to transfer the Global MSI protocol into a distribute MSI protocol, we
+need to make sure that a method can only read and write the state of the cache
+with which the method is associated, and it affects the state of other caches
+only by sending messages. In order to read the state of a child's cache we
+maintain a shadow state of in the form of a directory. Thus the coherence state
+of a cache $c$, in addition to the $c.state[a]$ field, also contains a
+directory field containing the shadow state of each child's state field, \ie,
+$c.dir[c'][a]$, for child $c'$.
+
+We extend our sequential language for writing methods with two communication
+primitives: \send{} $(Req|Resp|Data)\langle c_1 \rightarrow c_2, a,
+(x|data)\rangle$ and \receive{} $(Req|Resp|Data)(\langle c_1 \rightarrow c_2,
+a, (x|data)\rangle$ where caches $c_1$ and $c_2$ must satisfy the parent-child
+relation. Both of these primitives are \emph{blocking}, that is, \send{} may
+block because the network is clogged, \ie, has no buffer space to hold a
+message and a \receive{} may block because the message has not arrived or cache
+has no resources to process it. These primitives make our sequential language
+methods ``suspensive'. Request or response messages have very different
+characteristics and a data message is conceptually always associated with some
+response message. We think of each \textsc{coreReq} as launching a thread in
+L1. This thread in turn may get processed, send request or response messages,
+may get suspended and eventually die. Thus potentially every request message
+can launch a new thread in the cache that receives it. A response message,
+however, can only die or generate more response messages; it can never generate
+a request message. However a response message can also block waiting for the
+corresponding data message. Each thread has an address associated with it which
+corresponds to the message that created it.
+
+In order to write the distributed MSI protocol using suspensive threads, we will
+maintain the following sets of invariants. In the next section, we will show in
+the requirements in the network and the bounds on the number of virtual channels
+to avoid head of line blocking. We will also show the other resource
+requirements, as well as the properties of the thread scheduler that will ensure
+these invariants there.
+
+\subsection{Relation between directory and state of the children's caches}
+\begin{theorem}
+Conservative: For two nodes $p, c$, where $p = c.parent$, $\forall a,
+p.dir[c][a] \ge c.state[a]$.  \label{conservative}
+\end{theorem}
+
+This ensures that if a cache makes decision about compatibility of states of
+its children using the local directory information, then it does not violate the
+compatibility of the children's real states.
+
+\subsection{Network properties}
+Regarding the \send{} and \receive{} operations, \ie the network, the following
+properties can assume the following:
+\begin{theorem}
+It a thread has to send a message, it will eventually be able to send the
+message.
+\label{canSend}
+\end{theorem}
+
+\begin{theorem}
+If a cache sends an upgrade-to-$x$ request to its parent, it will eventually
+get an upgrade-to-$y$ response from the parent where $y \ge x$.
+\label{willRecv}
+\end{theorem}
+
+\begin{theorem}
+If a cache sends an downgrade-to-$x$ request to one of its children, it will
+eventually get a downgrade-to-$y$ response from the child where $y \le x$.
+\label{willRecv2}
+\end{theorem}
+
+\subsection{Eviction}
+If handling of a request requires eviction of another cache line, then too the
+thread handling the request may get suspended. This would happen if all the
+lines that can be allocated for this request may accessed by other suspended
+threads. But we still assume the following invariant.
+
+\begin{theorem}
+If a thread is waiting for a line to be allocated, \ie for any address to become
+available for eviction, then some address will eventually become available for
+eviction
+\label{evictDead}
+\end{theorem}
+
+It this is not true, a thread that is waiting for being allocated a free line
+will never proceed leading to a deadlock.
+
+\subsection{Data transfer}
+Regarding the responses received, the designer can assume the following 2
+invariants. These invariants are used to wait for receiving data messages
+appropriately, as only some state transfers also cause data transfers.
+We will show the exact need for these invariants later.
+
+\begin{theorem}
+If $p$ sends \Resp{p}{c}{a}{x} to $c$, where $p = c.parent$, then $p.dir[c][a]$
+just before $p$ sends the response is the same as $c.state[a]$ just before $c$
+receives the response.
+\label{pcSame}
+\end{theorem}
+
+\begin{theorem}
+If $c$ sends \Resp{c}{p}{a}{x} to $p$, where $p = c.parent$, then $c.state[a]$
+just before $c$ sends the response is the same as $p.dir[c][a]$ just before $p$
+receives the response.
+\label{cpSame}
+\end{theorem}
+
+\subsection{Need for invariants}
+The need for these network invariants is intuitive. If, for instance, a thread wants to
+send a message in the output channel of the node and is not able to send one
+forever, then the thread can not proceed further. If a thread is waiting for a
+response (for a request previously sent), and it never gets the response, the
+thread can never proceed further. These scenarios create a deadlock.
+
+We will illustrate the need for Invariants \ref{pcSame}, \ref{cpSame} and
+\ref{conservative} using an example of a 2-level system containing two L1
+caches $c_1$ and $c_2$ with a shared L2 cache $p$.
+
+Invariant \ref{pcSame} and \ref{cpSame} are important to make sure that the
+data transfers happen correctly. Let $p.dir[c_1][a] = S$, $p.dir[c_2][a] = I$,
+$c_1.state[a] = S$, and $c_2.state[a] = I$. $c_2$ gets a store request, and
+sends an upgrade-to-$M$ to $p$. $p$ receives the request, but assumes that
+$c_1$ already has data for $a$ since $p.dir[c_1][a] = S$. Invariant
+\ref{pcSame} is violated. So, it does not transfer the data to $c_1$, resulting
+in $c_1$ waiting for data, and hence deadlock. A dual condition can be
+constructed similarly, in which $c_1$ downgrades its state for address $a$ from
+$S$ to $I$, and the parent assumes that $c_1$ is in state $M$, and keeps
+waiting for data.
+
+Invariant \ref{conservative} is important because a parent node consults its
+directory to decide the children it needs to send a downgrade request to.  Let
+$p.dir[c_1][a] = S$, $c_1.state[a] = S$, $p.dir[c_2][a] = I$ but
+$c_2.state[a] = S$. If $c_1$ gets a store request from the processor and sends
+an upgrade-to-$M$ request to $p$, $p$ will assume that $c_2$'s state for address $a$
+is also $I$ and hence send an upgrade-to-$M$ response to $c_1$. But since the real
+state of  $c_2$ for address $a$ is $S$, it will break Single-writer Invariant
+\ref{singleWriter}.
+
+Thus, if all the invariants above (\ref{conservative}, to \ref{cpSame}) hold,
+then the threads given in Figure \ref{realistic} can not deadlock because it
+will always be able to a) send a request, b) send back a response, c) get back
+a response for a request it sent, d) receive data when required. Though the
+threads executing in a cache are actually suspensive, these invariants give an
+illusion of the threads being non-suspensive barring the following exceptions.
+Here $this$ represents the cache under under consideration.
+
+\begin{enumerate}
+\item $this.dir[c][a]$ can keep decreasing while a thread corresponding to
+address $a$ is executing.
+\item $this.dir[c][a']$ can keep decreasing while a thread which is evicting
+line $a'$ is executing.
+\item If a thread receives responses from the parent, then $this.state[a]$ can
+decrease between the operation of sending a request to the parent and the
+operation of receiving a response from the parent.
+\end{enumerate}
+
+As can be seen, these interactions are minimal, and can be ignored since they
+affect neither the handling of upgrade nor downgrade requests. Hence, the
+correctness of the protocol can be argued in terms of a single threaded,
+non-suspensive, execution model. The formal proof for this, as well as the
+invariants stated below is beyond the scope of this paper.
+
+In order to design the distributed MSI protocol, the following considerations
+must be kept in mind.
+\begin{enumerate}
+\item There are 3 kinds of incoming messages to be handled: request from that parent,
+requests from children and responses from children.
+\item A downgrade-to-$x$ message might be received from the parent even if the
+state of the cache is $ \le x$. This has to be handled.
+\item A parent sends a response to the child only when a request is received. But a child can send an voluntary/unsolicited response to the parent during evictions.
+\item A request should be sent to the parent only if the current cache's state
+is lower than what's desired to handle its incoming request. Similarly, a
+request should sent to its child only if the directory's notion of that cache's
+state is higher than what's desired.
+\item A second request is not sent for the same address from the same cache to the same
+destination, until a response is received for the first request.
+\item A cache can not evict a line if it is currently waiting for a response from the parent for the address corresponding to the line.
+\end{enumerate}
+
+%We always reserve resources, \eg, cache line slot for an address before sending
+%an upgrade request for that address.
+
+The handling of messages follow the exact same algorithm as given for the
+global MSI protocol in Figure \ref{msi-template} with the caveat that instead
+of reading a child's state, the cache $this$ can only read its own directory.
+So, it suffices to simply replace $c.state[a]$ by $this.dir[c][a]$ every time
+the state of child $c$ is read by $this$.
+
+As we mentioned above, a new handler has to be written for handling voluntary
+responses. This is shown in Figure \ref{msi-unsolicited}.
+
+\begin{figure}
+\small
+\begin{algorithmic}
+\Proc {\dRespL}{$c , a, x$}
+  \If {$isModified(this.dir[c][a])$}
+    \State \receive{} \Data{c}{this}{a}{d};
+    \State $this.data[a] \gets d$;
+  \EndIf
+\EndProc
+\end{algorithmic}
+\caption{Handling an voluntary response message from a child $c$, sent if the
+child evicts line $a$ and downgrades the line to $x$}
+\label{msi-unsolicited}
+\end{figure}
+
+\begin{figure}
+\small
+
+\begin{algorithmic}
+\State // Upgrading $this$ by sending request to parent and getting a response
+\Proc {\uReqL}{$p, a, x$}
+  \If {$this$ is LLC \&\& $this.state[a] = I$}
+    \State \send{} \Req{this}{Memory}{a}{M};
+    \State \receive{} \Data{Memory}{this}{a}{d};
+    \State $this.data[a] \gets d$;
+    \State $this.state[a] \gets M$;
+  \ElsIf
+  \State \send{} \Req{this}{p}{a}{x};
+  \State \receive{} \Resp{p}{this}{a}{z};
+  \If {$this.state[a] = I$}
+    \State \receive{} \Data{p}{this}{a}{d};
+    \State $this.data[a] \gets d$;
+  \EndIf
+  \State $this.state[a] \gets z$;
+  \EndIf
+\EndProc
+\State // Downgrading $this$' child by sending request to child and getting a
+response
+\Proc {\dReqL}{$c, a, x$}
+  \State \send{} \Req{this}{c}{a}{x};
+  \While {$this.dir[c][a] > x$}
+  \State \receive{} \Resp{c}{this}{a}{z};
+  \If {$isModified(this.dir[c][a])$}
+    \State \receive{} \Data{c}{this}{a}{d};
+    \State $this.data[a] \gets d$;
+  \EndIf
+  \State $this.dir[c][a] \gets z$;
+  \EndWhile
+\EndProc
+\State // $this$ finally upgrading the directory state of its child and sending
+a response to its child
+\Proc {\uResp}{$c, a, x$}
+  \State \textbf{if} ($this.dir[c][a] = I$)
+  \State \;\;\;\; \send{} \Data{this}{c}{a}{this.data[a]};
+  \State $this.dir[c][a] \gets x$;
+\EndProc
+\State // $this$ finally downgrading its state and sending a response to its
+parent
+\Proc {\dResp}{$p, a, x$}
+  \State \textbf{if} ($isModified(this.state[a])$)
+  \State \;\;\;\; \send{} \Data{this}{p}{a}{this.data[a]};
+  \State $this.state[a] \gets x$;
+\EndProc
+\end{algorithmic}
+\caption{Distributed MSI protocol. In all the methods $p$ is the parent of
+$this$, $c$ is a child of $this$, and the methods work on address $a$ to change
+its state (or directory) to $x$. This function only shows the auxiliary
+functions and the handler for voluntary responses from children. The handler
+for requests are exactly the same as in Figure \ref{msi-template}, with every
+occurence of $c'.state[a]$ replaced by $this.dir[c'][a]$}
+\label{realistic}
+\end{figure}
+

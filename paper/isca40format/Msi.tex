@@ -136,7 +136,7 @@ calling the request handler}
 \Proc {\dReq}{$p , a, x$}
   \If {$this.state[a] > x$}
     \State \textbf{forall} ($c' \in this.children$)
-    \State \;\;\;\; \textbf{if} (c'.state[a] > x)
+    \State \;\;\;\; \textbf{if} ($c'.state[a] > x$)
     \State \;\;\;\;\;\;\;\; \call{} $this.$\dReqL($c', a, x$);
     \State \call{} $this.$\dResp($p, a, x$);
   \EndIf
