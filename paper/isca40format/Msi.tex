@@ -1,41 +1,38 @@
 \section{MSI protocol}
 \label{sec:GlobalMsi}
 
-Let us walk through our framework using the example of a hierarchical MSI
-protocol.
 
-\floatstyle{plain}
-\restylefloat{figure}
+The caches are logically organized in the form of a tree
+(Figure~\ref{hierarchy}) where the leaves represent L1 caches and the root is the last level cache (LLC). Each L1 is connected to exactly one core and the LLC is connected to the memory. The cache hierarchy is
+inclusive, \ie if an address is present in a cache $c$, then it must also be present in its parent $c.parent$. Note that by address we mean cache-line address, not a byte address or a word address.
 
-\begin{figure}
-\begin{tabularx}{\linewidth}{|cX|}
-\hline
-$c.state[a]$ & coherence state (from set $\{M, S, I\}$) of cache $c$ for address $a$\\
-$c.data[a]$ & data in cache $c$ for address $a$\\
-%$p.dir[n][a]$ & $p$'s notion of the coherence state of $d$ for address $a$. This is meaningful only if $p$ is not an L1 cache\\
-$memory[a]$ & data in memory for address $a$\\
-\hline
-\end{tabularx}
-\caption{Notations for information associated with an address in a cache}
-\label{notation}
-\end{figure}
+Each cache stores the coherence state and the data for each address that it
+contains. 
+% Figure \ref{notation} gives the notation used to represent all this information. 
+For an L1 cache, the coherence state for an address denotes the
+(usual) permission that a core connected to the L1 cache has for the address: $M
+= \{R, W\}, S = \{R\}, I = \{\}$. We can define a $<$ relation for coherence
+state values based on the permissions the states represent, that is, $I < S < M$. 
+For an internal or non-L1 cache, the meaning of the coherence states has to be generalized. For cache $c$, $c.state[a] = I$ means that each cache in the entire sub-tree rooted at $c$ will have coherence state $I$ for address $a$. 
+$c.state[a] = S$ means that the children of $c$ can either be in $S$ or $I$ state. Finally, $c.state[a] = M$ means that 
+at most one of c's children can be in state $M$. If the state bits are manipulated properly then the following invariants will hold.
 
-\begin{figure}
-\begin{subfigure}{.43\linewidth}
-\centering
-\begin{tabular}{|c|ccc|}
-\hline
-& $M$ & $S$ & $I$\\
-\hline
-$M$ & $=$ & $>$ & $>$\\
-$S$ & $<$ & $=$ & $>$\\
-$I$ & $<$ & $<$ & $=$\\
-\hline
-\end{tabular}
-\caption{$<$ and other relations for states}
-\label{msi<}
-\end{subfigure}
-\begin{subfigure}{.31\linewidth}
+\begin{theorem}
+\textbf{Single-writer Invariant}: When an L1 cache has permission to modify data for
+an address, no other L1 cache has read or write permission for that address. 
+\label{singleWriter}
+\end{theorem}
+
+\begin{theorem}
+\textbf{Read-from-last-writer Invariant}: When a core reads data for an address
+in L1, it gets the value that was either last stored in that address by some
+core, or if no core has stored any value in that address previously, the
+initial value from the memory.
+\label{lastRead}
+\end{theorem}
+
+\begin{wrapfigure}{r}{.6\linewidth}
+\begin{subfigure}{.55\linewidth}
 \centering
 \begin{tabular}{|ccc|}
 \hline
@@ -44,130 +41,62 @@ $S$ & $\rightarrow$ & $S$\\
 $I$ & $\rightarrow$ & $I$\\
 \hline
 \end{tabular}
-\caption{$toCompatible$}
+\caption{$maxCompatible$}
 \label{toCompat}
 \end{subfigure}
-\begin{subfigure}{.22\linewidth}
+\begin{subfigure}{.24\linewidth}
 \centering
 \begin{tabular}{|c|c|}
 \hline
-$M$ & $\checkmark$\\
-$S$ & $\times$\\
-$I$ & $\times$\\
+$M$ & $True$\\
+$S$ & $False$\\
+$I$ & $False$\\
 \hline
 \end{tabular}
 \caption{$isModified$}
 \label{isModified}
 \end{subfigure}
-\caption{MSI state abstraction functions}
+\caption{MSI auxiliary functions ($I < S < M$)}
 \label{funcs}
-\end{figure}
+\end{wrapfigure}
+In Figure \ref{funcs} we define some auxiliary functions $maxCompatible(x)$ and $isModified(x)$ which are useful in describing protocols to maintain the invariant.
 
-The caches are logically organized in the form of a tree
-(Figure~\ref{fig:hierarchy}). The leaves of this tree represent the L1 caches,
-with each L1 cache connected to exactly one core. The root of the tree is the
-Last-Level-Cache, and its connected to the memory. The cache hierarchy is
-inclusive, \ie if an address is present in a cache $c$, then it's present it its
-parent $c.parent$. Note that by address we mean cache-line address, not a byte
-address or a word address.
+The MSI protocol maintains the invariant essentially by a cache requesting its parent a state upgrade, \ie $I$ to $S$, $I$ to $M$ or $S$ to $M$. The parent grants this request by downgrading its other children as necessary or requesting an upgrade of its own state from its parent. The data is also transferred from one cache to another as appropriate. In our protocol descriptions each cache in the hierarchy is treated as a C++/Java like object with methods to process upgrade and downgrade requests. A special method called \textsc{coreReq} is provided for L1's so that the core can initiate a load or a store request as shown in Figure \ref{coreHandle}. The L1 cache checks if the request
+can already be serviced, if not, it invokes its upgrade request handler \uReq{},
+which eventually upgrades the state of the requested address. Finally, in the case 
+of a load request, the data is sent back to the core, and in the case of a store, the
+cache line is updated. Note that the core supplies words or long-words while the
+cache line sizes are typically 64 bytes; only the appropriate word in the cache
+line is updated in case of a store.
 
-Each cache stores the coherence state and the data for each address that it
-contains.
-%A cache which is not L1 (\ie an internal node in the tree of caches)
-%also stores a directory containing its notion of the coherence states of its
-%children.
-Figure \ref{notation} gives the notation used to represent all this
-information. For an L1 cache, the coherence state for an address denotes the
-(usual) permission that a core connected to the L1 cache has for the address: $M
-= \{R, W\}, S = \{R\}, I = \{\}$. We can define a $<$ relation for coherence
-state values based on the permissions the states represent. This is shown in
-Figure \ref{msi<}.
-%When an address $a$ not present in the L1 cache, then the
-%core associated with that L1 can neither read nor write that address, so it's
-%equivalent to the state of that address being $I$.
 
-For a non L1 cache, the meaning of coherence states is different. For an
-internal cache node $n$, if $n.state[a] = I$, then, the entire sub-tree rooted at $n$
-will have coherence state $I$ for address $a$. In particular, no L1 cache in
-this subtree will have any permission for $a$. If $n.state[a] = S$, then its
-children can either be in $S$ or $I$ state. Finally, if $n.state[a] = M$, then
-at most one of its children can be in $M$ state. This guarantees that at most
-one of the L1 caches can have write permissions, ensuring the following
-invariant:
-
-\begin{theorem}
-\textbf{Single-writer Invariant}: When a cache has permission to modify data for
-an address, no other cache has read or write permission for that
-address.
-\label{singleWriter}
-\end{theorem}
-
-We define a $toCompatible(x)$ mapping (Figure ~\ref{toCompat}), which specifies
-the highest state a cache can be to not violate the Single-writer Invariant, if
-another sibling cache is in state $x$ for the same address.
-
-The coherence states also denote the consistency of data in a cache with respect
-to its parent. If a cache (both L1 and non-L1) is in state $I$ for an address $a$,
-then it does not have the data corresponding to that address. If it is in state
-$S$, then its data is consistent with that of its parent. Finally, if it is in
-state $M$, then its data is not consistent with that of its parent. If none of
-its children are in state $M$, then the data in this cache is the most
-up-to-date value. But if one of its children $c$ is in the $M$ state, then the
-data in this cache is stale -- the most up-to-date value is present in the
-subtree rooted at $c$.
-
-We define a $isModified(x)$ mapping to specify if an address in state $x$ in a
-cache can have data different from what's present in its parent. The mappings
-$toCompatible$ and $isModified$ abstract away the semantics of the states so
-that our framework can be extended to other protocols like MOSI/MOESI.
-
-If a cache having no permission for an address requires read or write
-permissions for that address, then the most up-to-date value must be supplied,
-\ie:
-
-\begin{theorem}
-\textbf{Read-from-last-writer}: When a cache reads data for an address, it reads
-the last modified version of the data for the address. If the data for an
-address has not been modified, the cache reads the data from memory.
-\label{lastRead}
-\end{theorem}
-
-Invariants \ref{singleWriter} and \ref{lastRead} together ensure cache coherence
-\cite{Patterson}.
-
-We will first describe an atomic version of the hierarchical MSI protocol. Each
-of the caches in the hierarchy can be treated like C++/Java objects.
 \floatstyle{boxed}
 \restylefloat{figure}
 
 \begin{figure}
 \small
 \begin{algorithmic}
-\Proc {\textsc{coreReq}}{$c, a, op, data$}
+\Proc {\textsc{coreReq}}{$core, a, op, data$}
   \If {$op = Ld$}
-    \State \textbf{if} ($c.state[a] \ge S$)
-    \State \;\;\;\; \call{} $c.$\uReq($this, a, S$);
-    \State \textbf{return} $c.data[a]$;
+    \State \textbf{if} ($this.state[a] < S$)
+    \State \;\;\;\; \call{} $this.$\uReq($core, a, S$);
+    \State \send{} $this.data[a]$ (to $core$);
   \ElsIf {$op = St$}
-    \State \textbf{if} ($c.state[a] = M$)
-    \State \;\;\;\; \call{} $c.$\uReq($this, a, M$);
-    \State $update(c.data[a], data)$;
+    \State \textbf{if} ($this.state[a] < M$)
+    \State \;\;\;\; \call{} $this.$\uReq($core, a, M$);
+    \State $update(this.data[a], data)$;
   \EndIf
 \EndProc
 \end{algorithmic}
-\caption{core handling a load or a store request by calling the request
-handler in its L1 cache}
+\caption{L1 cache $this$ handling a load or a store request sent by $core$ by
+calling the request handler}
 \label{coreHandle}
 \end{figure}
 
-In the atomic protocol, a core invokes the L1 cache's request handler
-\textsc{coreReq} (Figure \ref{coreHandle}). The L1 cache checks if the request
-can already be serviced, if not, it invokes its upgrade request handler \uReq{},
-which upgrades the state of the requested address. Finally, in the case of a
-load request, the data is sent back to the core, and in the case of a store, the
-cache line is updated. Note that the core supplies words or long-words while the
-cache line sizes are typically 64 bytes; only the appropriate word in the cache
-line is updated in case of a store.
+
+
+\floatstyle{boxed}
+\restylefloat{figure}
 
 \begin{figure}
 \small
@@ -176,7 +105,6 @@ line is updated in case of a store.
 \begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
 \Proc {\uReq}{$c , a, x$}
-  \If {$c.state[a] < x$}
     \If {$a$ is not present in $this$}
       \If {$this$ has no space for $a$}
         \State Choose address $a'$ for eviction;
@@ -190,15 +118,11 @@ line is updated in case of a store.
     \EndIf
     \State // $a$ is already present in $this$
     \State \textbf{forall} ($c' \in this.children$)
-    \State \;\;\;\; \textbf{if} ($c'.state[a] > toCompatible(x)$)
-    \State \;\;\;\;\;\;\;\; \call{} $this.$\dReqL($c', a', toCompatible(x)$);
-    \State \textbf{if} ($this$ is Last-Level-Cache \&\& $this.state[a] = I$)
-    \State \;\;\;\; \call{} $this$.\sendMem{}($a$);
-    \State \textbf{else}
-    \State \;\;\;\; \call{} $this.$\uReqL{}($this.parent, a, x$);
+    \State \;\;\;\; \textbf{if} ($c'.state[a] > maxCompatible(x)$)
+    \State \;\;\;\;\;\;\;\; \call{} $this.$\dReqL($c', a', maxCompatible(x)$);
+    \State \call{} $this.$\uReqL{}($this.parent, a, x$);
   \State \textbf{if} ($c \neq core$)
   \State \;\;\;\; \call{} $this$.\uResp{}($c, a, x$);
-  \EndIf
 \EndProc
 \end{algorithmic}
 \end{boxedminipage}
@@ -228,239 +152,70 @@ parent, $p$, to upgrade $p$'s state to $x$ for address $a$ }
 \label{msi-template}
 \end{figure}
 
-Figure \ref{msi-template} gives the methods of a cache to handle the upgrade
-requests from its children (or core) and downgrade requests from its parent.
+We will first describe the upgrade and downgrade methods as sequential procedures which can access and modify the state of any cache in the system (see
+Figure \ref{msi-template}).  
 When the upgrade request handler \uReq{} for a cache $this$ is invoked by a
-cache $c$ to go to a particular state $x$, $this$ first makes sure that its
-other children are compatible with $c$ being in state $x$ for the requested
-address. This involves downgrading their states to $toCompatible(x)$. Cache
-$this$ has to upgrade its own state before upgrading the state of its child $c$,
-if $this$' state is less than the requested state. In this case, $this$ invokes
-its parent's handler for upgrade requests. Finally, when state of $this$ is not
-less than t$x$ and all its children are compatible with $x$, $this$ can upgrade
+cache $c$ to go to a particular state $x$, $this$ first makes sure that it has space to process it. This means that if $a$ is not present in $this$, it allocates a new line for that address, sometimes by evicting another line. This requires downgrading the status of the evicted address in all its children. Next, $this$ ensures that its
+other children are ``compatible'' with $c$ being in state $x$ for the requested
+address. For example, for $c$ to go to state $M$, all the children of $this$, except for $c$ must be in state $I$. If some children are not in state $I$ then the parent (\ie $this$) must downgrade them to go into state $I$. In the protocol, this is accomplished by the parent asking the child to downgrade their state to $maxCompatible(x)$. If the child's state is such that $isModified(state)$ is true, then it will contain the latest version of the data for address $a$, and hence this data has to be written back into the parent's cache.
+If $this$' state is less than the requested state it invokes
+its parent's handler for an upgrade request to $x$. Finally, when state of $this$ is $x$ and all its children are compatible with $x$, $this$ can upgrade
 $c$'s state, and send the data if $c$'s state was $I$ previously. This is shown
 in Figure \ref{atomicUReq1}.
 
-A cache, $this$', downgrade handler \dReq{} can also be invoked (for instance
-when its parent wants $this$ to downgrade its state to $x$ because the parent's
-upgrade request handler was invoked by some other cache. In this case, $this$
-makes sure that each of its child's state is not higher than $x$, by invoking
+Any cache except the LLC can get a downgrade request from its parent. Figure \ref{atomicDReq1} defines this downgrade method \dReq{} where the cache
+ensures that each of its children's state is not higher than $x$, by invoking
 their respective downgrade methods. When all the children have downgraded, the
 cache downgrades its own state to $x$, and sends data back to the parent, if it
-has been modified (\ie $isModified(x)$ is $True$).
+has been modified.
+
+
+
 
 \begin{figure}
 \small
 
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
+\State // Upgrading $this$ by invoking parent's upgrade handler
 \Proc {\uReqL}{$p, a, x$}
-  \State \call{} $p.$\uReq($this, a, x$);
+  \State \textbf{if} ($this$ is LLC \&\& $this.state[a] = I$) \bopen
+  \State \;\;\;\; $this.data[a] \gets memory[a]$;
+  \State \;\;\;\; $this.state[a] \gets M$;
+  \State \bclose \textbf{else}
+  \State \;\;\;\; \call{} $p.$\uReq($this, a, x$);  
 \EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Upgrading address $a$ of $this$ to $x$, by invoking the upgrade handler
-of $this$'s parent, $p$}
-\label{uReq}
-\end{subfigure}
 
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
+\State // Invoking the child's downgrade handler
 \Proc {\dReqL}{$c , a, x$}
   \State \call{} $c.$\dReq($this, a, x$);
 \EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Downgrading address $a$ of $this$'s child $c$ to $x$, by invoking
-$c$'s downgrade handler}
-\label{dReq}
-\end{subfigure}
 
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
+\State // $this$ finally upgrades the state (and if necessary, data) of its child
 \Proc {\uResp}{$c, a, x$}
   \If {$c.state[a] = I$}
     \State $c.data[a] \gets this.data[a]$;
   \EndIf
   \State $c.state[a] \gets x$;
 \EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ finally upgrading address $a$ of its child $c$ to $x$, and
-updating the data of $c$ if necessary}
-\label{uResp}
-\end{subfigure}
 
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
+\State // $this$ downgrades its own state and updates the parent's data
 \Proc {\dResp}{$p, a, x$}
   \If {$isModified(c.state[a])$}
     \State $p.data[a] \gets this.data[a]$;
+    \State // $p.data$ refers to $memory$ if $this$ is LLC
   \EndIf
   \State $this.state[a] \gets x$;
 \EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ finally downgrading its state for address $a$ to $x$ and
-updating data of its parent $p$ if necessary}
-\label{dResp}
-\end{subfigure}
 
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
+\State // In case of LLC, $this$ reads data from memory
 \Proc {\sendMem{}}{$a$}
-  \State $this.data[a] \gets memory[a]$;
-  \State $this.state[a] \gets M$;
 \EndProc
 \end{algorithmic}
-\end{boxedminipage}
-\caption{Last-Level-Cache $this$ reading data from memory for address $a$}
-\label{uResp}
-\end{subfigure}
 
-\caption{Methods used in the MSI protocol dealing with other objects}
+\caption{Auxiliary methods used in the MSI protocol of Figure \ref{msi-template}. In all the methods $p$ is the parent of $this$, $c$ is a child of $this$, and the methods work on address $a$ to change its state to $x$}
 \label{atomic}
 \end{figure}
 
-Figure \ref{msi-template} gives the pseudo-code involved, including the
-actions needed to evict a cache line and replace it with another line, in case
-there are no free slots available for an address. For reasons that will become
-clear in the distributed setting, each cache can directly read or write its own
-state and data for each address. It can also directly read it's child's state,
-but not directly write it. It can not read it's parents state directly. It can
-not directly read or write other cache's data. In order to perform the required
-actions indirectly, the cache can invoke other cache's corresponding
-\textbf{method}s packaged together as shown in Figure \ref{atomic}. To be
-precise we use $this$ explicity even if the object invokes its own methods.
+The methods to handle upgrade and downgrade requests in turn use 5 auxiliary methods defined in Figure \ref{atomic}. These methods are very simple and could have been inlined. However, they do recursively call $this$' parent's \uReq{} or $this$' children's \uReq{}. We have chosen not to inline them because these functions encapsulate all accesses to other caches when we systematically transform this protocol for distributed implementation. Note however that \uReq{} and \dReq{} read the states of its children. We will make those reads local by keeping a directory as discussed in the next section.
 
-In the case of an L1 cache, once the cache's parent has upgraded its state,
-there is no child to upgrade to. Similarly, in the case of a Last-Level-Cache,
-the cache simply reads data from the memory if the line is not present in the
-cache, since it has no parent whose upgrade request handler it can invoke. All
-lines in the Last-Level-Cache are upgraded automatically to be in $M$ state.
-
-\subsection{Refactoring the handler methods}
-Figure \ref{msi-template} shows how the request handler methods \uReq{} and
-\dReq{} can be refactored to make it amenable to distributed implementation. The
-upgrade and downgrade request handlers are not allowed to invoke other cache's
-upgrade or downgrade request handlers, or change other cache's states. Instead,
-the same calls are made via 5 more local methods listed in Figure \ref{atomic}.
-These methods in turn invoke the other caches upgrade and downgrade request
-handlers, or change the states of other caches.
-
-\begin{figure}
-\small
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\uReqL}{$p, a, x$}
-  \State \send{} \Req{this}{p}{a}{x};
-  \While {$this.state[a] < x$}
-  \State \receive{} \Resp{p}{this}{a}{z};
-  \If {$this.state[a] = I$}
-    \State \receive{} \Data{p}{this}{a}{d};
-    \State $this.data[a] \gets d$;
-  \EndIf
-  \State $this.state[a] \gets z$;
-  \EndWhile
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Upgrading address $a$ of $this$ to $x$, by sending a request to
-$this$'s parent $p$}
-\label{uReqLocal}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\dReqL}{$c, a, x$}
-  \State \send{} \Req{this}{c}{a}{x};
-  \While {$this.dir[c][a] > x$}
-  \State \receive{} \Resp{c}{this}{a}{z};
-  \If {$isModified(this.dir[c][a])$}
-    \State \receive{} \Data{c}{this}{a}{d};
-    \State $this.data[a] \gets d$;
-  \EndIf
-  \State $this.dir[c][a] \gets z$;
-  \EndWhile
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Downgrading address $a$ of $this$'s child $c$ to $x$, by sending a
-request to $c$}
-\label{dReqLocal}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\uResp}{$c, a, x$}
-  \State \textbf{if} ($this.dir[c][a] = I$)
-  \State \;\;\;\; \send{} \Data{this}{c}{a}{this.data[a]};
-  \State $this.dir[c][a] \gets x$;
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ finally upgrading address $a$ of its child $c$ to $x$, sending a
-response to $c$ notifying of the upgrade and sending data to $c$ if necessary}
-\label{uResp}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\dResp}{$p, a, x$}
-  \State \textbf{if} ($isModified(this.state[a])$)
-  \State \;\;\;\; \send{} \Data{this}{p}{a}{this.data[a]};
-  \State $this.state[a] \gets x$;
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ finally downgrading its state for address $a$ to $x$, sending a
-response to $c$ notifying of the downgrade and sending data to $c$ if necessary}
-\label{dResp}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\dRespL}{$c , a, x$}
-  \If {$isModified(this.dir[c][a])$}
-    \State \receive{} \Data{c}{this}{a}{d};
-    \State $this.data[a] \gets d$;
-  \EndIf
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ handling unsolicited downgrade to $x$ response from $c$ for
-address $a$. This happens if $c$ evicted address $a$}
-\label{uResp}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
-\Proc {\sendMem{}}{$a$}
-  \State \send{} \Req{this}{Memory}{a}{M};
-  \State \receive{} \Data{Memory}{this}{a}{d};
-  \State $this.data[a] \gets d$;
-  \State $this.state[a] \gets M$;
-\EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{Last-Level-Cache $this$ sending and receivging data from memory for
-address $a$}
-\label{uResp}
-\end{subfigure}
-
-\caption{Non atomic implementation of MSI protocol}
-\label{realistic}
-\end{figure}
-
+All lines in the LLC are always in $M$ state.

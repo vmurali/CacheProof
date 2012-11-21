@@ -12,14 +12,14 @@ message.
 \end{theorem}
 
 \begin{theorem}
-If a cache sends an upgrade to $x$ request to its parent, it will eventually
+If a cache sends an upgrade-to-$x$ request to its parent, it will eventually
 get an upgrade to $y$ response from the parent where $y \ge x$.
 \label{willRecv}
 \end{theorem}
 
 \begin{theorem}
-If a cache sends an downgrade to $x$ request to one of its children, it will
-eventually get a downgrade to $z$ response from the child where $z \le x$.
+If a cache sends an downgrade-to-$x$ request to one of its children, it will
+eventually get a downgrade-to-$z$ response from the child where $z \le x$.
 \label{willRecv2}
 \end{theorem}
 
@@ -65,7 +65,7 @@ We will illustrate the need for Invariants \ref{pcSame}, \ref{cpSame} and
 Invariant \ref{pcSame} and \ref{cpSame} are important to make sure that the data
 transfers happen correctly. Let $p.dir[c_1][a] = S$, $p.dir[c_2][a] = I$,
 $c_1.state[a] = S$, and $c_2.state[a] = I$. $c_2$ gets a store request, and
-sends an upgrade to $M$ to $p$. $p$ receives the request, but assumes that
+sends an upgrade-to-$M$ to $p$. $p$ receives the request, but assumes that
 $c_1$ already has data for $a$ since $p.dir[c_1][a] = S$. Invariant \ref{pcSame}
 is violated. So, it does not transfer the data to $c_1$, resulting in $c_1$
 waiting for data, and hence deadlock. A dual condition can be constructed
@@ -76,8 +76,8 @@ Invariant \ref{conservative} is important because a parent node consults its
 directory to decide the children it needs to send a downgrade request to.  Let
 $p.dir[c_1][a] = S$, $c_1.state[a] = S$, $p.dir[c_2][a] = I$ but
 $c_2.state[a] = S$. If $c_1$ gets a store request from the processor and sends
-an upgrade to $M$ request to $p$, $p$ will assume that $c_2$'s state for address $a$
-is also $I$ and hence send an upgrade to $M$ response to $c_1$. But since the real
+an upgrade-to-$M$ request to $p$, $p$ will assume that $c_2$'s state for address $a$
+is also $I$ and hence send an upgrade-to-$M$ response to $c_1$. But since the real
 state of  $c_2$ for address $a$ is $S$, it will break Single-writer Invariant
 \ref{singleWriter}.
 
@@ -92,7 +92,7 @@ Procedure \uReq{} in Figure \ref{msi-template} relies on the Invariant
 
 In procedures \uResp{}, \dResp{} and \dRespL{} (Figure \ref{realistic}), the
 data transfers rely on Invariants \ref{pcSame} and \ref{cpSame} being true in
-order to maintain the Read-from-last-writer Invariant \ref{readLast}.
+order to maintain the Read-from-last-writer Invariant \ref{lastRead}.
 
 Thus, if we can somehow prove that Invariants \ref{canSend} to
 \ref{conservative} holds for the distributed protocol given in Figures

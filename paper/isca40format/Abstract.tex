@@ -16,7 +16,7 @@ permission than what is assumed by the directory; and b) every request by a
 cache or a directory will eventually get a response. It has been shown
 elsewhere, using the Coq theorem prover, that our distributed protocol
 preserves these invariants.  The protocols we generate can be implemented using
-$2N + 1$ virtual channels where $N$ is the number of levels. We finally show
+$2N + 2$ virtual channels where $N + 1$ is the number of levels. We finally show
 that our protocols have no extra overhead (in terms of state bits or the number
 of messages passed to service each request) compared to the published
 implementations of this protocol. 
