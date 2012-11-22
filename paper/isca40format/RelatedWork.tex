@@ -1,6 +1,18 @@
 \section{Related work}
 \label{sec:related}
 
+The work on Manager-Client Pairing \cite{mcp} is closest to our work. It
+presents a unifying methodology for designing multi-tier coherence protocols by
+defining the interactions between levels within a coherence hierarchy to enable
+composition. They define interfaces which stand-alone coherence protocols can
+adhere to maintain coherence. We differ from their work because we generate
+the whole coherence protocol automatically.
+
+Token coherence \cite{token} proposes an alternative framework to build
+coherence protocols, by separating performance from correctness. This avoids
+races in the protocol by having a slow correctness substrate-basedd fall-back
+mechanism in case of a memory race (detected by a time out).
+
 Model-checking based techniques have been used before in trying to prove cache
 coherence protocols \cite{Clarke}, \cite{Chou}, \cite{ip}, \cite{McMillan},
 \cite{pong}, \cite{Stern}. They try to tackle model-checking's state explosion
@@ -18,11 +30,13 @@ There has also been some work on using theorem proving techniques for proving
 the correctness of directory-based cache coherence protocols \cite{loew},
 \cite{park}. They rely on using abstraction functions to simplify the proof of
 coherence protocols, which is similar to our approach. We take this approach one
-step further by doing automating the procedure.
+step further by automating the procedure.
 
-\cite{Beu} and\cite{edya} present protocols which is similar to the final
+Ladan-Mozes \etal \cite{edya} present a protocol which are similar to the final
 distributed protocol that we present. But they do not present any reasoning
 about the correctness of the protocol, or an abstract automated procedure with
 a set of invariants to generate further protocols.
 
-
+Other techniques have been proposed which simplifies cache coherence using high
+speed optical connections \cite{lipasti}. They revert back to atomic protocols
+with a high-speed bus to lock addresses.

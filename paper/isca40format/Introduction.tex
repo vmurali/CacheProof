@@ -3,7 +3,7 @@
 Large cache-coherent shared-memory multicores are likely to use protocols which
 are directory-based, hierarchical, and implemented using packet-switched networks.  Even
 though such protocols have been around for two decades (see, for example,
-DASH\cite{DASH}, Alewife\cite{Anant}) correct design and implementation of
+\cite{DASH, Anant, c1, c2, c3, c4, c5}) correct design and implementation of
 such protocols remains a challenge. It is difficult to convince oneself that
 all corner cases have been handled adequately without a formal proof. And yet
 formal proofs of real implementations are practically non-existent. One can't
@@ -43,10 +43,10 @@ children are connected to processors, while for the last-level caches the
 channels for communicating with the parents are connected to the memory. 
 
 Every cache, unless it is an L1 cache, has a directory which contains
-information about the state of its children caches. The cache state-changes to
+information about the state of its children caches. The changes in the cache states to
 maintain coherence are orchestrated by passing requests and responses between
 the caches using the local directory information.  Unlike bus-based protocols
-which lock the bus till all the required state transitions are done thereby
+which conceptually lock the bus till all the required state transitions are done thereby
 ensuring atomicity of state transitions, in a distributed protocol,
 requests and responses are split leading to transient states. This creates
 scenarios not present in bus-based protocols, which can lead to coherence
@@ -115,7 +115,7 @@ sequential methods communicate with each other via blocking \emph{send} and
 \emph{receive} commands and thus can get suspended. Our transformation is based
 on preserving some invariants which guarantee that each request eventually gets
 a response and thus, our threads can never wait indefinitely.  It has been
-shown using the Coq theorem prover \cite{}, that the distributed protocol we
+shown using the Coq theorem prover \cite{coq}, that the distributed protocol we
 derive is correct.  Both the transformation procedure and the proof are
 parameterized by the number of cache levels and the number of caches in each
 level of the hierarchy as well as by a predicate which involves a local
@@ -125,34 +125,33 @@ scope of this paper.
 It should be noted that the generality of our procedure comes from the fact
 that we do not assign any meaning to a coherence state beyond upgrades and
 downgrades. Thus, how or why a particular cache state implies that a particular
-address may not be present in any other cache stems from protocol specific
+address may not be present in any other cache stems from a protocol specific
 ``compatibility of state'' check. 
 
 The main contributions of this paper are: 1. An automatic procedure to refine a
-centralized MSI protocol into protocols for
-distributed, hierarchical, cache system with packet-switching; 2. Specification
-of the requirements that ensure the correctness of the generated protocol;
-3. A discussion of the invariants that simplifies the proof of correctness of
-the protocol considerably;
-4. Giving a provable lower bound on the number of network virtual channels and
-other resources to avoid deadlocks; and 5. Showing that our procedure does not
-introduce any overhead over direct implementation of these protocols. We think
+centralized MSI protocol into a protocol for
+distributed, hierarchical cache system with packet-switching; 2. Specification
+of requirements for network, resources and local scheduling to ensure the correctness of the generated protocol;
+3. A provable lower bound on the number of virtual channels and storage
+ to avoid deadlocks and showing that these requirements do not introduce any overhead over published implementations. We think
 that our method of designing protocols substantially reduces the required
-effort in implementing provably correct protocols. 
+effort in implementing provably correct distributed protocols. 
 
 \paragraph{Paper organization:} Section \ref{sec:GlobalMsi} describes the MSI
 protocol for a hierarchy of caches using nonsuspensive sequential methods. We
 use it a specification for proving the correctness of distributed MSI
 protocols. Section \ref{sec:DistributedMsi} systematically transforms the
-protocol in Section \ref{sec:GlobalMsi} into a distributed protocol. Section
-\ref{sec:network} specifies the network, resource and other requirements that
-are needed for the distributed MSI protocol. We also give the minimum virtual
-channel requirements to ensure the requirements specified in Section
-\ref{sec:network}. In Section \ref{sec:implementation}, we show that these formally verified family of protocols
-require no extra state bits, nor extra message transfers compared to other
-published implementations. Section \ref{sec:properties} gives the local
+protocol in Section \ref{sec:GlobalMsi} into a distributed protocol. We specify
+the assumptions of the network, and other requirements that are needed for the
+distributed MSI protocol. We also give the minimum virtual channel requirements
+to ensure that the network assumptions are satisfied. In Section
+\ref{sec:implementation}, we show that these formally verified family of
+protocols require no extra state bits, nor extra message transfers compared to
+other published implementations. Section \ref{sec:properties} gives the local
 properties of the distributed protocol that we rely on to easily establish its
-correctness, and show how it can be generalized to design other protocols like MOSI.
-%It also lists core properties of the distributed protocol that are needed to establish the invariants.
+correctness, and show how it can be generalized to design other protocols like
+MOSI.
+%It also lists core properties of the distributed protocol that are needed to
+%establish the invariants.
 In Section \ref{sec:related}, we present some of the related work and finally
-in Section \ref{sec:conclusion}, we present some directions for future work.
+in Section \ref{sec:conclusion}, we present some conclusions.

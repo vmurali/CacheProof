@@ -31,20 +31,21 @@ initial value from the memory.
 \label{lastRead}
 \end{theorem}
 
-\begin{wrapfigure}{r}{.6\linewidth}
-\begin{subfigure}{.55\linewidth}
+%\begin{wrapfigure}{r}{.6\linewidth}
+\begin{figure}
+\begin{subfigure}{.4\linewidth}
 \centering
-\begin{tabular}{|ccc|}
+\begin{tabular}{|c|c|}
 \hline
-$M$ & $\rightarrow$ & $I$\\
-$S$ & $\rightarrow$ & $S$\\
-$I$ & $\rightarrow$ & $I$\\
+$M$ & $I$\\
+$S$ & $S$\\
+$I$ & $M$\\
 \hline
 \end{tabular}
 \caption{$maxCompatible$}
 \label{toCompat}
 \end{subfigure}
-\begin{subfigure}{.24\linewidth}
+\begin{subfigure}{.4\linewidth}
 \centering
 \begin{tabular}{|c|c|}
 \hline
@@ -58,7 +59,8 @@ $I$ & $False$\\
 \end{subfigure}
 \caption{MSI auxiliary functions ($I < S < M$)}
 \label{funcs}
-\end{wrapfigure}
+%\end{wrapfigure}
+\end{figure}
 In Figure \ref{funcs} we define some auxiliary functions $maxCompatible(x)$ and $isModified(x)$ which are useful in describing protocols to maintain the invariant.
 
 The MSI protocol maintains the invariant essentially by a cache requesting its parent a state upgrade, \ie $I$ to $S$, $I$ to $M$ or $S$ to $M$. The parent grants this request by downgrading its other children as necessary or requesting an upgrade of its own state from its parent. The data is also transferred from one cache to another as appropriate. In our protocol descriptions each cache in the hierarchy is treated as a C++/Java like object with methods to process upgrade and downgrade requests. A special method called \textsc{coreReq} is provided for L1's so that the core can initiate a load or a store request as shown in Figure \ref{coreHandle}. The L1 cache checks if the request
@@ -101,10 +103,10 @@ calling the request handler}
 \begin{figure}
 \small
 
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
 \begin{algorithmic}
+\State //$this$ cache's upgrade request handler. Handles request from $c$ to upgrade $c$'s state to $x$ for address $a$
 \Proc {\uReq}{$c , a, x$}
+  \If {$x > c.state[a]$}
     \If {$a$ is not present in $this$}
       \If {$this$ has no space for $a$}
         \State Choose address $a'$ for eviction;
@@ -123,16 +125,10 @@ calling the request handler}
     \State \call{} $this.$\uReqL{}($this.parent, a, x$);
   \State \textbf{if} ($c \neq core$)
   \State \;\;\;\; \call{} $this$.\uResp{}($c, a, x$);
+  \EndIf
 \EndProc
-\end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ cache's upgrade request handler -- request from one of $this$' children, $c$, to upgrade $c$'s state to $x$ for address $a$ }
-\label{atomicUReq1}
-\end{subfigure}
-
-\begin{subfigure}{\linewidth}
-\begin{boxedminipage}{\linewidth}
-\begin{algorithmic}
+\State //$this$ cache's downgrade request handler. Handles request from 
+$p$ to downgrade $this$' state to $x$ for address $a$ 
 \Proc {\dReq}{$p , a, x$}
   \If {$this.state[a] > x$}
     \State \textbf{forall} ($c' \in this.children$)
@@ -142,13 +138,7 @@ calling the request handler}
   \EndIf
 \EndProc
 \end{algorithmic}
-\end{boxedminipage}
-\caption{$this$ cache's downgrade request handler -- request from $this$'
-parent, $p$, to upgrade $p$'s state to $x$ for address $a$ }
-\label{atomicDReq1}
-\end{subfigure}
-
-\caption{MSI protocol}
+\caption{MSI protocol. In all the methods $p$ is the parent of $this$, $c$ is a child of $this$, and the methods work on address $a$ to change its state to $x$}
 \label{msi-template}
 \end{figure}
 
@@ -161,9 +151,9 @@ address. For example, for $c$ to go to state $M$, all the children of $this$, ex
 If $this$' state is less than the requested state it invokes
 its parent's handler for an upgrade request to $x$. Finally, when state of $this$ is $x$ and all its children are compatible with $x$, $this$ can upgrade
 $c$'s state, and send the data if $c$'s state was $I$ previously. This is shown
-in Figure \ref{atomicUReq1}.
+in Figure \ref{msi-template}.
 
-Any cache except the LLC can get a downgrade request from its parent. Figure \ref{atomicDReq1} defines this downgrade method \dReq{} where the cache
+Any cache except the LLC can get a downgrade request from its parent. Figure \ref{msi-template} also defines this downgrade method \dReq{} where the cache
 ensures that each of its children's state is not higher than $x$, by invoking
 their respective downgrade methods. When all the children have downgraded, the
 cache downgrades its own state to $x$, and sends data back to the parent, if it
@@ -206,16 +196,12 @@ has been modified.
   \EndIf
   \State $this.state[a] \gets x$;
 \EndProc
-
-\State // In case of LLC, $this$ reads data from memory
-\Proc {\sendMem{}}{$a$}
-\EndProc
 \end{algorithmic}
 
 \caption{Auxiliary methods used in the MSI protocol of Figure \ref{msi-template}. In all the methods $p$ is the parent of $this$, $c$ is a child of $this$, and the methods work on address $a$ to change its state to $x$}
 \label{atomic}
 \end{figure}
 
-The methods to handle upgrade and downgrade requests in turn use 5 auxiliary methods defined in Figure \ref{atomic}. These methods are very simple and could have been inlined. However, they do recursively call $this$' parent's \uReq{} or $this$' children's \uReq{}. We have chosen not to inline them because these functions encapsulate all accesses to other caches when we systematically transform this protocol for distributed implementation. Note however that \uReq{} and \dReq{} read the states of its children. We will make those reads local by keeping a directory as discussed in the next section.
+The methods to handle upgrade and downgrade requests in turn use four auxiliary methods defined in Figure \ref{atomic}. These methods are very simple and could have been inlined. However, they do recursively call $this$' parent's \uReq{} or $this$' children's \uReq{}. We have chosen not to inline them because these functions encapsulate all accesses to other caches when we systematically transform this protocol for distributed implementation. Note however that \uReq{} and \dReq{} read the states of its children. We will make those reads local by keeping a directory as discussed in the next section.
 
 All lines in the LLC are always in $M$ state.

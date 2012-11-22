@@ -2263,7 +2263,7 @@ FUNCTION {techreport}
   format.tech.report.number output.nonnull
   format.date "year" output.warn
   format.note output
-  format.url output
+%  format.url output
   fin.entry
   if.url.std.interword.spacing
 }

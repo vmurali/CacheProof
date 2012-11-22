@@ -1,7 +1,6 @@
 \section{Implementation overhead}
 \label{sec:implementation}
-In this section we show how the requirements presented in Section
-\ref{sec:network} can be implemented in a realistic system.
+In this section we show how the requirements presented in Section \ref{sec:DistributedMsi} can be implemented in a realistic system.
 
 \subsubsection{Implementation using virtual channels:}
 
@@ -35,9 +34,9 @@ of parent $p$ to handle request $R$. This mapping also ensures that Requirement
 \ref{cReqNoBlockPReq} is met.
 
 Since responses from a child of a cache node should not be blocked at the cache
-node by any incoming requests (Requirement\ref{reqNoBlockResp}), the responses
+node by any incoming requests (Requirement \ref{reqNoBlockResp}), the responses
 from a cache node at a lower level (children) to a cache node at a higher level
-(parent) should not use the same share use any of the request channels. Since a
+(parent) should not use any of the request channels. Since a
 response is always removed by the system, just one channel, $RespChannel$, is
 sufficient for transmitting responses from any child to its parent, in the
 whole system.
@@ -50,15 +49,15 @@ used by the requests from $p$ to $c$, $ReqChannel\langle x, ToC \rangle$, where
 $x$ is the level of $p$. This is because no blocking restrictions of Figure
 \ref{blocking} are violated.
 
-\subsubsection{Ensuring the ordering requirements}
+\subsubsection{Ensuring the ordering requirements:}
 There are no ordering requirements between requests sent from the same source
 to the same destination according to Figure \ref{order}.  However, requests
 should not overtake responses to the same address, because of Requirement
 \ref{reqNoOvertakeResp}. Requests and responses from a child to its parent come
 on different virtual channels. Hence, maintaining Requirement
 \ref{reqNoOvertakeResp} for messages from a child to its parent is difficult,
-since it's difficult to guarantee point-to-point FIFO ordering the messages
-come on different virtual channels.
+since it's difficult to guarantee point-to-point FIFO ordering of the messages
+coming on different virtual channels.
 
 Point-to-point FIFO ordering for messages from a child to its parent can be
 ensured by adding more information to the messages rather than relying on the
@@ -71,8 +70,7 @@ for handling this message will be created, and this message will be removed,
 only after $p.dir[c][a]$ becomes less than or equal to $x$, where $x$ is the
 state of the child at the time the message was sent. The intuition behind why
 this works is as follows (we do not give the formal proof here). Requests can
-not be sent from a child when there is a pending response from the parent
-. Similarly, a response can not be sent from
+not be sent from a child when there is a pending response from the parent. Similarly, a response can not be sent from
 a child when there is a pending response from the parent. So, a response from the parent can never be in flight
 when a request or a response from the child is in flight, since the
 parent only sends responses on requests from the child . So the directory state of the parent at the time of
@@ -85,7 +83,7 @@ A response sent later for an address from a child to its parent can block a
 response for the same address from the same child to its parent sent earlier.
 This violates Requirement \ref{cRespFifo}. If two separate virtual channel are
 used, one for downgrade-to-$S$ responses ($RespChannel_S$) and one for
-downgrade-to$I$ responses ($RespChannel_I$), then using the response sent later
+downgrade-to-$I$ responses ($RespChannel_I$), then using the response sent later
 will not block an earlier response.
 
 The same technique can not be used to guarantee point-to-point FIFO ordering
@@ -134,11 +132,11 @@ for each line in the cache. It can clearly be seen that this requires
 $max(\lceil log_2(n)\rceil, n) + 2$ bits per line, for the most efficient
 encoding.
 
-\subsubsection{MSHRs to implement threads}
+\subsubsection{MSHRs to implement threads:}
 The threads we describe essentially represent state stored in Miss Status Handling Registers (MSHRs). To
 satisfy the requirements of Figure \ref{dedicated}, there must at least be 3
 MSHR registers, in which one can be used only for messages from the parent, one
 only for responses (both from children and the parent) and one general purpose
-MSHR. We used the terms threads to describe our protocol because we give the
+MSHR. We used the term threads to describe our protocol because we give the
 illusion of only one thread executing in the system though the threads are
 actually suspensive. Hence the software terminology fits our model quite well.
