@@ -44,11 +44,12 @@ this.dir[c]$. In this case, it should be dropped.
 this.state[a]$. In this case, it should be dropped.
 \item A new handler, \dRespL{}($c, a, x$), where $c$ is a child of cache $this$,
 should be provided, and this informs $this$ that $c$ has changed its state to
-$x$.
+$x$. It is the designer's responsibility to update $this.dir[c][a]$ and his
+copy of the data if need be.
 \end{enumerate}
 
 Using the above set of rules, the designer can specify the distributed MSI protocol as shown in
-Figure \ref{realistic}. Handlers \uReq{} and \dReq{} are exactly the same as
+Figures \ref{msi-unsolicited} and \ref{realistic}. Handlers \uReq{} and \dReq{} are exactly the same as
 shown in Figure \ref{msi-template}, except that whenever the state of a child
 $c'$ is read, it should be replaced syntactically by $this.dir[c'][a]$.
 
@@ -92,14 +93,14 @@ child evicts line $a$ and downgrades the line to $x$}
 response
 \Proc {\dReqL}{$c, a, x$}
   \State \send{} \Req{this}{c}{a}{x};
-  \While {$this.dir[c][a] > x$}
+  %\While {$this.dir[c][a] > x$}
   \State \receive{} \Resp{c}{this}{a}{z};
   \If {$isModified(this.dir[c][a])$}
     \State \receive{} \Data{c}{this}{a}{d};
     \State $this.data[a] \gets d$;
   \EndIf
   \State $this.dir[c][a] \gets z$;
-  \EndWhile
+  %\EndWhile
 \EndProc
 \State // $this$ finally upgrading the directory state of its child and sending
 a response to its child
@@ -154,12 +155,169 @@ Figure \ref{msi-template}). This is the reason for using the vocabulary of
 threads instead of MSHRs -- a thread makes the processing stage a particular
 request is currently in, implicit.
 
-Now that we have established the vocabulary of threads, we will proceed to
-describe the requirements that a network should guarantee in order to make such
-an implementation possible. We will also show the scheduling algorithm that we
-generate.
+Now that we have established the vocabulary of threads, we will show the
+scheduling algorithm that we generate.
 
-\subsection{Message ordering requirements}
+\subsection{Scheduling algorithm}
+
+\floatstyle{plain}
+\restylefloat{figure}
+\begin{figure}
+\centering
+\includegraphics[scale=.4]{Scheduler}
+\caption{Scheduler or the cache controller}
+\label{Scheduler}
+\end{figure}
+\floatstyle{boxed}
+\restylefloat{figure}
+
+The cache controller, or, extending the thread analogy further, the scheduler
+is shown in Figure \ref{Scheduler} We list the scheduling algorithm that
+enables the designer to have an illusion of non-suspensive threads while
+guaranteeing deadlock freedom in Figure \ref{scheduler}.
+
+\newcommand{\lWhile}{\textbf{while}}
+\newcommand{\lIf}{\textbf{if}}
+\newcommand{\lElsIf}{\textbf{else if}}
+\newcommand{\lElse}{\textbf{else}}
+
+\begin{figure}
+\small
+%\begin{boxedminipage}{\linewidth}
+\begin{alltt}
+\normalfont
+\lWhile{} (\(True\)) \bopen
+      \lIf (\Resp{c}{n}{a}{x} is in the input response channel
+             from children, where \(n = c.parent\)) \bopen
+            \lIf (suspended thread \(t\) is waiting for 
+                  a response from \(c\) for address \(a\)) \bopen
+                   \resume{} \(t\);
+            \bclose \lElsIf ($n$ has a free resource for responses) \bopen
+                   \receive{} \Resp{c}{n}{a}{x};
+                   \start{} \dRespL(\(c, n, a, x\));
+            \bclose
+      \bclose \lElsIf (\Resp{p}{n}{a}{x} is in the input channel
+                       from the parent, where \(p = n.parent\)) \bopen
+                   // There must be a suspended thread \(t\)
+                   waiting for a response from \(p\) for address \(a\)
+                   \resume{} \(t\);
+            \bclose
+      \bclose \lElsIf (suspended thread \(t\) is ready to execute)
+             \resume{} \(t\);
+      \bclose \lElsIf (\Req{c}{n}{a}{x} is in the input request
+                      channel from children, where \(n = c.parent\)) \bopen
+             \lIf ((\textbf{!}(address \(a\) has been chosen for eviction by 
+                       some other thread in \(n\) and has not been evicted) \textbf{or}
+                     (a thread in \(n\) is handling a request for address \(a\))) \textbf{and}
+                    \(n\) has a free resource for requests from children) \bopen
+                   \receive{} \Req{c}{n}{a}{x};
+                   \start{} \uReq(\(c, n, a, x\));
+             \bclose
+      \bclose \lElsIf (\Req{p}{n}{a}{x} is in the input channel
+                        from the parent, where \(p = n.parent\)) \bopen
+             \lIf (\textbf{!}((address \(a\) has been chosen for eviction by 
+                       some other thread in \(n\) and has not been evicted) \textbf{or}
+                     (a thread in \(n\) is handling a request from \(p\)
+                       for address \(a\)) \textbf{or}
+                     (a thread \(t\) in \(n\) is handling a request from child \(c\) for
+                       address \(a\) and \(t\) is not waiting for a response from \(p\))) \textbf{and}
+                    \(n\) has a free resource for requests from parent) \bopen
+                   \receive{} \Req{p}{n}{a}{x};
+                   \start{} \dReq(\(p, n, a, x\));
+             \bclose
+      \bclose
+\bclose
+\end{alltt}
+%\end{boxedminipage}
+\caption{Implementation of a scheduler for cache node $n$}
+\label{scheduler}
+\end{figure}
+
+It should be noted that if a request message arrives, even if there are
+resources available for starting the processing of the message, the request is
+sometimes not handled, \ie the scheduler does not start a new thread for
+handling the message. Intuitively, this is to guarantee that only one thread is
+modifying a particular address in the cache -- till the thread finishes its
+work, no other thread should be allowed to modify that address. If another
+thread is allowed to modify the address, then the assumptions that the first
+thread has about the state of the address will be voided. Either the thread has
+to restart from the beginning, or we can avoid this scenario by not scheduling
+the second thread. The only exception to this rule is when a thread has been
+suspended by sending a request to the parent and another request from the parent
+for the same address is received. In this case, a new thread has to be created
+for the request from the parent to avoid deadlocks like the ones shown in Figure
+\ref{unknown}.
+
+The scheduler must also ensure that it does some fair arbitration of threads
+that are suspended. If a particular address remains suspended forever, it will
+lead to starvation. The static priority that we present in the algorithm -- a
+suspended thread that is ready to run always gets priority over creating new
+threads for request messages, will ensure that no thread gets starved.
+
+\begin{figure}\small
+\begin{requirement}
+An incoming request from the parent should not be blocked by any
+incoming request from its children.\label{cReqNoBlockPReq}
+\end{requirement}
+\begin{requirement}
+A response should not be blocked by a request.
+\label{reqNoBlockResp}
+\end{requirement}
+\caption{Blocking restrictions}
+\label{blocking}
+\end{figure}
+
+Note that we present three incoming channels to the scheduler and three incoming
+channels to the scheduler. This is to ensure that a message from one of these
+channels does not block a message in another queue. The exact requirements for
+which messages are allowed to block are stated in Figure \ref{blocking}.
+
+To avoid blocking, a scheduler has to have at least one dedicate resource
+(MSHR) for for handling requests and responses from the parent, and one for
+handling responses from children. There should at least be one more since
+requests from children can not use the other two.
+
+The channels that we depict in Figure \ref{Scheduler} are all FIFO queues. But
+there is an ordering requirement even between queues between requests and
+responses sent from the children. We specify the minimum ordering requirements
+in Figure \ref{order}. Though the figure specifies FIFO requirements for every
+address, an implementation which ensures the corresponding FIFO requirements
+overall, even between addresses, will guarantee the stated requirements.
+
+\subsection{Illustrating the need for FIFO queues and blocking restrictions}
+We will illustrate the need to avoid blocking using the example of a 2-level
+cache hierarchy with two L1 caches $c_1$ and $c_2$, and one shared L2 cache
+$p$. Each core can have several outstanding memory requests.
+
+Let's say both $c_1.state[a] = p.dir[c_1][a] = S$ and $c_2.state[a] =
+p.dir[c_2][a] = S$. Both $c_1$ and $c_2$ get store requests from the processor
+for address $a$, and they send upgrade-to-$M$ requests to $p$.  $p$ receives the
+request from $c_2$ first. $p$ sends a downgrade-to-$I$ request to $c_1$.
+
+\floatstyle{plain}
+\restylefloat{figure}
+\begin{figure}
+\centering
+\includegraphics[scale=0.4]{unknown}
+\caption{Effect of violating Requirement \ref{cReqNoBlockPReq} (requests blocking responses from parent)}
+\label{unknown}
+\end{figure}
+\floatstyle{boxed}
+\restylefloat{figure}
+
+Let's say some request from the core is blocking $c_1$ from receiving the
+request. $c_1$ will never respond back to $p$. But $p$ will be waiting in
+procedure \dReqL{}, and will never start handling the request from $c_1$. This
+will create a deadlock.  The same deadlock is also created when $c_1$ is out of
+thread resources to create a thread to handle the downgrade request from $p$.
+Figure \ref{unknown} depicts this scenario.
+
+Let's extend this scenario further. Let $c_1$ send a downgrade-to-$I$ response
+to $p$. Let's assume that the downgrade-to-$I$ response from $c_1$ is being
+blocked. This means $p$ doesn't receive the downgrade-to-$I$ response, leading
+to the same deadlock. This is also the same if there isn't a dedicated resource
+in $p$ to handle the downgrade response.
+
 \floatstyle{boxed}
 \restylefloat{figure}
 
@@ -246,214 +404,11 @@ in Figure \ref{lessComplicated}.
 These scenarios show that these ordering requirements are indeed necessary for a
 correct cache coherence protocol.
 
-\subsection{Resource requirements and blocking restrictions}
 
-\begin{figure}\small
-\begin{requirement}
-At a cache node, an incoming request from the parent should not be blocked by any
-incoming request from its children.\label{cReqNoBlockPReq}
-\end{requirement}
-\begin{requirement}
-At a cache node, an incoming response from any of its children should not
-be blocked by any incoming requests.\label{reqNoBlockResp}
-\end{requirement}
-\begin{requirement}
-At a cache node, an incoming response for address $a$ from its parent should not be blocked by
-an incoming request from its child for address $a$. \label{reqBlockResp2}
-\end{requirement}
-\caption{Blocking restrictions}
-\label{blocking}
-\end{figure}
-
-Figure \ref{blocking} shows the restrictions that the input channels should
-obey with respect to an incoming message blocking other incoming messages.
-
-\begin{figure}\small
-\begin{requirement}
-Each cache node has at least one dedicated thread resource for handling only messages
-(requests or responses) from the parent\label{dedicate1}
-\end{requirement}
-\begin{requirement}
-Each cache node has at least one dedicated thread resource for handling only responses
-(from children or from the parent)\label{dedicate2}
-\end{requirement}
-\begin{requirement}
-Each cache node has at least three thread resources\label{dedicate3}
-\end{requirement}
-\caption{Dedicated resources in a cache node}
-\label{dedicated}
-\end{figure}
-
-Figure \ref{dedicated} shows the minimum number of thread resources that should
-be present in each cache node. Lack of required thread resouces leads to the same
-kind of deadlock scenarios as incorrect blocking does. This is illustrated in the
-following:
-
-Let's say both $c_1.state[a] = p.dir[c_1][a] = S$ and $c_2.state[a] =
-p.dir[c_2][a] = S$. Both $c_1$ and $c_2$ get store requests from the processor
-for address $a$, and they send upgrade-to-$M$ requests to $p$.  $p$ receives the
-request from $c_2$ first. $p$ sends a downgrade-to-$I$ request to $c1$.
-
-\floatstyle{plain}
-\restylefloat{figure}
-\begin{figure}
-\centering
-\includegraphics[scale=0.4]{unknown}
-\caption{Effect of violating Requirement \ref{cReqNoBlockPReq} (requests blocking responses from parent)}
-\label{unknown}
-\end{figure}
-\floatstyle{boxed}
-\restylefloat{figure}
-
-Let's say Requirement \ref{cReqNoBlockPReq} is not held, and instead some request
-from the core is blocking $c_1$ from receiving the request. $c_1$ will never
-respond back to $p$. But $p$ will be waiting in procedure \dReqL{}, and will
-never start handling the request from $c_1$. This will create a deadlock.  The
-same deadlock is also created when $c_1$ is out of thread resources to create a
-thread to handle the downgrade request from $p$ (violating Requirement
-\ref{dedicate1}). Figure \ref{unknown} depicts this scenario.
-
-Let's extend this scenario further. Instead of violating Requirements
-\ref{cReqNoBlockPReq} or \ref{dedicate1}, let $c_1$
-send a downgrade-to-$I$ response to $p$. Let's instead assume that Requirement
-\ref{reqNoBlockResp} is violated in $p$. So, the downgrade-to-$I$ response from
-$c_1$ is not received by $p$, leading to the same deadlock. This is the same if
-Requirement \ref{dedicate2} is violated and $p$ is out of thread resources to
-create a thread to handle the downgrade response.
-
-The need for Requirement \ref{dedicate3} can be shown easily. Let's say that a
-cache has exactly 2 thread resources, one for handling messages from parents,
-and one for handling responses from either the parent or the children. Now, if
-it receives a request from one of its children, it can not use either of the
-thread resources. Thus, at least one more thread resource is needed for
-handling requests from children. This thread resource can also be used for
-handling other types of incoming message.
-
-\subsection{Scheduler requirements}
-
-We will now list the requirements that a scheduler must obey to give the
-illusion of non-suspensive threads and avoid deadlocks.
-
-\begin{figure}\small
-\begin{requirement}
-$p$ can not receive a request \Req{c}{p}{a}{x} from $c$, where $p = c.parent$,
-if either
-\begin{enumerate}
-\item address $a$ has been chosen for eviction by some thread and that thread
-has not yet replaced $a$, or
-\item a thread in $p$ is handling a request for address
-$a$ from any source
-\end{enumerate}
-\label{pHandleReq}
-\end{requirement}
-\begin{requirement}
-$c$ can not receive a request \Req{p}{c}{a}{x} from $p$, where $p = c.parent$,
-if either
-\begin{enumerate}
-\item address $a$ has been chosen for eviction by some thread and that thread
-has not yet replaced $a$, or
-\item a thread in $c$ is handling a request for address
-$a$ from $p$, or
-\item a thread in $c$ is handling a request for address
-$a$ from one of $c$'s children $c'$, but that thread is not waiting for a
-response from $p$
-\end{enumerate}
-\label{cHandleReq}
-\end{requirement}
-\caption{Requirements for receiving a request (used by the scheduler)}\label{recvReq}
-\label{}
-\end{figure}
-
-\begin{figure}\small
-\begin{requirement}
-Address $a$ present in cache node $c$ can not be chosen for eviction by a thread
-executing in $c$ if either
-\begin{enumerate}
-\item address $a$ has been chosen for eviction by some thread and that thread
-has not yet replaced $a$, or
-\item a thread in $c$ is handling a request for address
-$a$ from any source
-\end{enumerate}\label{evict}
-\caption{Requirements for suspending a thread during choosing an address for eviction}
-\end{requirement}
-\end{figure}
-
-Requirements \ref{pHandleReq}, \ref{cHandleReq} and \ref{evict} are needed
-because once a thread has finished up-to a point in its execution, it can not
-re-execute that portion. For instance, consider a thread handling an upgrade
-request from a child. Let's say thread $t$ has progressed to the point where it
-is simply waiting to send an upgrade response to the child. Now, if the line
-gets evicted because it was chosen for replacement, or it got downgraded by the
-parent, then thread $t$ can not re-execute its procedure again. To prevent this,
-only one thread is allowed to operate on a particular address, except in the
-case of downgrade requests from the parent. In this case, a thread is created to
-handle the downgrade request from the parent even if there is another thread
-handling a request for the same address from a child, if the latter thread is
-just waiting for a response from the parent. This is done to avoid deadlocks
-like the ones shown in Figure \ref{unknown}.
-
-\begin{figure}\small
-\begin{requirement}
-Starvation-freedom: A thread that keeps becoming ready to execute will
-eventually be scheduled to execute.\label{starvation}
-\end{requirement}
-\end{figure}
-
-Local starvation-freedom is required in each cache node. If a cache node never
-executes a particular suspended thread, even if it keeps getting ready to
-execute, then the thread will not progress, leading to a deadlock.
-
-A scheduler can be implemented as described in Figure \ref{scheduler}, obeying
-Requirements \ref{pHandleReq} and \ref{cHandleReq}. It should perform some form of
-fair arbiration among its suspended threads to avoid starvation (Requirement
-\ref{starvation}).
-
-\newcommand{\lWhile}{\textbf{while}}
-\newcommand{\lIf}{\textbf{if}}
-\newcommand{\lElsIf}{\textbf{else if}}
-\newcommand{\lElse}{\textbf{else}}
-
-\floatstyle{plain}
-\restylefloat{figure}
-
-\begin{figure}
-\small
-\begin{boxedminipage}{\linewidth}
-\begin{alltt}
-\normalfont
-\lWhile{} (\(True\)) \bopen
-      \lIf (\Resp{c}{n}{a}{x} is in the input channel,
-            where \(n = c.parent\)) \bopen
-            \lIf (suspended thread \(t\) is waiting for 
-                 a response from \(c\) for address \(a\)) \bopen
-                   \resume{} \(t\);
-            \bclose \lElse \bopen
-                   \receive{} \Resp{c}{n}{a}{x};
-                   \start{} \dRespL(\(c, n, a, x\));
-            \bclose
-      \bclose \lElsIf (\Resp{p}{n}{a}{x} is in the input channel,
-            where \(p = n.parent\)) \bopen
-                   // There must be a suspended thread \(t\)
-                   waiting for a response from \(p\) for address \(a\)
-                   \resume{} \(t\);
-            \bclose
-      \bclose \lElsIf (\Req{c}{n}{a}{x} is in the input channel,
-                     where \(n = c.parent\)) \bopen
-             \lIf (Local-Property \ref{pHandleReq} is satisfied) \bopen
-                   \receive{} \Req{c}{n}{a}{x};
-                   \start{} \uReq(\(c, n, a, x\));
-             \bclose
-      \bclose \lElsIf (\Req{p}{n}{a}{x} is in the input channel,
-                  where \(p = n.parent\)) \bopen
-             \lIf (Local-Property \ref{cHandleReq} is satisfied) \bopen
-                   \receive{} \Req{p}{n}{a}{x};
-                   \start{} \dReq(\(p, n, a, x\));
-             \bclose
-      \bclose \lElsIf (suspended thread \(t\) is ready to execute) 
-             \resume{} \(t\);
-\bclose
-\end{alltt}
-\end{boxedminipage}
-\caption{Implementation of a scheduler for cache node $n$}
-\label{scheduler}
-\end{figure}
+\subsection{Suspension due to eviction}
+A thread can also get suspended if it needs to evict another line because of
+lack of space in the cache for the address corresponding to the thread. This is
+because, an address that is currently being processed by another thread should
+not be evicted. Another point to note is that an address which is already
+selected for eviction, but is waiting for the children to downgrade to $I$,
+should not be selected for eviction by another address.

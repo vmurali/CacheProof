@@ -195,7 +195,7 @@ A request can be sent by a cache node $n$ for address $n$ to another cache node 
 node $n$ is not waiting for a response for address $a$ from $m$.
 \label{nodoublereq}
 \end{inv}
-\caption{Local-Properties useful in proving the correctness of MSI protocol}
+\caption{Local-Properties for sending requests}
 \label{sendReq}
 \end{figure}
 
@@ -247,18 +247,20 @@ the parent to the same cache are in flight together, like the scenarios in
 Figures \ref{checkit} and \ref{checkit2} Invariant \ref{conservative} will be
 violated.
 
+\floatstyle{plain}
+\restylefloat{figure}
 \begin{figure}
 \begin{subfigure}{.25\linewidth}
 \centering
-\begin{tabular}{|ccc|}
+\begin{tabular}{|c|c|}
 \hline
-$M$ & $\rightarrow$ & $I$\\
-$O$ & $\rightarrow$ & $S$\\
-$S$ & $\rightarrow$ & $O$\\
-$I$ & $\rightarrow$ & $I$\\
+$M$ & $I$\\
+$O$ & $S$\\
+$S$ & $O$\\
+$I$ & $I$\\
 \hline
 \end{tabular}
-\subcaption*{$toCompatible$}
+\subcaption*{$maxCompatible$}
 \end{subfigure}
 \begin{subfigure}{.25\linewidth}
 \centering

@@ -42,12 +42,11 @@ sufficient for transmitting responses from any child to its parent, in the
 whole system.
 
 Since responses from the parent $p$ of a cache node $c$ should not be blocked
-at the cache node by a request from $c$'s child $c'$ (Requirement
-\ref{reqBlockResp2}), these responses can not use the same channel as that used
-by a request from $c'$ to $c$. However, they can use the same virtual channel
-used by the requests from $p$ to $c$, $ReqChannel\langle x, ToC \rangle$, where
-$x$ is the level of $p$. This is because no blocking restrictions of Figure
-\ref{blocking} are violated.
+at the cache node by a request from $c$'s child $c'$, these responses can not
+use the same channel as that used by a request from $c'$ to $c$. However, they
+can use the same virtual channel used by the requests from $p$ to $c$,
+$ReqChannel\langle x, ToC \rangle$, where $x$ is the level of $p$. This is
+because no blocking restrictions of Figure \ref{blocking} are violated.
 
 \subsubsection{Ensuring the ordering requirements:}
 There are no ordering requirements between requests sent from the same source
@@ -108,6 +107,8 @@ finally, unordered $RespChannel_S$ for downgrade-to-$S$ responses from any node
 to its parent.
 
 \subsubsection{Bits required for the directory:}
+\floatstyle{plain}
+\restylefloat{figure}
 \begin{wrapfigure}{r}{.4\linewidth}
 \begin{tabularx}{\linewidth}{|c|X|}
 \hline
@@ -131,12 +132,3 @@ cache is sufficient if $n.dir[c][a] = M$ for some cache $c$. Figure
 for each line in the cache. It can clearly be seen that this requires
 $max(\lceil log_2(n)\rceil, n) + 2$ bits per line, for the most efficient
 encoding.
-
-\subsubsection{MSHRs to implement threads:}
-The threads we describe essentially represent state stored in Miss Status Handling Registers (MSHRs). To
-satisfy the requirements of Figure \ref{dedicated}, there must at least be 3
-MSHR registers, in which one can be used only for messages from the parent, one
-only for responses (both from children and the parent) and one general purpose
-MSHR. We used the term threads to describe our protocol because we give the
-illusion of only one thread executing in the system though the threads are
-actually suspensive. Hence the software terminology fits our model quite well.
