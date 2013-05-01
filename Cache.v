@@ -2,10 +2,6 @@ Require Import Arith Omega.
 
 Load Useful.
 
-Module Type Network.
-  Parameter network : Type.
-End Network.
-
 Module Type DataTypes.
   Parameter Cache: Type.
   Parameter Mesg: Type.
@@ -23,50 +19,39 @@ Module Type DataTypes.
   Parameter addr: Mesg -> Addr.
 
   Parameter timestamp: Cache -> Addr -> Time -> Time.
+  Parameter Channel: Type.
+
+  Parameter mch rch: Channel.
 End DataTypes.
 
-Module Channel (n: Network) (dataTypes: DataTypes).
+Module Channel (dataTypes: DataTypes).
   Import dataTypes.
 
-  Axiom marksend: Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Axiom recv: Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Variable marksend: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Variable recv: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
 
   Set Implicit Arguments.
   Section local.
+    Variable s: Channel.
     Variable p c : Cache.
     Variable a: Addr.
-    Axiom uniqMarksend1: forall {m n t}, marksend p c a t m -> marksend p c a t n -> m = n.
-    Axiom uniqMarksend2: forall {m t1 t2}, marksend p c a t1 m -> marksend p c a t2 m -> t1 = t2.
-    Axiom uniqRecv1: forall {m n t}, recv p c a t m -> recv p c a t n -> m = n.
-    Axiom uniqRecv2: forall {m t1 t2}, recv p c a t1 m -> recv p c a t2 m -> t1 = t2.
-    Axiom recvImpMarkSend: forall {m t}, recv p c a t m -> exists t', t' <= t /\ marksend p c a t' m.
+    Axiom uniqMarksend1: forall {m n t}, marksend s p c a t m -> marksend s p c a t n -> m = n.
+    Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c a t1 m -> marksend s p c a t2 m -> t1 = t2.
+    Axiom uniqRecv1: forall {m n t}, recv s p c a t m -> recv s p c a t n -> m = n.
+    Axiom uniqRecv2: forall {m t1 t2}, recv s p c a t1 m -> recv s p c a t2 m -> t1 = t2.
+    Axiom recvImpMarkSend: forall {m t}, recv s p c a t m -> exists t', t' <= t /\ marksend s p c a t' m.
   End local.
 End Channel.
-
 
 Module Type System (dataTypes: DataTypes).
   Import dataTypes.
 
   Axiom classical: forall P, P \/ ~ P.
 
-  Parameter RespNetwork : Type.
-  Parameter ReqNetwork : Type.
-
-  Module RespNetwork : Network.
-    Definition network := RespNetwork.
-  End RespNetwork.
-
-  Module ReqNetwork : Network.
-    Definition network := ReqNetwork.
-  End ReqNetwork.
-
   Definition toCompat s := 3 - s.
 
   Definition compat c p (rel: parent c = p) t := forall c', parent c' = p ->
     forall a, dir p c' a t <= toCompat (dir p c a t).
-
-  Module m := Channel RespNetwork dataTypes.
-  Module r := Channel ReqNetwork dataTypes.
 
   Module Type LocalState.
     Parameter st : Addr -> Time -> State.
@@ -147,6 +132,9 @@ Module Type System (dataTypes: DataTypes).
   End StateBehave.
 
   Module Type LocalRules.
+    Module ch := Channel dataTypes.
+    Import ch.
+
     Variables p c: Cache.
     Hypothesis rel: parent c = p.
 
@@ -156,10 +144,10 @@ Module Type System (dataTypes: DataTypes).
         Variable t: Time.
 
         Definition st := dir p c.
-        Definition mmarksend := m.marksend p c.
-        Definition mrecv := m.recv c p.
-        Definition rmarksend := r.marksend p c.
-        Definition rrecv := r.recv c p.
+        Definition mmarksend := marksend mch p c.
+        Definition mrecv := recv mch c p.
+        Definition rmarksend := marksend rch p c.
+        Definition rrecv := recv rch c p.
         Definition toRSComp x y := x < y.
         Definition timeStamp := timestamp p.
       End ForT.
@@ -171,10 +159,10 @@ Module Type System (dataTypes: DataTypes).
         Variable t: Time.
 
         Definition st := state c.
-        Definition mmarksend := m.marksend c p.
-        Definition mrecv := m.recv p c.
-        Definition rmarksend := r.marksend c p.
-        Definition rrecv := r.recv p c.
+        Definition mmarksend := marksend mch c p.
+        Definition mrecv := recv mch p c.
+        Definition rmarksend := marksend rch c p.
+        Definition rrecv := recv rch p c.
         Definition toRSComp x y := x > y.
         Definition timeStamp := timestamp c.
 
@@ -186,15 +174,15 @@ Module Type System (dataTypes: DataTypes).
     Module sb := StateBehave St.
 
     Set Implicit Arguments.
-    Definition twoEqPRespFalse := forall a t t1 m1, t1 <= t -> m.marksend p c a t1 m1 ->
-      forall t2 m2, t2 <= t -> m.marksend p c a t2 m2 ->
-        (forall t3, t3 <= t -> ~ m.recv p c a t3 m1) -> (forall {t4}, t4 <= t -> ~ m.recv p c a t4 m2) ->
+    Definition twoEqPRespFalse := forall a t t1 m1, t1 <= t -> marksend mch p c a t1 m1 ->
+      forall t2 m2, t2 <= t -> marksend mch p c a t2 m2 ->
+        (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) -> (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
         t1 = t2.
 
-    Definition twoPReqNeedsResp := forall a t t1 r1, t1 <= t -> r.marksend p c a t1 r1 -> forall t2 r2,
-      t2 <= t -> r.marksend p c a t2 r2 -> (forall t3, t3 <= t -> ~ r.recv p c a t3 r1) ->
-      (forall t4, t4 <= t -> ~ r.recv p c a t4 r2) -> to r1 = to r2 -> t1 < t2 ->
-      exists tm m, t1 < tm < t2 /\ m.marksend p c a tm m.
+    Definition twoPReqNeedsResp := forall a t t1 r1, t1 <= t -> marksend rch p c a t1 r1 -> forall t2 r2,
+      t2 <= t -> marksend rch p c a t2 r2 -> (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
+      (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> to r1 = to r2 -> t1 < t2 ->
+      exists tm m, t1 < tm < t2 /\ marksend mch p c a tm m.
 
     Section ForT.
       Variable a: Addr.
@@ -202,41 +190,41 @@ Module Type System (dataTypes: DataTypes).
 
       Axiom init: dir p c a 0 = state c a 0.
 
-      Axiom stSendmImpSt: forall {m}, m.marksend c p a t m -> state c a t > to m.
+      Axiom stSendmImpSt: forall {m}, marksend mch c p a t m -> state c a t > to m.
 
-      Axiom dirSendmImpRecvr: forall {m}, m.marksend p c a t m -> exists r, r.recv c p a t r.
+      Axiom dirSendmImpRecvr: forall {m}, marksend mch p c a t m -> exists r, recv rch c p a t r.
 
-      Axiom dirSendmImpRecvrGe: forall {m}, m.marksend p c a t m -> forall {r}, r.recv c p a t r -> to m >= to r.
+      Axiom dirSendmImpRecvrGe: forall {m}, marksend mch p c a t m -> forall {r}, recv rch c p a t r -> to m >= to r.
 
-      Axiom dirRecvrCond: forall {r}, r.recv c p a t r -> from r >= dir p c a t.
+      Axiom dirRecvrCond: forall {r}, recv rch c p a t r -> from r >= dir p c a t.
 
-      Axiom dirRecvmCond: forall {m}, m.recv c p a t m -> from m = dir p c a t.
+      Axiom dirRecvmCond: forall {m}, recv mch c p a t m -> from m = dir p c a t.
 
       Axiom pRespReq: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3},
-        forall {m}, m.marksend p c a t1 m ->
-        forall {r}, r.marksend p c a t2 r -> r.recv p c a t3 r -> t1 <= t2 ->
-          exists t4, t4 < t3 /\ m.recv p c a t4 m.
+        forall {m}, marksend mch p c a t1 m ->
+        forall {r}, marksend rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
+          exists t4, t4 < t3 /\ recv mch p c a t4 m.
 
       Axiom pReqResp: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3},
-        forall {r}, r.marksend p c a t1 r ->
-        forall {m}, m.marksend p c a t2 m -> m.recv p c a t3 m -> t1 <= t2 ->
-          exists t4, t4 < t3 /\ r.recv p c a t4 r.
+        forall {r}, marksend rch p c a t1 r ->
+        forall {m}, marksend mch p c a t2 m -> recv mch p c a t3 m -> t1 <= t2 ->
+          exists t4, t4 < t3 /\ recv rch p c a t4 r.
 
       Axiom stVoluntary:
-        forall {r}, r.marksend c p a t r -> forall {t' m}, t' > t -> m.marksend c p a t' m ->
-          (forall {tm}, t < tm <= t' -> state c a tm < to r) -> exists r1, r.recv p c a t' r1.
+        forall {r}, marksend rch c p a t r -> forall {t' m}, t' > t -> marksend mch c p a t' m ->
+          (forall {tm}, t < tm <= t' -> state c a tm < to r) -> exists r1, recv rch p c a t' r1.
 
-      Axiom dirSendrImpNoSendm: forall {t1 t2 r1 m2}, t1 < t2 -> r.marksend p c a t1 r1 ->
-        m.marksend p c a t2 m2 ->
-        exists t', t1 < t' < t2 /\ exists m, m.recv c p a t' m /\ to m <= to r1.
+      Axiom dirSendrImpNoSendm: forall {t1 t2 r1 m2}, t1 < t2 -> marksend rch p c a t1 r1 ->
+        marksend mch p c a t2 m2 ->
+        exists t', t1 < t' < t2 /\ exists m, recv mch c p a t' m /\ to m <= to r1.
 
-      Axiom stRecvrNoSendm: forall {r}, r.recv p c a t r -> forall {m}, m.marksend c p a t m ->
+      Axiom stRecvrNoSendm: forall {r}, recv rch p c a t r -> forall {m}, marksend mch c p a t m ->
         state c a t > to r.
 
-      Axiom stRecvrSendm: forall {r}, r.recv p c a t r -> state c a t > to r -> exists {m}, m.marksend c p a t m.
+      Axiom stRecvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, marksend mch c p a t m.
 
       Lemma whenChildHighRecvm: state c a (S t) > state c a t -> exists m,
-        m.recv p c a t m /\ to m = state c a (S t).
+        recv mch p c a t m /\ to m = state c a (S t).
       Proof.
         intro sStgst.
         assert (sStnst: state c a (S t) <> state c a t) by omega.
@@ -255,10 +243,10 @@ Module Type System (dataTypes: DataTypes).
       Qed.
     End ForT.
 
-    Lemma dirRecvImpLow: forall {a t m}, m.recv c p a t m -> dir p c a t > dir p c a (S t).
+    Lemma dirRecvImpLow: forall {a t m}, recv mch c p a t m -> dir p c a t > dir p c a (S t).
     Proof.
       intros a t m recvm.
-      pose proof (m.recvImpMarkSend recvm) as [t' [t'LeT sendm]].
+      pose proof (recvImpMarkSend recvm) as [t' [t'LeT sendm]].
       pose proof (db.recvmChange recvm) as sth.
       pose proof (stSendmImpSt sendm) as sth2.
       pose proof (dirRecvmCond recvm) as sth3.
@@ -268,7 +256,7 @@ Module Type System (dataTypes: DataTypes).
     Qed.
 
     Lemma whenDirLow': forall {a t t'}, dir p c a (t' + t) > dir p c a t ->
-      exists t'', t'' < t' /\ exists m, m.marksend p c a (t'' + t) m.
+      exists t'', t'' < t' /\ exists m, marksend mch p c a (t'' + t) m.
     Proof.
       intros a t t'.
       induction t'.
@@ -289,7 +277,7 @@ Module Type System (dataTypes: DataTypes).
     Qed.
 
     Lemma whenDirLow: forall {a t t1}, t <= t1 -> dir p c a t1 > dir p c a t ->
-      exists t'', t <= t'' < t1 /\ exists m, m.marksend p c a t'' m.
+      exists t'', t <= t'' < t1 /\ exists m, marksend mch p c a t'' m.
     Proof.
       intros a t t1 t1LeT1 dirGt.
       assert (opt: t = t1 \/ t < t1) by omega.
@@ -304,7 +292,7 @@ Module Type System (dataTypes: DataTypes).
     Qed.
 
     Lemma whenChildHigh': forall {a t t'}, state c a (S (t' + t)) > state c a t ->
-      exists t'', t'' <= t' /\ exists m, m.recv p c a (t'' + t) m /\ to m >= state c a (S (t' + t)).
+      exists t'', t'' <= t' /\ exists m, recv mch p c a (t'' + t) m /\ to m >= state c a (S (t' + t)).
     Proof.
       intros a t t' sSt'tgst.
       induction t'.
@@ -339,7 +327,7 @@ Module Type System (dataTypes: DataTypes).
     Qed.
 
     Lemma whenChildHigh: forall {a t t'}, t' > t -> state c a t' > state c a t ->
-      exists t'', t <= t'' < t' /\ exists m, m.recv p c a t'' m /\ to m >= state c a t'.
+      exists t'', t <= t'' < t' /\ exists m, recv mch p c a t'' m /\ to m >= state c a t'.
     Proof.
       intros a t tPlust'.
       intros diff.
@@ -355,7 +343,7 @@ Module Type System (dataTypes: DataTypes).
     Qed.
 
     Lemma whenChildHighConv: forall {a t t'}, t' >= t ->
-      (~ exists t'', t <= t'' < t' /\ exists m, m.recv p c a t'' m /\ to m >= state c a t') ->
+      (~ exists t'', t <= t'' < t' /\ exists m, recv mch p c a t'' m /\ to m >= state c a t') ->
       state c a t' <= state c a t.
     Proof.
       intros a t t' t'GeT notE.
@@ -368,9 +356,9 @@ Module Type System (dataTypes: DataTypes).
     Qed.
 
     Lemma cReqPRespCrossInd: forall {a t tc tp}, tc <= t -> tp <= t -> 
-      forall {r m}, r.marksend c p a tc r ->
-        m.marksend p c a tp m -> (forall tc', tc' < tc -> ~ m.recv p c a tc' m) ->
-        (forall tp', tp' <= tp -> ~ r.recv c p a tp' r) -> False.
+      forall {r m}, marksend rch c p a tc r ->
+        marksend mch p c a tp m -> (forall tc', tc' < tc -> ~ recv mch p c a tc' m) ->
+        (forall tp', tp' <= tp -> ~ recv rch c p a tp' r) -> False.
     Proof.
       intros a t.
       induction t.
@@ -379,22 +367,22 @@ Module Type System (dataTypes: DataTypes).
       assert (tp0: tp = 0) by omega; clear tpLeT.
       rewrite tc0 in *; rewrite tp0 in *; clear tc0 tp0.
       pose proof (dirSendmImpRecvr msendm) as [r' rrecvr'].
-      pose proof (r.recvImpMarkSend rrecvr') as [t' [t'Le0 rsendr']].
+      pose proof (recvImpMarkSend rrecvr') as [t' [t'Le0 rsendr']].
       assert (t'0: t' = 0) by omega; clear t'Le0.
       rewrite t'0 in rsendr'; clear t'0.
-      pose proof (r.uniqMarksend1 rsendr rsendr') as rEqr'.
+      pose proof (uniqMarksend1 rsendr rsendr') as rEqr'.
       rewrite <- rEqr' in *; clear rEqr'.
       assert (zero: 0 <= 0) by omega.
       firstorder.
       intros tc tp tcLeST tpLeST r m rsendr msendm mrecvNo rrecvNo.
 
       pose proof (dirSendmImpRecvr msendm) as [r' rrecvr'].
-      pose proof (r.recvImpMarkSend rrecvr') as [t' [t'LeSt rsendr']].
+      pose proof (recvImpMarkSend rrecvr') as [t' [t'LeSt rsendr']].
 
       assert (diff: t' = tc \/ t' > tc \/ t' < tc) by omega.
       destruct diff as [eq | [t'GtTc | tcGtT']].
       rewrite eq in rsendr'.
-      pose proof (r.uniqMarksend1 rsendr rsendr') as rEqr'.
+      pose proof (uniqMarksend1 rsendr rsendr') as rEqr'.
       rewrite <- rEqr' in *.
       assert (tpEq: tp <= tp) by omega.
       firstorder.
@@ -407,12 +395,12 @@ Module Type System (dataTypes: DataTypes).
       assert (tcLtT'': state c a tc < state c a t'') by omega.
       assert (t''GtTc: t'' > tc) by omega.
       pose proof (whenChildHigh t''GtTc tcLtT'') as [t''' [[tcLeT''' t'''LtT''] [m' [mrecvm' _]]]].
-      pose proof (m.recvImpMarkSend mrecvm') as [td [tdLeT''' msendm']].
+      pose proof (recvImpMarkSend mrecvm') as [td [tdLeT''' msendm']].
       assert (tdLet: td <= t) by omega.
-      assert (noRecv: forall tc', tc' < tc -> ~ m.recv p c a tc' m') by (
+      assert (noRecv: forall tc', tc' < tc -> ~ recv mch p c a tc' m') by (
         unfold not; intros tc' tc'LtTc mrecvm'Tc';
-          pose proof (m.uniqRecv2 mrecvm' mrecvm'Tc') as tc'EqT''; omega).
-      assert (noRecv': forall tp', tp' <= td -> ~ r.recv c p a tp' r) by (
+          pose proof (uniqRecv2 mrecvm' mrecvm'Tc') as tc'EqT''; omega).
+      assert (noRecv': forall tp', tp' <= td -> ~ recv rch c p a tp' r) by (
         unfold not; intros tp' tp'LeTd;
           assert (tp'LeTp: tp' <= tp) by omega;
             firstorder).
@@ -428,43 +416,43 @@ Module Type System (dataTypes: DataTypes).
       assert (stt'LtstTc: state c a t' < state c a tmur) by omega.
       assert (tmurGtT': tmur > t') by omega.
       pose proof (whenChildHigh tmurGtT' stt'LtstTc) as [t'' [[tcLeT'' t''LtT'] [m' [mrecvm' _]]]].
-      pose proof (m.recvImpMarkSend mrecvm') as [td [tdLeT'' msendm']].
+      pose proof (recvImpMarkSend mrecvm') as [td [tdLeT'' msendm']].
       assert (tdLet: td <= t) by omega.
-      assert (noRecv: forall tc', tc' < t' -> ~ m.recv p c a tc' m') by (
+      assert (noRecv: forall tc', tc' < t' -> ~ recv mch p c a tc' m') by (
         unfold not; intros tc' tc'LtTc mrecvm'Tc';
-          pose proof (m.uniqRecv2 mrecvm' mrecvm'Tc') as tc'EqT''; omega).
+          pose proof (uniqRecv2 mrecvm' mrecvm'Tc') as tc'EqT''; omega).
       assert (opts: td = tp \/ td < tp \/ td > tp) by omega.
       destruct opts as [tdEqTp | [tdLTp | tdGtTp]].
       rewrite tdEqTp in *.
-      pose proof (m.uniqMarksend1 msendm msendm') as mEqm'.
+      pose proof (uniqMarksend1 msendm msendm') as mEqm'.
       rewrite <- mEqm' in *.
       assert (t''LtTc: t'' < tc) by omega.
       firstorder.
-      assert (noRecv': forall tp', tp' <= td -> ~ r.recv c p a tp' r') by (
+      assert (noRecv': forall tp', tp' <= td -> ~ recv rch c p a tp' r') by (
         unfold not; intros tp' tp'LeTd rrecvr'Tp';
-          pose proof (r.uniqRecv2 rrecvr' rrecvr'Tp') as tp'EqTp;
+          pose proof (uniqRecv2 rrecvr' rrecvr'Tp') as tp'EqTp;
             omega).
       assert (t'LeT: t' <= t) by omega.
       apply (IHt t' td t'LeT tdLet r' m' rsendr' msendm' noRecv noRecv').
       pose proof (dirSendmImpRecvr msendm') as [r'' rrecvr''].
-      pose proof (r.recvImpMarkSend rrecvr'') as [ts [tsLeTd rsendr'']].
+      pose proof (recvImpMarkSend rrecvr'') as [ts [tsLeTd rsendr'']].
       assert (tpLeT: tp <= t) by omega.
       assert (tsLeT: ts <= t) by omega.
-      assert (hyp1: forall tc', tc' < ts -> ~ m.recv p c a tc' m) by (
+      assert (hyp1: forall tc', tc' < ts -> ~ recv mch p c a tc' m) by (
         intros tc' tc'LtTs;
           assert (tc'LtTc: tc' < tc) by omega;
             firstorder).
-      assert (hyp2: forall tp', tp' <= tp -> ~ r.recv c p a tp' r'') by (
+      assert (hyp2: forall tp', tp' <= tp -> ~ recv rch c p a tp' r'') by (
         unfold not; intros tp' tpLeTp rrecvr''Tp';
-          pose proof (r.uniqRecv2 rrecvr'' rrecvr''Tp') as tdEqTp';
+          pose proof (uniqRecv2 rrecvr'' rrecvr''Tp') as tdEqTp';
             rewrite <- tdEqTp' in *;
               firstorder).
       apply (IHt ts tp tsLeT tpLeT r'' m rsendr'' msendm hyp1 hyp2).
     Qed.
 
-    Lemma cReqPRespCross: forall {a tc tp r m}, r.marksend c p a tc r ->
-      m.marksend p c a tp m -> (forall tc', tc' < tc -> ~ m.recv p c a tc' m) ->
-      (forall tp', tp' <= tp -> ~ r.recv c p a tp' r) -> False.
+    Lemma cReqPRespCross: forall {a tc tp r m}, marksend rch c p a tc r ->
+      marksend mch p c a tp m -> (forall tc', tc' < tc -> ~ recv mch p c a tc' m) ->
+      (forall tp', tp' <= tp -> ~ recv rch c p a tp' r) -> False.
     Proof.
       intros a tc tp.
       assert (tcLeT: tc <= tc + tp) by omega.
@@ -477,35 +465,35 @@ Module Type System (dataTypes: DataTypes).
       intros a tx t1 m1 t1LeTx sendm1 t2 m2 t2LeTx sendm2 norecvm1 norecvm2.
       pose proof (dirSendmImpRecvr sendm1) as [r1 recvr1].
       pose proof (dirSendmImpRecvr sendm2) as [r2 recvr2].
-      pose proof (r.recvImpMarkSend recvr1) as [t3 [t3LeT1 sendr1]].
-      pose proof (r.recvImpMarkSend recvr2) as [t4 [t4LeT2 sendr2]].
+      pose proof (recvImpMarkSend recvr1) as [t3 [t3LeT1 sendr1]].
+      pose proof (recvImpMarkSend recvr2) as [t4 [t4LeT2 sendr2]].
       assert (opts: t3 = t4 \/ t3 < t4 \/ t4 < t3) by omega.
       destruct opts as [t3EqT4|[t3LtT4|t4LtT3]].
-      rewrite t3EqT4 in *; pose proof (r.uniqMarksend1 sendr1 sendr2) as r1EqR2.
-      rewrite r1EqR2 in *; apply (r.uniqRecv2 recvr1 recvr2).
+      rewrite t3EqT4 in *; pose proof (uniqMarksend1 sendr1 sendr2) as r1EqR2.
+      rewrite r1EqR2 in *; apply (uniqRecv2 recvr1 recvr2).
 
-      assert (noRecv: ~ exists t, t3 <= t < t4 /\ exists m, m.recv p c a t m) by (
+      assert (noRecv: ~ exists t, t3 <= t < t4 /\ exists m, recv mch p c a t m) by (
         unfold not; intros [t [cond [m recvm]]];
-          pose proof (m.recvImpMarkSend recvm) as [t5 [t5LeT sendm]];
+          pose proof (recvImpMarkSend recvm) as [t5 [t5LeT sendm]];
             assert (opts: t5 = t1 \/ t5 < t1 \/ t5 > t1) by omega;
               destruct opts as [t5EqT1 | [t5LtT1 | t5GtT1]]; [
-                rewrite t5EqT1 in *; pose proof (m.uniqMarksend1 sendm1 sendm) as m1EqM;
+                rewrite t5EqT1 in *; pose proof (uniqMarksend1 sendm1 sendm) as m1EqM;
                   rewrite m1EqM in *; assert (tLeTx: t <= tx) by omega;
                     generalize tLeTx norecvm1 recvm; clear; firstorder |
-                assert (one: forall tc', tc' < t3 -> ~ m.recv p c a tc' m) by (
-                  unfold not; intros tc' tc'LtT3 recv'm; pose proof (m.uniqRecv2 recvm recv'm) as tEqTc';
+                assert (one: forall tc', tc' < t3 -> ~ recv mch p c a tc' m) by (
+                  unfold not; intros tc' tc'LtT3 recv'm; pose proof (uniqRecv2 recvm recv'm) as tEqTc';
                     rewrite tEqTc' in *; firstorder);
-                assert (two: forall tp', tp' <= t5 -> ~ r.recv c p a tp' r1) by (
-                  unfold not; intros tp' tp'LeT1 recv'r1; pose proof (r.uniqRecv2 recvr1 recv'r1) as t5EqTp';
+                assert (two: forall tp', tp' <= t5 -> ~ recv rch c p a tp' r1) by (
+                  unfold not; intros tp' tp'LeT1 recv'r1; pose proof (uniqRecv2 recvr1 recv'r1) as t5EqTp';
                     rewrite <- t5EqTp' in *; firstorder);
                 apply (cReqPRespCross sendr1 sendm one two) |
                   pose proof (dirSendmImpRecvr sendm) as [r recvr];
-                    pose proof (r.recvImpMarkSend recvr) as [t6 [t6LeT5 sendr]];
-                      assert (one: forall tc', tc' < t6 -> ~ m.recv p c a tc' m1) by (
+                    pose proof (recvImpMarkSend recvr) as [t6 [t6LeT5 sendr]];
+                      assert (one: forall tc', tc' < t6 -> ~ recv mch p c a tc' m1) by (
                         unfold not; intros tc' tc'LtT6 recv'm1; assert (tc'LeT6: tc' <= tx) by omega;
                           generalize norecvm1 recv'm1 tc'LeT6; clear; firstorder);
-                      assert (two: forall tp', tp' <= t1 -> ~ r.recv c p a tp' r) by (
-                        unfold not; intros tp' tp'LeT1 recv'r; pose proof (r.uniqRecv2 recvr recv'r) as t1EqTp';
+                      assert (two: forall tp', tp' <= t1 -> ~ recv rch c p a tp' r) by (
+                        unfold not; intros tp' tp'LeT1 recv'r; pose proof (uniqRecv2 recvr recv'r) as t1EqTp';
                           rewrite <- t1EqTp' in *; firstorder);
                       apply (cReqPRespCross sendr sendm1 one two)]).
       assert (t3LeT4: t3 <= t4) by omega.
@@ -513,7 +501,7 @@ Module Type System (dataTypes: DataTypes).
       pose proof (sb.sendrImpNoSendr t3LtT4 sendr1 sendr2) as [t5 [t3LtT5LeT4 neg]].
       unfold St.toRSComp, St.st in *.
       assert (pos: state c a t5 > state c a t3) by omega.
-      assert (noRecv': ~ exists t, t3 <= t < t5 /\ exists m, m.recv p c a t m /\ to m >= state c a t5) by (
+      assert (noRecv': ~ exists t, t3 <= t < t5 /\ exists m, recv mch p c a t m /\ to m >= state c a t5) by (
         unfold not; intros [t [cond1 [mg [recvmg _]]]];
           assert (cond: t3 <= t < t4) by omega;
             generalize recvmg cond noRecv; clear; firstorder).
@@ -521,28 +509,28 @@ Module Type System (dataTypes: DataTypes).
       pose proof (whenChildHighConv t3LeT5 noRecv') as stContra.
       omega.
 
-      assert (noRecv: ~ exists t, t4 <= t < t3 /\ exists m, m.recv p c a t m) by (
+      assert (noRecv: ~ exists t, t4 <= t < t3 /\ exists m, recv mch p c a t m) by (
         unfold not; intros [t [cond [m recvm]]];
-          pose proof (m.recvImpMarkSend recvm) as [t5 [t5LeT sendm]];
+          pose proof (recvImpMarkSend recvm) as [t5 [t5LeT sendm]];
             assert (opts: t5 = t2 \/ t5 < t2 \/ t5 > t2) by omega;
               destruct opts as [t5EqT1 | [t5LtT1 | t5GtT1]]; [
-                rewrite t5EqT1 in *; pose proof (m.uniqMarksend1 sendm2 sendm) as m1EqM;
+                rewrite t5EqT1 in *; pose proof (uniqMarksend1 sendm2 sendm) as m1EqM;
                   rewrite m1EqM in *; assert (tLeTx: t <= tx) by omega;
                     generalize tLeTx norecvm2 recvm; clear; firstorder |
-                assert (one: forall tc', tc' < t4 -> ~ m.recv p c a tc' m) by (
-                  unfold not; intros tc' tc'LtT3 recv'm; pose proof (m.uniqRecv2 recvm recv'm) as tEqTc';
+                assert (one: forall tc', tc' < t4 -> ~ recv mch p c a tc' m) by (
+                  unfold not; intros tc' tc'LtT3 recv'm; pose proof (uniqRecv2 recvm recv'm) as tEqTc';
                     rewrite tEqTc' in *; firstorder);
-                assert (two: forall tp', tp' <= t5 -> ~ r.recv c p a tp' r2) by (
-                  unfold not; intros tp' tp'LeT1 recv'r1; pose proof (r.uniqRecv2 recvr2 recv'r1) as t5EqTp';
+                assert (two: forall tp', tp' <= t5 -> ~ recv rch c p a tp' r2) by (
+                  unfold not; intros tp' tp'LeT1 recv'r1; pose proof (uniqRecv2 recvr2 recv'r1) as t5EqTp';
                     rewrite <- t5EqTp' in *; firstorder);
                 apply (cReqPRespCross sendr2 sendm one two)|
                   pose proof (dirSendmImpRecvr sendm) as [r recvr];
-                    pose proof (r.recvImpMarkSend recvr) as [t6 [t6LeT5 sendr]];
-                      assert (one: forall tc', tc' < t6 -> ~ m.recv p c a tc' m2) by (
+                    pose proof (recvImpMarkSend recvr) as [t6 [t6LeT5 sendr]];
+                      assert (one: forall tc', tc' < t6 -> ~ recv mch p c a tc' m2) by (
                         unfold not; intros tc' tc'LtT6 recv'm1; assert (tc'LeT6: tc' <= tx) by omega;
                           generalize norecvm2 recv'm1 tc'LeT6; clear; firstorder);
-                      assert (two: forall tp', tp' <= t2 -> ~ r.recv c p a tp' r) by (
-                        unfold not; intros tp' tp'LeT1 recv'r; pose proof (r.uniqRecv2 recvr recv'r) as t1EqTp';
+                      assert (two: forall tp', tp' <= t2 -> ~ recv rch c p a tp' r) by (
+                        unfold not; intros tp' tp'LeT1 recv'r; pose proof (uniqRecv2 recvr recv'r) as t1EqTp';
                           rewrite <- t1EqTp' in *; firstorder);
                       apply (cReqPRespCross sendr sendm2 one two)]).
       assert (t3LeT4: t4 <= t3) by omega.
@@ -550,7 +538,7 @@ Module Type System (dataTypes: DataTypes).
       pose proof (sb.sendrImpNoSendr t4LtT3 sendr2 sendr1) as [t5 [t3LtT5LeT4 neg]].
       unfold St.toRSComp, St.st in *.
       assert (pos: state c a t5 > state c a t4) by omega.
-      assert (noRecv': ~ exists t, t4 <= t < t5 /\ exists m, m.recv p c a t m /\ to m >= state c a t5) by (
+      assert (noRecv': ~ exists t, t4 <= t < t5 /\ exists m, recv mch p c a t m /\ to m >= state c a t5) by (
         unfold not; intros [t [cond1 [mg [recvmg _]]]];
           assert (cond: t4 <= t < t3) by omega;
             generalize recvmg cond noRecv; clear; firstorder).
@@ -577,15 +565,15 @@ Module Type System (dataTypes: DataTypes).
 
     Lemma mainInd: forall {a t},
       (forall {to}, to <= t -> state c a to <= dir p c a to) /\
-      (forall {tc tp}, tc <= t -> tp <= t -> forall {mc}, m.marksend c p a tc mc ->
-        forall {mp}, m.marksend p c a tp mp -> (forall tc', tc' < tc -> ~ m.recv p c a tc' mp) ->
-          (forall tp', tp' < tp -> ~ m.recv c p a tp' mc) -> False) /\
-       (forall {t1 t2 t3}, t3 <= t -> forall {m}, m.marksend c p a t1 m ->
-         forall {r}, r.marksend c p a t2 r -> r.recv c p a t3 r -> t1 <= t2 ->
-          (forall t4, t4 < t3 -> ~ m.recv c p a t4 m) -> False) /\
-       (forall {t1 t2 t3}, t3 <= t -> forall {m}, m.marksend c p a t1 m ->
-         forall {m'}, m.marksend c p a t2 m' -> m.recv c p a t3 m' -> t1 < t2 ->
-          (forall t4, t4 < t3 -> ~ m.recv c p a t4 m) -> False).
+      (forall {tc tp}, tc <= t -> tp <= t -> forall {mc}, marksend mch c p a tc mc ->
+        forall {mp}, marksend mch p c a tp mp -> (forall tc', tc' < tc -> ~ recv mch p c a tc' mp) ->
+          (forall tp', tp' < tp -> ~ recv mch c p a tp' mc) -> False) /\
+       (forall {t1 t2 t3}, t3 <= t -> forall {m}, marksend mch c p a t1 m ->
+         forall {r}, marksend rch c p a t2 r -> recv rch c p a t3 r -> t1 <= t2 ->
+          (forall t4, t4 < t3 -> ~ recv mch c p a t4 m) -> False) /\
+       (forall {t1 t2 t3}, t3 <= t -> forall {m}, marksend mch c p a t1 m ->
+         forall {m'}, marksend mch c p a t2 m' -> recv mch c p a t3 m' -> t1 < t2 ->
+          (forall t4, t4 < t3 -> ~ recv mch c p a t4 m) -> False).
     Proof.
       intros a t.
       induction t.
@@ -600,14 +588,14 @@ Module Type System (dataTypes: DataTypes).
       assert (tcEq0: tc = 0) by omega; assert (tpEq0: tp = 0) by omega.
       rewrite tcEq0 in *; rewrite tpEq0 in *.
       pose proof (dirSendmImpRecvr msendmp) as [r rrecvr].
-      pose proof (r.recvImpMarkSend rrecvr) as [t' [t'Le0 rsendr]].
+      pose proof (recvImpMarkSend rrecvr) as [t' [t'Le0 rsendr]].
       assert (t'Eq0: t' = 0) by omega.
       rewrite t'Eq0 in *.
       apply (sb.noSendmSendr msendmc rsendr).
       constructor.
       intros t1 t2 t3 t3Le0 m msendm r rsendr rrecvr t1LeT2 neg.
-      pose proof (r.recvImpMarkSend rrecvr) as [t5 [t5LeT3 rsendrT5]].
-      pose proof (r.uniqMarksend2 rsendr rsendrT5) as t2EqT5.
+      pose proof (recvImpMarkSend rrecvr) as [t5 [t5LeT3 rsendrT5]].
+      pose proof (uniqMarksend2 rsendr rsendrT5) as t2EqT5.
       assert (t30: t3 = 0) by omega.
       rewrite t2EqT5, t30 in *.
       assert (t1Le0: t1 <= 0) by omega.
@@ -616,8 +604,8 @@ Module Type System (dataTypes: DataTypes).
       rewrite t10, t50 in *.
       apply (sb.noSendmSendr msendm rsendr).
       intros t1 t2 t3 t3Le0 m msendm m' msendm' mrecvm' t1LeT2 neg.
-      pose proof (m.recvImpMarkSend mrecvm') as [t5 [t5LeT3 msendm'T5]].
-      pose proof (m.uniqMarksend2 msendm' msendm'T5) as t2EqT5.
+      pose proof (recvImpMarkSend mrecvm') as [t5 [t5LeT3 msendm'T5]].
+      pose proof (uniqMarksend2 msendm' msendm'T5) as t2EqT5.
       assert (t30: t3 = 0) by omega.
       rewrite t2EqT5, t30 in *.
       assert (t1Le0: t1 <= 0) by omega.
@@ -630,8 +618,8 @@ Module Type System (dataTypes: DataTypes).
 
       assert (cross': forall to0, to0 <= S t -> state c a to0 <= dir p c a to0).
       intros tm toLtT.
-      destruct (classical (exists ts, ts < tm /\ ((exists m, m.recv c p a ts m) \/
-        (exists m, m.marksend p c a ts m)))) as [chnge|noChnge].
+      destruct (classical (exists ts, ts < tm /\ ((exists m, recv mch c p a ts m) \/
+        (exists m, marksend mch p c a ts m)))) as [chnge|noChnge].
       pose proof (maxExists' classical chnge) as lastChnge; clear chnge.
       destruct lastChnge as [ts [tsLtTo [recvOrSend noPrevChnge]]].
       assert (eq: dir p c a (S ts) = dir p c a tm) by (
@@ -640,25 +628,25 @@ Module Type System (dataTypes: DataTypes).
             intuition|
               apply db.noChange; [ intuition | generalize noPrevChnge; clear; firstorder]]).
       destruct recvOrSend as [[m mrecvm] | [m msendm]].
-      pose proof (m.recvImpMarkSend mrecvm) as [t' [t'LeTs msendm]].
-      destruct (classical (exists tc, t' < tc < tm /\ exists m, m.recv p c a tc m)) as [recv|noRecv].
+      pose proof (recvImpMarkSend mrecvm) as [t' [t'LeTs msendm]].
+      destruct (classical (exists tc, t' < tc < tm /\ exists m, recv mch p c a tc m)) as [recv|noRecv].
       destruct recv as [tc [comp [m' mrecvm']]].
-      pose proof (m.recvImpMarkSend mrecvm') as [t'' [t''LeTc msendm']].
+      pose proof (recvImpMarkSend mrecvm') as [t'' [t''LeTc msendm']].
       assert (gOrl: t'' > ts \/ t'' <= ts) by omega.
       destruct gOrl as [t''GtTs | t''LeTs].
       assert (t''LtTc: t'' < tm) by omega.
       generalize noPrevChnge msendm' t''LtTc t''GtTs; clear; firstorder.
       assert (t'LeT: t' <= t) by omega.
       assert (t''LeT: t'' <= t) by omega.
-      assert (hyp1: forall tc', tc' < t' -> ~ m.recv p c a tc' m') by (
+      assert (hyp1: forall tc', tc' < t' -> ~ recv mch p c a tc' m') by (
         unfold not; intros tc' tc'LtT' mrecvm'Tc';
-          pose proof (m.uniqRecv2 mrecvm' mrecvm'Tc'); intuition).
-      assert (hyp2: forall tp', tp' < t'' -> ~ m.recv c p a tp' m) by (
+          pose proof (uniqRecv2 mrecvm' mrecvm'Tc'); intuition).
+      assert (hyp2: forall tp', tp' < t'' -> ~ recv mch c p a tp' m) by (
         unfold not; intros tp' tp'LtT'' mrecvmTp';
-          pose proof (m.uniqRecv2 mrecvm mrecvmTp'); intuition).
+          pose proof (uniqRecv2 mrecvm mrecvmTp'); intuition).
       pose proof (cross t' t'' t'LeT t''LeT m msendm m' msendm' hyp1 hyp2).
       firstorder.
-      assert (noRecv': ~ (exists tc, S t' <= tc < tm /\ exists m, m.recv p c a tc m /\ to m >= state c a tm)) by
+      assert (noRecv': ~ (exists tc, S t' <= tc < tm /\ exists m, recv mch p c a tc m /\ to m >= state c a tm)) by
         (
         unfold not; intros [tc [cond [m0 [mrecvm0 _]]]];
           assert (cond': t' < tc < tm) by omega; generalize noRecv cond' mrecvm0; clear; firstorder).
@@ -677,36 +665,36 @@ Module Type System (dataTypes: DataTypes).
       assert (stoLesSt': state c a tm <= state c a (S t')) by omega.
       congruence.
       pose proof (dirSendmImpRecvr msendm) as [r rrecvr].
-      pose proof (r.recvImpMarkSend rrecvr) as [t' [t'LeTs rsendr]].
-      destruct (classical (exists tc, tc < tm /\ m.recv p c a tc m)) as [[tc [tcLtTo mrecvm]] | notEx].
+      pose proof (recvImpMarkSend rrecvr) as [t' [t'LeTs rsendr]].
+      destruct (classical (exists tc, tc < tm /\ recv mch p c a tc m)) as [[tc [tcLtTo mrecvm]] | notEx].
       assert (eqOrNot: tm = S tc \/ tm > S tc) by omega.
       destruct eqOrNot as [toEqStc | toGtStc].
       assert (dirEqSt: state c a tm = dir p c a tm) by (
         pose proof (db.sendmChange msendm) as one; pose proof (sb.recvmChange mrecvm) as two;
           unfold St.st, Dir.st in *; congruence).
       omega.
-      assert (noLower: ~ exists t'', S tc <= t'' < tm /\ exists m', m.recv p c a t'' m' /\ to m' >= state c a tm)
+      assert (noLower: ~ exists t'', S tc <= t'' < tm /\ exists m', recv mch p c a t'' m' /\ to m' >= state c a tm)
         by (
         unfold not; intros [t'' [cond [m' [mrecvm' _]]]];
-          pose proof (m.recvImpMarkSend mrecvm') as [tf [tfLeT'' msendm']];
+          pose proof (recvImpMarkSend mrecvm') as [tf [tfLeT'' msendm']];
             assert (diff: ts = tf \/ tf < ts \/ tf > ts) by omega;
               destruct diff as [tsEqTf | [tfLtTs | tfGtTs]]; [
                 rewrite <- tsEqTf in *;
-                  pose proof (m.uniqMarksend1 msendm msendm') as mEqM';
+                  pose proof (uniqMarksend1 msendm msendm') as mEqM';
                     rewrite <- mEqM' in *;
-                      pose proof (m.uniqRecv2 mrecvm mrecvm') as tcEqT'';
+                      pose proof (uniqRecv2 mrecvm mrecvm') as tcEqT'';
                         omega |
                           assert (t'LeTc: t' <= tc) by (
-                            pose proof (m.recvImpMarkSend mrecvm) as [tsome [tsomeLe'' msendmTsome]];
-                              pose proof (m.uniqMarksend2 msendm msendmTsome) as tcEqTsome;
+                            pose proof (recvImpMarkSend mrecvm) as [tsome [tsomeLe'' msendmTsome]];
+                              pose proof (uniqMarksend2 msendm msendmTsome) as tcEqTsome;
                                 rewrite <- tcEqTsome in *; omega);
                           pose proof @cReqPRespCross;
-                            assert (cross1: forall tc', tc' < t' -> ~ m.recv p c a tc' m') by (
+                            assert (cross1: forall tc', tc' < t' -> ~ recv mch p c a tc' m') by (
                               unfold not; intros tc' tc'LtT' mrecvm'Tc';
-                                pose proof (m.uniqRecv2 mrecvm' mrecvm'Tc') as t'EqTc'; omega);
-                            assert (cross2: forall tp', tp' <= tf -> ~ r.recv c p a tp' r) by (
+                                pose proof (uniqRecv2 mrecvm' mrecvm'Tc') as t'EqTc'; omega);
+                            assert (cross2: forall tp', tp' <= tf -> ~ recv rch c p a tp' r) by (
                               unfold not; intros tp' tp'LeTf rrecvrTp';
-                                pose proof (r.uniqRecv2 rrecvr rrecvrTp') as tfEqTp'; omega);
+                                pose proof (uniqRecv2 rrecvr rrecvrTp') as tfEqTp'; omega);
                             assert (t''LeT: t'' <= t) by omega;
                               assert (tfLeT: tf <= t) by omega;
                                 apply (cReqPRespCross rsendr msendm' cross1 cross2)|
@@ -722,12 +710,12 @@ Module Type System (dataTypes: DataTypes).
       assert (tsLeT: ts <= t) by omega.
       assert (less: state c a ts <= dir p c a ts) by firstorder.
       assert (tmGtTs: tm > t') by omega.
-      assert (noRecv: ~ exists t'', t' <= t'' < tm /\ exists m, m.recv p c a t'' m /\ to m >= state c a tm) by (
+      assert (noRecv: ~ exists t'', t' <= t'' < tm /\ exists m, recv mch p c a t'' m /\ to m >= state c a tm) by (
         unfold not; intros [t'' [cond [m' [mrecvm' _]]]];
-          pose proof (m.recvImpMarkSend mrecvm') as [t1 [t1LeT'' msendm']];
+          pose proof (recvImpMarkSend mrecvm') as [t1 [t1LeT'' msendm']];
             assert (t1NeTs: t1 = ts -> False) by (
               intros t1EqTs; rewrite t1EqTs in *;
-                pose proof (m.uniqMarksend1 msendm msendm') as mEqm';
+                pose proof (uniqMarksend1 msendm msendm') as mEqm';
                   rewrite <- mEqm' in *; 
                     generalize notEx cond mrecvm'; clear; firstorder);
             assert (eqOrNot: t1 = ts \/ t1 > ts \/ t1 < ts) by omega;
@@ -735,12 +723,12 @@ Module Type System (dataTypes: DataTypes).
                 [firstorder |
                   assert (cond2: ts < t1 < tm) by omega;
                     generalize noPrevChnge cond2 msendm'; clear; firstorder |
-                      assert (one: forall tc', tc' < t' -> ~ m.recv p c a tc' m') by (
+                      assert (one: forall tc', tc' < t' -> ~ recv mch p c a tc' m') by (
                         unfold not; intros tc' tc'LtT' mrecvm'Tc';
-                          pose proof (m.uniqRecv2 mrecvm' mrecvm'Tc') as t''EqTc'; omega);
-                      assert (two: forall tp', tp' <= t1 -> ~ r.recv c p a tp' r) by (
+                          pose proof (uniqRecv2 mrecvm' mrecvm'Tc') as t''EqTc'; omega);
+                      assert (two: forall tp', tp' <= t1 -> ~ recv rch c p a tp' r) by (
                         unfold not; intros tp' tp'LeT1 rrecvrTp';
-                          pose proof (r.uniqRecv2 rrecvr rrecvrTp') as tsEqTp'; omega);
+                          pose proof (uniqRecv2 rrecvr rrecvrTp') as tsEqTp'; omega);
                       apply (cReqPRespCross rsendr msendm' one two)]).
       assert (contra1: ~ state c a tm > state c a t') by (
         unfold not; intros contra;
@@ -761,9 +749,9 @@ Module Type System (dataTypes: DataTypes).
               generalize noChnge tnLtTm msendm; clear; firstorder).
       pose proof (db.noChange tmGt0 premise) as dir0DirTm; unfold Dir.st in *.
       pose proof @whenChildHigh.
-      assert (not: ~ exists t'', 0 <= t'' < tm /\ exists m, m.recv p c a t'' m /\ to m >= state c a tm) by (
+      assert (not: ~ exists t'', 0 <= t'' < tm /\ exists m, recv mch p c a t'' m /\ to m >= state c a tm) by (
         unfold not; intros [t'' [[_ t''LtTm] [m [mrecvm _]]]];
-          pose proof (m.recvImpMarkSend mrecvm) as [t' [t'LeT'' msendm]];
+          pose proof (recvImpMarkSend mrecvm) as [t' [t'LeT'' msendm]];
             assert (t'LtTm: t' < tm) by omega;
               generalize noChnge t'LtTm msendm; clear; firstorder).
       assert (done: ~ state c a tm > state c a 0) by (generalize (@whenChildHigh a 0 tm tmGt0) not;
@@ -773,8 +761,8 @@ Module Type System (dataTypes: DataTypes).
       constructor.
       apply cross'.
 
-      assert (cReqResp': forall {t1 t2 t3}, t3 <= S t -> forall {m}, m.marksend c p a t1 m -> forall {r},
-        r.marksend c p a t2 r -> r.recv c p a t3 r -> t1 <= t2 -> (forall t4, t4 < t3 -> ~ m.recv c p a t4 m) ->
+      assert (cReqResp': forall {t1 t2 t3}, t3 <= S t -> forall {m}, marksend mch c p a t1 m -> forall {r},
+        marksend rch c p a t2 r -> recv rch c p a t3 r -> t1 <= t2 -> (forall t4, t4 < t3 -> ~ recv mch c p a t4 m) ->
         False).
       intros t1 t2 t3 t3LeSt m msendm r rsendr rrecvr t1LeT2 neg.
       unfold Time in *.
@@ -783,25 +771,25 @@ Module Type System (dataTypes: DataTypes).
       rewrite t1EqT2 in *.
       pose proof (sb.noSendmSendr msendm rsendr); intuition.
       clear t1LeT2.
-      pose proof (r.recvImpMarkSend rrecvr) as [t' [t'LeT3 rsend'r]].
-      pose proof (r.uniqMarksend2 rsendr rsend'r) as t2EqT'.
+      pose proof (recvImpMarkSend rrecvr) as [t' [t'LeT3 rsend'r]].
+      pose proof (uniqMarksend2 rsendr rsend'r) as t2EqT'.
       rewrite <- t2EqT' in *.
       clear rsend'r t2EqT'.
       assert (t1LeT: t1 <= t) by omega.
       pose proof (cons t1 t1LeT) as st1Ledt1.
 
-      assert (notty1: ~ exists t'', t1 <= t'' < t2 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t2) by (
+      assert (notty1: ~ exists t'', t1 <= t'' < t2 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t2) by (
         unfold not; intros [t'' [cond [m0 [mrecvm0 _]]]];
-          pose proof (m.recvImpMarkSend mrecvm0) as [t5 [t5LeT'' msendm0]];
-            assert (one: forall tc', tc' < t1 -> ~ m.recv p c a tc' m0) by (
+          pose proof (recvImpMarkSend mrecvm0) as [t5 [t5LeT'' msendm0]];
+            assert (one: forall tc', tc' < t1 -> ~ recv mch p c a tc' m0) by (
               unfold not; intros tc' tc'LtT1 mrecvM0Tc';
-                pose proof (m.uniqRecv2 mrecvm0 mrecvM0Tc') as t''EqTc';
+                pose proof (uniqRecv2 mrecvm0 mrecvM0Tc') as t''EqTc';
                   rewrite <- t''EqTc' in *; omega);
-            assert (two: forall tp', tp' < t5 -> ~ m.recv c p a tp' m) by (
+            assert (two: forall tp', tp' < t5 -> ~ recv mch c p a tp' m) by (
               unfold not; intros tp' tp'LtT5; assert (t5LtT3: tp' < t3) by omega; firstorder);
             assert (t5Let: t5 <= t) by omega;
               apply (cross t1 t5 t1LeT t5Let m msendm m0 msendm0 one two)).
-      assert (notty: ~ exists t'', S t1 <= t'' < t2 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t2) by (
+      assert (notty: ~ exists t'', S t1 <= t'' < t2 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t2) by (
         clear cRespResp;
           unfold not; intros [t'' [cond ex]];
             assert (cond2: t1 <= t'' < t2) by omega;
@@ -822,61 +810,61 @@ Module Type System (dataTypes: DataTypes).
       rewrite fromREq, <- stEq in *.
       assert (drGt: dir p c a t1 > dir p c a t3) by omega.
       assert (drNe: dir p c a t1 <> dir p c a t3) by omega.
-      assert (sendRecv: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ m.marksend p c a tn m) /\
-        (forall m, ~ m.recv c p a tn m)) by (
+      assert (sendRecv: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ marksend mch p c a tn m) /\
+        (forall m, ~ recv mch c p a tn m)) by (
         unfold not; intros exp; assert (t1LtT3: t1 < t3) by omega; pose proof (db.noChange t1LtT3 exp); firstorder).
-      assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ m.marksend p c a tn m) by (
+      assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ marksend mch p c a tn m) by (
         clear cRespResp;
         unfold not; intros tn cond m0 msendm0;
           assert (tnLeT: tn <= t) by omega;
-            assert (one: forall tc', tc' < t1 -> ~ m.recv p c a tc' m0) by (
+            assert (one: forall tc', tc' < t1 -> ~ recv mch p c a tc' m0) by (
               unfold not; intros tc' tc'LtT1 mrecvm0;
-                pose proof (m.recvImpMarkSend mrecvm0) as [tm [tmLeTc' msend'm0]];
-                  pose proof (m.uniqMarksend2 msendm0 msend'm0) as tmEqTc';
+                pose proof (recvImpMarkSend mrecvm0) as [tm [tmLeTc' msend'm0]];
+                  pose proof (uniqMarksend2 msendm0 msend'm0) as tmEqTc';
                     rewrite <- tmEqTc' in *; omega);
-            assert (two: forall tp', tp' < tn -> ~ m.recv c p a tp' m) by (
+            assert (two: forall tp', tp' < tn -> ~ recv mch c p a tp' m) by (
               unfold not; intros tp' tp'LtTn; assert (tp'LtT3: tp' < t3) by omega; firstorder);
             apply (cross t1 tn t1LeT tnLeT m msendm m0 msendm0 one two)).
 
-      destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, m.recv c p a tn m0)) as [ext|noEx].
+      destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, recv mch c p a tn m0)) as [ext|noEx].
       pose proof (maxExists' classical ext) as [tn [cond [[tnLtT3 [m0 mrecvm0]] notAfter]]].
       
-      pose proof (m.recvImpMarkSend mrecvm0) as [tr [trLeTn msendm0]].
+      pose proof (recvImpMarkSend mrecvm0) as [tr [trLeTn msendm0]].
       assert (opts: tr = t1 \/ tr > t1 \/ tr < t1) by omega.
       destruct opts as [trEqT1 | [trGtT1 | trLtT1]].
       rewrite trEqT1 in *.
-      pose proof (m.uniqMarksend1 msendm msendm0) as mEqm0.
+      pose proof (uniqMarksend1 msendm msendm0) as mEqm0.
       rewrite <- mEqm0 in *.
       generalize neg cond mrecvm0; clear; firstorder.
       assert (tnLeT: tn <= t) by omega.
-      assert (cond2: forall t4, t4 < tn -> ~ m.recv c p a t4 m) by (
+      assert (cond2: forall t4, t4 < tn -> ~ recv mch c p a t4 m) by (
         intros t4 t4LtTn; assert (t4LtT3: t4 < t3) by omega;
           generalize neg t4LtT3; clear; firstorder).
       apply (cRespResp t1 tr tn tnLeT m msendm m0 msendm0 mrecvm0 trGtT1 cond2).
-      assert (notty2': ~ exists t'', tr <= t'' < t1 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t1) by (
+      assert (notty2': ~ exists t'', tr <= t'' < t1 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t1) by (
         unfold not; intros [t'' [cond2 [m1 [mrecvm1 _]]]];
-          pose proof (m.recvImpMarkSend mrecvm1) as [t5 [t5LeT'' msendm1]];
+          pose proof (recvImpMarkSend mrecvm1) as [t5 [t5LeT'' msendm1]];
             assert (trLeT: tr <= t) by omega;
               assert (t5LeT: t5 <= t) by omega;
-                assert (one: forall tc', tc' < tr -> ~ m.recv p c a tc' m1) by (
+                assert (one: forall tc', tc' < tr -> ~ recv mch p c a tc' m1) by (
                   unfold not; intros tc' tc'LtTr mrecv'm1;
-                    pose proof (m.uniqRecv2 mrecvm1 mrecv'm1) as t''EqTc';
+                    pose proof (uniqRecv2 mrecvm1 mrecv'm1) as t''EqTc';
                       rewrite <- t''EqTc' in *;
                         omega);
-                assert (two: forall tp', tp' < t5 -> ~ m.recv c p a tp' m0) by (
+                assert (two: forall tp', tp' < t5 -> ~ recv mch c p a tp' m0) by (
                   unfold not; intros tp' tp'LtT5 mrecv'm0;
-                    pose proof (m.uniqRecv2 mrecvm0 mrecv'm0) as tnEqTp';
+                    pose proof (uniqRecv2 mrecvm0 mrecv'm0) as tnEqTp';
                       rewrite <- tnEqTp' in *; omega);
                 apply (cross tr t5 trLeT t5LeT m0 msendm0 m1 msendm1 one two)).
-      assert (notty2: ~ exists t'', S tr <= t'' < t1 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t1) by (
+      assert (notty2: ~ exists t'', S tr <= t'' < t1 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t1) by (
         unfold not; intros [t'' [cond1 rest]]; assert (cond2: tr <= t'' < t1) by omega;
           generalize notty2' cond2 rest; clear; firstorder).
       assert (strLeT1: S tr <= t1) by omega.
       pose proof (whenChildHighConv strLeT1 notty2) as st1LeTr.
       pose proof (whenChildHighConv t1LtT2 notty) as sST1LeT2.
       assert (trLtT3: tr < t3) by omega.
-      assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ m.marksend p c a tn0 m) /\
-        (forall m, ~ m.recv c p a tn0 m)) by (
+      assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ marksend mch p c a tn0 m) /\
+        (forall m, ~ recv mch c p a tn0 m)) by (
         intros tn0 cond2;
           constructor; [assert (cond3: t1 <= tn0 < t3) by omega; generalize noSend cond3; clear; firstorder|
             assert (cond4: tn < tn0 < t3) by omega; 
@@ -898,45 +886,45 @@ Module Type System (dataTypes: DataTypes).
 
       intros tc tp tcLeSt tpLeSt mc msendmc mp msendmp norecvmp norecvmc.
       pose proof (dirSendmImpRecvr msendmp) as [r rrecvr].
-      pose proof (r.recvImpMarkSend rrecvr) as [t1 [t1LeTp rsendr]].
+      pose proof (recvImpMarkSend rrecvr) as [t1 [t1LeTp rsendr]].
       assert (opts: t1 = tc \/ tc < t1 \/ t1 < tc) by omega.
       destruct opts as [t1EqTc | [tcLtT1 | t1LtTc]].
       rewrite t1EqTc in *.
       apply (sb.noSendmSendr msendmc rsendr).
       assert (tcLeT1: tc <= t1) by omega.
       apply (cReqResp' tc t1 tp tpLeSt mc msendmc r rsendr rrecvr tcLeT1 norecvmc).
-      destruct (classical (exists tm, t1 <= tm < tc /\ exists m, m.recv p c a tm m)) as [ext|noExt].
+      destruct (classical (exists tm, t1 <= tm < tc /\ exists m, recv mch p c a tm m)) as [ext|noExt].
       destruct ext as [tm [[t1LeTm tmLtTc] [m recvm]]].
-      pose proof (m.recvImpMarkSend recvm) as [tn [tnLeTm sendm]].
+      pose proof (recvImpMarkSend recvm) as [tn [tnLeTm sendm]].
       assert (opts: tn = tp \/ tn < tp \/ tn > tp) by omega.
       destruct opts as [tnEqTp | [tnLtTp | tnGtTp]].
       rewrite tnEqTp in *.
-      pose proof (m.uniqMarksend1 sendm msendmp) as mEqMp.
+      pose proof (uniqMarksend1 sendm msendmp) as mEqMp.
       rewrite mEqMp in *.
       firstorder.
-      assert (one: forall tc', tc' < t1 -> ~ m.recv p c a tc' m) by (
+      assert (one: forall tc', tc' < t1 -> ~ recv mch p c a tc' m) by (
         unfold not; intros tc' tc'LtT1 recv'm;
-          pose proof (m.uniqRecv2 recvm recv'm) as tmEqTc';
+          pose proof (uniqRecv2 recvm recv'm) as tmEqTc';
             omega).
-      assert (two: forall tp', tp' <= tn -> ~ r.recv c p a tp' r) by (
+      assert (two: forall tp', tp' <= tn -> ~ recv rch c p a tp' r) by (
         unfold not; intros tp' tp'LeTn recv'r;
-          pose proof (r.uniqRecv2 rrecvr recv'r) as tpEqTp';
+          pose proof (uniqRecv2 rrecvr recv'r) as tpEqTp';
             omega).
       apply (cReqPRespCross rsendr sendm one two).
       pose proof (dirSendmImpRecvr sendm) as [r1 recvr1].
-      pose proof (r.recvImpMarkSend recvr1) as [tq [tqLeTn sendr1]].
-      assert (one: forall tc', tc' < tq -> ~ m.recv p c a tc' mp) by (
+      pose proof (recvImpMarkSend recvr1) as [tq [tqLeTn sendr1]].
+      assert (one: forall tc', tc' < tq -> ~ recv mch p c a tc' mp) by (
         unfold not; intros tc' tc'LtTq; assert (tc'LtTc: tc' < tc) by omega;
           apply (norecvmp tc' tc'LtTc)).
-      assert (two: forall tp', tp' <= tp -> ~ r.recv c p a tp' r1) by (
+      assert (two: forall tp', tp' <= tp -> ~ recv rch c p a tp' r1) by (
         unfold not; intros tp' tp'LeTp recv'r1;
-          pose proof (r.uniqRecv2 recvr1 recv'r1) as tpEqTp';
+          pose proof (uniqRecv2 recvr1 recv'r1) as tpEqTp';
             omega).
       apply (cReqPRespCross sendr1 msendmp one two).
-      assert (opt: ~ exists tm, t1 <= tm < tc /\ exists m, m.recv p c a tm m) by (
+      assert (opt: ~ exists tm, t1 <= tm < tc /\ exists m, recv mch p c a tm m) by (
         generalize noExt; clear; firstorder).
       assert (opt': forall t', t1 < t' <= tc -> ~ exists tm, t1 <= tm < t' /\ exists m,
-        m.recv p c a tm m /\ to m >= state c a t') by (
+        recv mch p c a tm m /\ to m >= state c a t') by (
           unfold not; intros t' t'LtTc [tm [cond rest]]; assert (cond2: t1 <= tm < tc) by omega;
             generalize opt t'LtTc cond2 rest; clear; firstorder).
       assert (notSth: forall t', t1 < t' <= tc -> ~ state c a t' > state c a t1) by (
@@ -952,7 +940,7 @@ Module Type System (dataTypes: DataTypes).
         intros t' cond; specialize (stcLet1 t' cond); omega).
       clear stcLet1 gtRel.
       pose proof (stVoluntary rsendr t1LtTc msendmc stcLet2) as [r1 recvr1].
-      pose proof (r.recvImpMarkSend recvr1) as [t2 [t2LeT1 sendr1]].
+      pose proof (recvImpMarkSend recvr1) as [t2 [t2LeT1 sendr1]].
       assert (t2LeTp: t2 = tp \/ t2 > tp \/ t2 < tp) by omega.
       destruct t2LeTp as [t2EqTp | [t2GtTp | t2LtTp]].
       rewrite t2EqTp in *.
@@ -961,18 +949,18 @@ Module Type System (dataTypes: DataTypes).
       pose proof (pRespReq noTwoPResp noTwoPReqNon msendmp sendr1 recvr1 tpLeT2) as [t4 [t4LtTp recvmp]].
       generalize norecvmp recvmp t4LtTp; clear; firstorder.
       pose proof (dirSendrImpNoSendm t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
-      pose proof (m.recvImpMarkSend recvm) as [t'' [t''LeT' sendm]].
+      pose proof (recvImpMarkSend recvm) as [t'' [t''LeT' sendm]].
       pose proof (sb.sendmChange sendm) as stEqToM. unfold St.st in *.
       pose proof (stRecvrNoSendm recvr1 msendmc) as sTcGtToR1.
       assert (stTcGtStST'': state c a tc > state c a (S t'')) by omega.
       assert (opts: t'' = tc \/ t'' > tc \/ t'' < tc) by omega.
       destruct opts as [t''EqTc | [t''GtTc | t''LtTc]].
       rewrite t''EqTc in *.
-      pose proof (m.uniqMarksend1 msendmc sendm) as mEqMc.
+      pose proof (uniqMarksend1 msendmc sendm) as mEqMc.
       rewrite mEqMc in *.
       generalize t'LtTp recvm norecvmc; clear; firstorder.
       assert (t'Let: t' <= t) by omega.
-      assert (norecv: forall t4, t4 < t' -> ~ m.recv c p a t4 mc) by (
+      assert (norecv: forall t4, t4 < t' -> ~ recv mch c p a t4 mc) by (
         unfold not; intros t4 t4LtT'; assert (t4LtTp: t4 < tp) by omega;
           generalize norecvmc t4LtTp; clear; firstorder).
       apply (cRespResp tc t'' t' t'Let mc msendmc m sendm recvm t''GtTc); intuition.
@@ -981,7 +969,7 @@ Module Type System (dataTypes: DataTypes).
       rewrite St''EqTc in *.
       omega.
       pose proof (whenChildHigh St''LtTc stTcGtStST'') as [ts [cond [s [recvs _]]]].
-      pose proof (m.recvImpMarkSend recvs) as [tsr [tsrLeTs sends]].
+      pose proof (recvImpMarkSend recvs) as [tsr [tsrLeTs sends]].
       assert (opts: tsr = t' \/ tsr > t' \/ tsr < t') by omega.
       destruct opts as [tsrEqT' | [tsrGtT' | tsrLtT']].
       rewrite tsrEqT' in *.
@@ -989,15 +977,15 @@ Module Type System (dataTypes: DataTypes).
       assert (t2LeTsr: t2 <= tsr) by omega.
       pose proof (pReqResp noTwoPResp noTwoPReqNon sendr1 sends recvs t2LeTsr) as [tf [tfLtTs recv'r1]].
       assert (tfLtTc: tf < tc) by omega.
-      pose proof (r.uniqRecv2 recvr1 recv'r1) as tcEqTf.
+      pose proof (uniqRecv2 recvr1 recv'r1) as tcEqTf.
       omega.
       assert (t''LeT: t'' <= t) by omega.
       assert (tsrLeT: tsr <= t) by omega.
-      assert (one: forall tc', tc' < t'' -> ~ m.recv p c a tc' s) by (
-        unfold not; intros tc' tc'LtT'' recv's; pose proof (m.uniqRecv2 recvs recv's) as tc'EqT';
+      assert (one: forall tc', tc' < t'' -> ~ recv mch p c a tc' s) by (
+        unfold not; intros tc' tc'LtT'' recv's; pose proof (uniqRecv2 recvs recv's) as tc'EqT';
           rewrite tc'EqT' in *; omega).
-      assert (two: forall tp', tp' < tsr -> ~ m.recv c p a tp' m) by (
-        unfold not; intros tp' tp'LtTsr recv'm; pose proof (m.uniqRecv2 recvm recv'm) as tp'EqTsr;
+      assert (two: forall tp', tp' < tsr -> ~ recv mch c p a tp' m) by (
+        unfold not; intros tp' tp'LtTsr recv'm; pose proof (uniqRecv2 recvm recv'm) as tp'EqTsr;
           omega).
       apply (cross t'' tsr t''LeT tsrLeT  m sendm s sends one two).
 
@@ -1009,27 +997,27 @@ Module Type System (dataTypes: DataTypes).
       assert (eqOrNot: t1 = t2 \/ t1 < t2) by omega.
       destruct eqOrNot as [t1EqT2 | t1LtT2].
       rewrite t1EqT2 in *.
-      pose proof (m.uniqMarksend1 msendm rsendr) as mEqR; omega.
+      pose proof (uniqMarksend1 msendm rsendr) as mEqR; omega.
       clear t1LeT2.
-      pose proof (m.recvImpMarkSend rrecvr) as [t' [t'LeT3 rsend'r]].
-      pose proof (m.uniqMarksend2 rsendr rsend'r) as t2EqT'.
+      pose proof (recvImpMarkSend rrecvr) as [t' [t'LeT3 rsend'r]].
+      pose proof (uniqMarksend2 rsendr rsend'r) as t2EqT'.
       rewrite <- t2EqT' in *.
       clear rsend'r t2EqT'.
       assert (t1LeT: t1 <= t) by omega.
       pose proof (cons t1 t1LeT) as st1Ledt1.
 
-      assert (notty1: ~ exists t'', t1 <= t'' < t2 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t2) by (
+      assert (notty1: ~ exists t'', t1 <= t'' < t2 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t2) by (
         unfold not; intros [t'' [cond [m0 [mrecvm0 _]]]];
-          pose proof (m.recvImpMarkSend mrecvm0) as [t5 [t5LeT'' msendm0]];
-            assert (one: forall tc', tc' < t1 -> ~ m.recv p c a tc' m0) by (
+          pose proof (recvImpMarkSend mrecvm0) as [t5 [t5LeT'' msendm0]];
+            assert (one: forall tc', tc' < t1 -> ~ recv mch p c a tc' m0) by (
               unfold not; intros tc' tc'LtT1 mrecvM0Tc';
-                pose proof (m.uniqRecv2 mrecvm0 mrecvM0Tc') as t''EqTc';
+                pose proof (uniqRecv2 mrecvm0 mrecvM0Tc') as t''EqTc';
                   rewrite <- t''EqTc' in *; omega);
-            assert (two: forall tp', tp' < t5 -> ~ m.recv c p a tp' m) by (
+            assert (two: forall tp', tp' < t5 -> ~ recv mch c p a tp' m) by (
               unfold not; intros tp' tp'LtT5; assert (t5LtT3: tp' < t3) by omega; firstorder);
             assert (t5Let: t5 <= t) by omega;
               apply (cross t1 t5 t1LeT t5Let m msendm m0 msendm0 one two)).
-      assert (notty: ~ exists t'', S t1 <= t'' < t2 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t2) by (
+      assert (notty: ~ exists t'', S t1 <= t'' < t2 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t2) by (
         clear cRespResp;
           unfold not; intros [t'' [cond ex]];
             assert (cond2: t1 <= t'' < t2) by omega;
@@ -1050,61 +1038,61 @@ Module Type System (dataTypes: DataTypes).
       rewrite fromREq, <- stEq in *.
       assert (drGt: dir p c a t1 > dir p c a t3) by omega.
       assert (drNe: dir p c a t1 <> dir p c a t3) by omega.
-      assert (sendRecv: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ m.marksend p c a tn m) /\
-        (forall m, ~ m.recv c p a tn m)) by (
+      assert (sendRecv: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ marksend mch p c a tn m) /\
+        (forall m, ~ recv mch c p a tn m)) by (
         unfold not; intros exp; assert (t1LtT3: t1 < t3) by omega; pose proof (db.noChange t1LtT3 exp); firstorder).
-      assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ m.marksend p c a tn m) by (
+      assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ marksend mch p c a tn m) by (
         clear cRespResp;
         unfold not; intros tn cond m0 msendm0;
           assert (tnLeT: tn <= t) by omega;
-            assert (one: forall tc', tc' < t1 -> ~ m.recv p c a tc' m0) by (
+            assert (one: forall tc', tc' < t1 -> ~ recv mch p c a tc' m0) by (
               unfold not; intros tc' tc'LtT1 mrecvm0;
-                pose proof (m.recvImpMarkSend mrecvm0) as [tm [tmLeTc' msend'm0]];
-                  pose proof (m.uniqMarksend2 msendm0 msend'm0) as tmEqTc';
+                pose proof (recvImpMarkSend mrecvm0) as [tm [tmLeTc' msend'm0]];
+                  pose proof (uniqMarksend2 msendm0 msend'm0) as tmEqTc';
                     rewrite <- tmEqTc' in *; omega);
-            assert (two: forall tp', tp' < tn -> ~ m.recv c p a tp' m) by (
+            assert (two: forall tp', tp' < tn -> ~ recv mch c p a tp' m) by (
               unfold not; intros tp' tp'LtTn; assert (tp'LtT3: tp' < t3) by omega; firstorder);
             apply (cross t1 tn t1LeT tnLeT m msendm m0 msendm0 one two)).
 
-      destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, m.recv c p a tn m0)) as [ext|noEx].
+      destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, recv mch c p a tn m0)) as [ext|noEx].
       pose proof (maxExists' classical ext) as [tn [cond [[tnLtT3 [m0 mrecvm0]] notAfter]]].
       
-      pose proof (m.recvImpMarkSend mrecvm0) as [tr [trLeTn msendm0]].
+      pose proof (recvImpMarkSend mrecvm0) as [tr [trLeTn msendm0]].
       assert (opts: tr = t1 \/ tr > t1 \/ tr < t1) by omega.
       destruct opts as [trEqT1 | [trGtT1 | trLtT1]].
       rewrite trEqT1 in *.
-      pose proof (m.uniqMarksend1 msendm msendm0) as mEqm0.
+      pose proof (uniqMarksend1 msendm msendm0) as mEqm0.
       rewrite <- mEqm0 in *.
       generalize neg cond mrecvm0; clear; firstorder.
       assert (tnLeT: tn <= t) by omega.
-      assert (cond2: forall t4, t4 < tn -> ~ m.recv c p a t4 m) by (
+      assert (cond2: forall t4, t4 < tn -> ~ recv mch c p a t4 m) by (
         intros t4 t4LtTn; assert (t4LtT3: t4 < t3) by omega;
           generalize neg t4LtT3; clear; firstorder).
       apply (cRespResp t1 tr tn tnLeT m msendm m0 msendm0 mrecvm0 trGtT1 cond2).
-      assert (notty2': ~ exists t'', tr <= t'' < t1 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t1) by (
+      assert (notty2': ~ exists t'', tr <= t'' < t1 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t1) by (
         unfold not; intros [t'' [cond2 [m1 [mrecvm1 _]]]];
-          pose proof (m.recvImpMarkSend mrecvm1) as [t5 [t5LeT'' msendm1]];
+          pose proof (recvImpMarkSend mrecvm1) as [t5 [t5LeT'' msendm1]];
             assert (trLeT: tr <= t) by omega;
               assert (t5LeT: t5 <= t) by omega;
-                assert (one: forall tc', tc' < tr -> ~ m.recv p c a tc' m1) by (
+                assert (one: forall tc', tc' < tr -> ~ recv mch p c a tc' m1) by (
                   unfold not; intros tc' tc'LtTr mrecv'm1;
-                    pose proof (m.uniqRecv2 mrecvm1 mrecv'm1) as t''EqTc';
+                    pose proof (uniqRecv2 mrecvm1 mrecv'm1) as t''EqTc';
                       rewrite <- t''EqTc' in *;
                         omega);
-                assert (two: forall tp', tp' < t5 -> ~ m.recv c p a tp' m0) by (
+                assert (two: forall tp', tp' < t5 -> ~ recv mch c p a tp' m0) by (
                   unfold not; intros tp' tp'LtT5 mrecv'm0;
-                    pose proof (m.uniqRecv2 mrecvm0 mrecv'm0) as tnEqTp';
+                    pose proof (uniqRecv2 mrecvm0 mrecv'm0) as tnEqTp';
                       rewrite <- tnEqTp' in *; omega);
                 apply (cross tr t5 trLeT t5LeT m0 msendm0 m1 msendm1 one two)).
-      assert (notty2: ~ exists t'', S tr <= t'' < t1 /\ exists m, m.recv p c a t'' m /\ to m >= state c a t1) by (
+      assert (notty2: ~ exists t'', S tr <= t'' < t1 /\ exists m, recv mch p c a t'' m /\ to m >= state c a t1) by (
         unfold not; intros [t'' [cond1 rest]]; assert (cond2: tr <= t'' < t1) by omega;
           generalize notty2' cond2 rest; clear; firstorder).
       assert (strLeT1: S tr <= t1) by omega.
       pose proof (whenChildHighConv strLeT1 notty2) as st1LeTr.
       pose proof (whenChildHighConv t1LtT2 notty) as sST1LeT2.
       assert (trLtT3: tr < t3) by omega.
-      assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ m.marksend p c a tn0 m) /\
-        (forall m, ~ m.recv c p a tn0 m)) by (
+      assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ marksend mch p c a tn0 m) /\
+        (forall m, ~ recv mch c p a tn0 m)) by (
         intros tn0 cond2;
           constructor; [assert (cond3: t1 <= tn0 < t3) by omega; generalize noSend cond3; clear; firstorder|
             assert (cond4: tn < tn0 < t3) by omega; 
@@ -1130,8 +1118,8 @@ Module Type System (dataTypes: DataTypes).
       assert (tLeT: t <= t) by omega; firstorder.
     Qed.
 
-    Lemma cRespFifo: forall {a t1 t2 t3 m1 m2}, m.marksend c p a t1 m1 -> m.marksend c p a t2 m2 ->
-      m.recv c p a t3 m2 -> t1 < t2 -> (forall t4, t4 < t3 -> ~ m.recv c p a t4 m1) -> False.
+    Lemma cRespFifo: forall {a t1 t2 t3 m1 m2}, marksend mch c p a t1 m1 -> marksend mch c p a t2 m2 ->
+      recv mch c p a t3 m2 -> t1 < t2 -> (forall t4, t4 < t3 -> ~ recv mch c p a t4 m1) -> False.
     Proof.
       intros a t1 t2 t3 m1 m2 sendm1 sendm2 recvm2 t1LtT2.
       pose proof (@mainInd a t3) as [_ [_ [_ last]]].
@@ -1140,8 +1128,8 @@ Module Type System (dataTypes: DataTypes).
       firstorder.
     Qed.
 
-    Lemma cross: forall {a t1 t2 m1 m2}, m.marksend c p a t1 m1 -> m.marksend p c a t2 m2 ->
-      (forall t3, t3 < t1 -> ~ m.recv p c a t3 m2) -> (forall t4, t4 < t2 -> ~ m.recv c p a t4 m1) -> False.
+    Lemma cross: forall {a t1 t2 m1 m2}, marksend mch c p a t1 m1 -> marksend mch p c a t2 m2 ->
+      (forall t3, t3 < t1 -> ~ recv mch p c a t3 m2) -> (forall t4, t4 < t2 -> ~ recv mch c p a t4 m1) -> False.
       intros a t1 t2 m1 m2 sendm1 sendm2 one two.
       assert (opts: t1 <= t2 \/ t1 > t2) by omega.
       destruct opts as [t1LeT2 | t2LtT1].
@@ -1154,63 +1142,63 @@ Module Type System (dataTypes: DataTypes).
       apply (sec t1 t2 t1LeT1 t2LeT1 m1 sendm1 m2 sendm2 one two).
     Qed.
 
-    Theorem cReqRespSent: forall {a t1 t2 r}, r.marksend p c a t1 r -> r.recv p c a t2 r ->
-      to r >= state c a t2 -> exists t3, t3 < t2 /\ exists m, m.marksend c p a t3 m /\ to m <= to r /\
-        (forall t4, t4 < t1 -> ~ m.recv c p a t4 m).
+    Theorem cReqRespSent: forall {a t1 t2 r}, marksend rch p c a t1 r -> recv rch p c a t2 r ->
+      to r >= state c a t2 -> exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m /\ to m <= to r /\
+        (forall t4, t4 < t1 -> ~ recv mch c p a t4 m).
     Proof.
       intros a t1 t2 r sendr recvr toRGestT2.
-      destruct (classical (exists t3, t3 < t2 /\ exists m, m.marksend c p a t3 m /\ to m <= to r /\ forall t4,
-        t4 < t1 -> ~ m.recv c p a t4 m)) as [easy|hard].
+      destruct (classical (exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m /\ to m <= to r /\ forall t4,
+        t4 < t1 -> ~ recv mch c p a t4 m)) as [easy|hard].
       intuition.
-      pose proof (r.recvImpMarkSend recvr) as [t1' [t1LeT2 send'r]].
-      pose proof (r.uniqMarksend2 sendr send'r) as t1'EqT1.
+      pose proof (recvImpMarkSend recvr) as [t1' [t1LeT2 send'r]].
+      pose proof (uniqMarksend2 sendr send'r) as t1'EqT1.
       rewrite <- t1'EqT1 in *.
       clear t1'EqT1 send'r t1'.
 
-      destruct (classical (exists t, t < t1 /\ ((exists m, m.recv c p a t m) \/
-        (exists m, m.marksend p c a t m)))) as [ex | notEx].
+      destruct (classical (exists t, t < t1 /\ ((exists m, recv mch c p a t m) \/
+        (exists m, marksend mch p c a t m)))) as [ex | notEx].
       pose proof (maxExists' classical ex) as [t [tLtT1 [sendOrRecv notAfter]]].
-      assert (nothing: forall y, S t <= y < t1 -> (forall m, ~ m.marksend p c a y m) /\
-        (forall m, ~ m.recv c p a y m)) by
+      assert (nothing: forall y, S t <= y < t1 -> (forall m, ~ marksend mch p c a y m) /\
+        (forall m, ~ recv mch c p a y m)) by
       (intros y cond; assert (cond2: t < y < t1)by omega; generalize cond2 notAfter; clear; firstorder).
       pose proof (db.noChange2 tLtT1 nothing) as dirEq.
       clear nothing; unfold Dir.st in *.
       destruct sendOrRecv as [[m recvm] | [m sendm]].
-      pose proof (m.recvImpMarkSend recvm) as [t' [t'LeT sendm]].
-      assert (noCRecv: forall tm, t' <= tm < t2 -> forall m', ~ m.recv p c a tm m') by (
+      pose proof (recvImpMarkSend recvm) as [t' [t'LeT sendm]].
+      assert (noCRecv: forall tm, t' <= tm < t2 -> forall m', ~ recv mch p c a tm m') by (
         unfold not; intros tm cond m' recvm';
-          pose proof (m.recvImpMarkSend recvm') as [ts [tsLeTm sendm']];
+          pose proof (recvImpMarkSend recvm') as [ts [tsLeTm sendm']];
             assert (opts: ts < t \/ ts = t \/ t < ts < t1 \/ t1 <= ts) by omega;
               destruct opts as [tsLtT | [tsEqT | [tLtTsLtT1  | t1LeTs ]]]; [
-                assert (one: forall x, x < t' -> ~ m.recv p c a x m') by ( unfold not; intros x xLtT' recv'm';
-                  pose proof (m.uniqRecv2 recvm' recv'm') as xEqTm; omega);
-                assert (two: forall x, x < ts -> ~ m.recv c p a x m) by (unfold not; intros x xLtTs recv'm;
-                  pose proof (m.uniqRecv2 recvm recv'm) as xEqTs; omega);
+                assert (one: forall x, x < t' -> ~ recv mch p c a x m') by ( unfold not; intros x xLtT' recv'm';
+                  pose proof (uniqRecv2 recvm' recv'm') as xEqTm; omega);
+                assert (two: forall x, x < ts -> ~ recv mch c p a x m) by (unfold not; intros x xLtTs recv'm;
+                  pose proof (uniqRecv2 recvm recv'm) as xEqTs; omega);
                 apply (cross sendm sendm' one two) |
                   rewrite tsEqT in *;
                     apply (db.noSendmRecvm sendm' recvm) |
                       generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
                         pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
-      pose proof (r.uniqRecv2 recvr recv'r) as t4EqT2; omega]).
-      destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', m.marksend c p a ts m'))
+      pose proof (uniqRecv2 recvr recv'r) as t4EqT2; omega]).
+      destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', marksend mch c p a ts m'))
         as [ ex2 | notEx2].
       pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
       assert (nothing: forall y, S ts <= y < t2 ->
-        (forall m, ~ m.marksend c p a y m) /\ (forall m, ~ m.recv p c a y m)) by
+        (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
       (intros y cond; assert (cond1: t' < y < t2) by omega; assert (cond2: t' <= y < t2) by omega;
         generalize notAfter2 noCRecv cond cond1 cond2; clear; firstorder).
       pose proof (sb.noChange2 tsLtT2 nothing) as stEq.
       unfold St.st in *.
-      destruct (classical (exists tr, tr < t1 /\ m.recv c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
+      destruct (classical (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
       assert (opts: tr < t \/ tr = t \/ t < tr < t1) by omega.
       destruct opts as [trLtT | [trEqT | cond]].
-      assert (forall t4, t4 < tr -> ~ m.recv c p a t4 m) by (
-        unfold not; intros t4 t4LtTr recv'm; pose proof (m.uniqRecv2 recvm recv'm) as t4EqT; omega).
+      assert (forall t4, t4 < tr -> ~ recv mch c p a t4 m) by (
+        unfold not; intros t4 t4LtTr recv'm; pose proof (uniqRecv2 recvm recv'm) as t4EqT; omega).
       pose proof (cRespFifo sendm sendm' recvm' t'LtTs). intuition.
       rewrite trEqT in *.
-      pose proof (m.uniqRecv1 recvm recvm') as mEqM'.
+      pose proof (uniqRecv1 recvm recvm') as mEqM'.
       rewrite mEqM' in *.
-      pose proof (m.uniqMarksend2 sendm sendm') as t'EqTs.
+      pose proof (uniqMarksend2 sendm sendm') as t'EqTs.
       omega.
       generalize notAfter cond recvm'; clear; firstorder.
       assert (opts: to m' <= to r \/ to m' > to r) by omega.
@@ -1220,7 +1208,7 @@ Module Type System (dataTypes: DataTypes).
       unfold St.st in *.
       omega.
       assert (nothing: forall y, S t' <= y < t2 ->
-        (forall m, ~ m.marksend c p a y m) /\ (forall m, ~ m.recv p c a y m)) by
+        (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
       (intros y cond; assert (cond2: t' <= y < t2) by omega;
         generalize notEx2 noCRecv cond cond2; clear; firstorder).
       assert (t'LeT2: S t' <= t2) by omega.
@@ -1233,41 +1221,41 @@ Module Type System (dataTypes: DataTypes).
 
       assert (tLeT1: t <= t1) by omega.
       pose proof (pRespReq noTwoPResp noTwoPReqNon sendm sendr recvr tLeT1) as [t' [t'LtT2 recvm]].
-      pose proof (m.recvImpMarkSend recvm) as [t'' [tLeT' send'm]].
-      pose proof (m.uniqMarksend2 sendm send'm) as t''EqT.
+      pose proof (recvImpMarkSend recvm) as [t'' [tLeT' send'm]].
+      pose proof (uniqMarksend2 sendm send'm) as t''EqT.
       rewrite <- t''EqT in *. clear t''EqT t'' send'm.
-      assert (noCRecv: forall tm, t' < tm < t2 -> forall m', ~ m.recv p c a tm m').
+      assert (noCRecv: forall tm, t' < tm < t2 -> forall m', ~ recv mch p c a tm m').
         unfold not; intros tm cond m' recvm';
-          pose proof (m.recvImpMarkSend recvm') as [ts [tsLeTm sendm']];
+          pose proof (recvImpMarkSend recvm') as [ts [tsLeTm sendm']];
             assert (opts: ts < t \/ ts = t \/ t < ts < t1 \/ t1 <= ts) by omega;
               destruct opts as [tsLtT | [tsEqT | [tLtTsLtT1  | t1LeTs ]]]; [
                 pose proof (dirSendmImpRecvr sendm) as [r' recvr'];
-                  pose proof (r.recvImpMarkSend recvr') as [tx [txLeT sendr']];
-                    assert (one: forall t3, t3 < tx -> ~ m.recv p c a t3 m') by (
-                      unfold not; intros t3 t3LtTx recv'm'; pose proof (m.uniqRecv2 recvm' recv'm') as t3EqTr;
+                  pose proof (recvImpMarkSend recvr') as [tx [txLeT sendr']];
+                    assert (one: forall t3, t3 < tx -> ~ recv mch p c a t3 m') by (
+                      unfold not; intros t3 t3LtTx recv'm'; pose proof (uniqRecv2 recvm' recv'm') as t3EqTr;
                         omega);
-                    assert (two: forall t4, t4 <= ts -> ~ r.recv c p a t4 r') by (
-                      unfold not; intros t4 t4LeTs recv'r'; pose proof (r.uniqRecv2 recvr' recv'r') as t4EqTs;
+                    assert (two: forall t4, t4 <= ts -> ~ recv rch c p a t4 r') by (
+                      unfold not; intros t4 t4LeTs recv'r'; pose proof (uniqRecv2 recvr' recv'r') as t4EqTs;
                         omega);
                     apply (cReqPRespCross sendr' sendm' one two)|
-                  rewrite tsEqT in *; pose proof (m.uniqMarksend1 sendm sendm') as mEqM'; rewrite mEqM' in *;
-                    pose proof (m.uniqRecv2 recvm recvm') as trEqT'; omega |
+                  rewrite tsEqT in *; pose proof (uniqMarksend1 sendm sendm') as mEqM'; rewrite mEqM' in *;
+                    pose proof (uniqRecv2 recvm recvm') as trEqT'; omega |
                       generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
                         pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
-                          pose proof (r.uniqRecv2 recvr recv'r) as t4EqT2; omega].
+                          pose proof (uniqRecv2 recvr recv'r) as t4EqT2; omega].
       
-      destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', m.marksend c p a ts m'))
+      destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', marksend mch c p a ts m'))
         as [ ex2 | notEx2].
       pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
       assert (nothing: forall y, S ts <= y < t2 ->
-        (forall m, ~ m.marksend c p a y m) /\ (forall m, ~ m.recv p c a y m)) by
+        (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
       (intros y cond; assert (cond1: t' < y < t2) by omega;
         generalize notAfter2 noCRecv cond cond1; clear; firstorder).
       pose proof (sb.noChange2 tsLtT2 nothing) as stEq.
       unfold St.st in *.
-      destruct (classical (exists tr, tr < t1 /\ m.recv c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
-      pose proof (m.recvImpMarkSend recvm') as [ts' [ts'LeTr send'm']].
-      pose proof (m.uniqMarksend2 send'm' sendm') as ts'EqTs.
+      destruct (classical (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
+      pose proof (recvImpMarkSend recvm') as [ts' [ts'LeTr send'm']].
+      pose proof (uniqMarksend2 send'm' sendm') as ts'EqTs.
       assert (trGtT: tr > t) by omega.
       clear ts' ts'LeTr send'm' ts'EqTs.
       assert (opts: t < tr < t1 \/ t1 <= tr) by omega.
@@ -1275,13 +1263,13 @@ Module Type System (dataTypes: DataTypes).
       generalize cond1 notAfter recvm'; clear; firstorder.
       assert (opts: to m' <= to r \/ to m' > to r) by omega.
       destruct opts as [toM'LeToR | toM'GtToR].
-      assert (noRecv: forall t4, t4 < t1 -> ~ m.recv c p a t4 m') by (
-        unfold not; intros t4 t4LtT1 recv'm'; pose proof (m.uniqRecv2 recvm' recv'm') as t4EqTr; omega).
+      assert (noRecv: forall t4, t4 < t1 -> ~ recv mch c p a t4 m') by (
+        unfold not; intros t4 t4LtT1 recv'm'; pose proof (uniqRecv2 recvm' recv'm') as t4EqTr; omega).
       generalize tsLtT2 sendm' toM'LeToR noRecv; clear; firstorder.
       pose proof (sb.sendmChange sendm') as stEqToM'.
       unfold St.st in *.
       omega.
-      assert (last: forall t4, t4 < t1 -> ~ m.recv c p a t4 m') by (generalize noRecv; clear; firstorder).
+      assert (last: forall t4, t4 < t1 -> ~ recv mch c p a t4 m') by (generalize noRecv; clear; firstorder).
       assert (opts: to m' <= to r \/ to m' > to r) by omega.
       destruct opts as [toM'LeToR | toM'GtToR].
       generalize last tsLtT2 toM'LeToR sendm'; clear; firstorder.
@@ -1289,7 +1277,7 @@ Module Type System (dataTypes: DataTypes).
       unfold St.st in *.
       omega.
       assert (nothing: forall y, S t' <= y < t2 ->
-        (forall m, ~ m.marksend c p a y m) /\ (forall m, ~ m.recv p c a y m)) by
+        (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
       (generalize noCRecv notEx2; clear; firstorder).
       pose proof (sb.noChange2 t'LtT2 nothing) as stEq.
       unfold St.st in *.
@@ -1298,23 +1286,23 @@ Module Type System (dataTypes: DataTypes).
       pose proof (db.sendrImpSt sendr) as d2.
       unfold Dir.toRSComp, Dir.st, St.st in *.
       omega.
-      assert (cNoRecv: forall t4, t4 < t2 -> forall m, ~ m.recv p c a t4 m) by (
-        unfold not; intros t4 t4LtT2 m recvm; pose proof (m.recvImpMarkSend recvm) as [t3 [t3LeT4 sendm]];
+      assert (cNoRecv: forall t4, t4 < t2 -> forall m, ~ recv mch p c a t4 m) by (
+        unfold not; intros t4 t4LtT2 m recvm; pose proof (recvImpMarkSend recvm) as [t3 [t3LeT4 sendm]];
           assert (opts: t3 < t1 \/ t3 >= t1) by omega;
             destruct opts as [t3LtT1 | t4GeT1]; [
               generalize notEx t3LtT1 sendm; clear; firstorder;
                 intuition |
                   pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm recvm t4GeT1) as [t5 [t4LtT4 recv'r]];
-                    pose proof (r.uniqRecv2 recvr recv'r) as t5EqT2; omega]).
-      destruct (classical (exists t3, t3 < t2 /\ exists m, m.marksend c p a t3 m)) as [ex2 | notEx2].
+                    pose proof (uniqRecv2 recvr recv'r) as t5EqT2; omega]).
+      destruct (classical (exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m)) as [ex2 | notEx2].
       pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[m' sendm'] notAfter2]]].
       assert (nothing: forall y, S ts <= y < t2 ->
-        (forall m, ~ m.marksend c p a y m) /\ (forall m, ~ m.recv p c a y m)) by
+        (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
       (intros y cond;
         generalize notAfter2 cNoRecv cond; clear; firstorder).
       pose proof (sb.noChange2 tsLtT2 nothing) as stEq.
       unfold St.st in *.
-      destruct (classical (exists tr, tr < t1 /\ m.recv c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
+      destruct (classical (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
       generalize notEx trLtT1 recvm'; clear; firstorder.
       assert (opts: to m' <= to r \/ to m' > to r) by omega.
       destruct opts as [toM'LeToR | toM'GtToR].
@@ -1323,12 +1311,12 @@ Module Type System (dataTypes: DataTypes).
       unfold St.st in *.
       omega.
       assert (nothing1: forall y, 0 <= y < t2 ->
-        (forall m, ~ m.marksend c p a y m) /\ (forall m, ~ m.recv p c a y m)) by
+        (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
       (generalize cNoRecv notEx2; clear; firstorder).
       assert (x1: 0 <= t2) by omega.
       pose proof (sb.noChange2 x1 nothing1) as st1.
       assert (nothing2: forall y, 0 <= y < t1 ->
-        (forall m, ~ m.marksend p c a y m) /\ (forall m, ~ m.recv c p a y m)) by
+        (forall m, ~ marksend mch p c a y m) /\ (forall m, ~ recv mch c p a y m)) by
       (generalize notEx; clear; firstorder).
       assert (x2: 0 <= t1) by omega.
       pose proof (db.noChange2 x2 nothing2) as d1.
