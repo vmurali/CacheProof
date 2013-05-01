@@ -6,20 +6,12 @@ Module Type Network.
   Parameter network : Type.
 End Network.
 
-Module Type System.
-
-  Axiom classical: forall P, P \/ ~ P.
-
+Module Type DataTypes.
   Parameter Cache: Type.
-
   Parameter Mesg: Type.
-
   Parameter parent: Cache -> Cache.
-
   Definition State := nat.
-
   Definition Time := nat.
-
   Parameter state: Cache -> Time -> State.
   Parameter dir: Cache -> Cache -> Time -> State.
 
@@ -28,6 +20,32 @@ Module Type System.
   Parameter time: Mesg -> Time.
 
   Parameter timestamp: Cache -> Time -> Time.
+End DataTypes.
+
+Module Channel (n: Network) (dataTypes: DataTypes).
+  Import dataTypes.
+
+  Axiom marksend: Cache -> Cache -> Time -> Mesg -> Prop.
+  Axiom recv: Cache -> Cache -> Time -> Mesg -> Prop.
+  Definition isMarksend x y t := exists m, marksend x y t m.
+  Definition isRecv x y t := exists m, recv x y t m.
+
+  Set Implicit Arguments.
+  Section local.
+    Variable p c : Cache.
+    Axiom uniqMarksend1: forall {m n t}, marksend p c t m -> marksend p c t n -> m = n.
+    Axiom uniqMarksend2: forall {m t1 t2}, marksend p c t1 m -> marksend p c t2 m -> t1 = t2.
+    Axiom uniqRecv1: forall {m n t}, recv p c t m -> recv p c t n -> m = n.
+    Axiom uniqRecv2: forall {m t1 t2}, recv p c t1 m -> recv p c t2 m -> t1 = t2.
+    Axiom recvImpMarkSend: forall {m t}, recv p c t m -> exists t', t' <= t /\ marksend p c t' m.
+  End local.
+End Channel.
+
+
+Module Type System (dataTypes: DataTypes).
+  Import dataTypes.
+
+  Axiom classical: forall P, P \/ ~ P.
 
   Parameter RespNetwork : Type.
   Parameter ReqNetwork : Type.
@@ -45,25 +63,8 @@ Module Type System.
   Definition compat c p (rel: parent c = p) t := forall c', parent c' = p ->
     dir p c' t <= toCompat (dir p c t).
 
-  Module Channel (n: Network).
-    Axiom marksend: Cache -> Cache -> Time -> Mesg -> Prop.
-    Axiom recv: Cache -> Cache -> Time -> Mesg -> Prop.
-    Definition isMarksend x y t := exists m, marksend x y t m.
-    Definition isRecv x y t := exists m, recv x y t m.
-
-    Set Implicit Arguments.
-    Section local.
-      Variable p c : Cache.
-      Axiom uniqMarksend1: forall {m n t}, marksend p c t m -> marksend p c t n -> m = n.
-      Axiom uniqMarksend2: forall {m t1 t2}, marksend p c t1 m -> marksend p c t2 m -> t1 = t2.
-      Axiom uniqRecv1: forall {m n t}, recv p c t m -> recv p c t n -> m = n.
-      Axiom uniqRecv2: forall {m t1 t2}, recv p c t1 m -> recv p c t2 m -> t1 = t2.
-      Axiom recvImpMarkSend: forall {m t}, recv p c t m -> exists t', t' <= t /\ marksend p c t' m.
-    End local.
-  End Channel.
-
-  Module m := Channel RespNetwork.
-  Module r := Channel ReqNetwork.
+  Module m := Channel RespNetwork dataTypes.
+  Module r := Channel ReqNetwork dataTypes.
 
   Module Type LocalState.
     Parameter st : Time -> State.
@@ -639,7 +640,7 @@ Module Type System.
           pose proof (m.uniqRecv2 mrecvm mrecvmTp'); intuition).
       pose proof (cross t' t'' t'LeT t''LeT m msendm m' msendm' hyp1 hyp2).
       firstorder.
-      assert (noRecv': ~ (exists tc, S t' <= tc < tm /\ exists m, m.recv p c tc m /\ System.to m >= state c tm)) by (
+      assert (noRecv': ~ (exists tc, S t' <= tc < tm /\ exists m, m.recv p c tc m /\ to m >= state c tm)) by (
         unfold not; intros [tc [cond [m0 [mrecvm0 _]]]];
           assert (cond': t' < tc < tm) by omega; generalize noRecv cond' mrecvm0; clear; firstorder).
       assert (nGt: ~ state c tm > state c (S t')) by (
@@ -1308,3 +1309,4 @@ Module Type System.
     Qed.
   End LocalRules.
 End System.
+

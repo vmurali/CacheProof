@@ -109,10 +109,4 @@ Section classical.
     Qed.
   End maxExists.
 
-  Lemma notExistForallNot {P Q R: nat -> nat -> Prop} : (~ exists x y, P x y /\ Q x y /\ R x y) -> forall x y, P x y -> Q x y -> ~ R x y.
-  Proof.
-    firstorder.
-  Qed.
-
-  About maxExists'.
 End classical.
