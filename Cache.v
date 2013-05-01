@@ -27,8 +27,6 @@ Module Channel (n: Network) (dataTypes: DataTypes).
 
   Axiom marksend: Cache -> Cache -> Time -> Mesg -> Prop.
   Axiom recv: Cache -> Cache -> Time -> Mesg -> Prop.
-  Definition isMarksend x y t := exists m, marksend x y t m.
-  Definition isRecv x y t := exists m, recv x y t m.
 
   Set Implicit Arguments.
   Section local.
@@ -78,15 +76,11 @@ Module Type System (dataTypes: DataTypes).
 
   Module StateBehave (s : LocalState).
     Import s.
-    Definition isMMarksend t := exists m, mmarksend t m.
-    Definition isMRecv t := exists m, mrecv t m.
-    Definition isRMarksend t := exists m, rmarksend t m.
-    Definition isRRecv t := exists m, rrecv t m.
 
     Set Implicit Arguments.
     Section ForT.
       Variable t: Time.
-      Axiom change: st (S t) <> st t -> isMMarksend t \/ isMRecv t.
+      Axiom change: st (S t) <> st t -> (exists m, mmarksend t m) \/ (exists m, mrecv t m).
       Axiom sendmChange: forall {m}, mmarksend t m -> st (S t) = to m.
       Axiom recvmChange: forall {m}, mrecv t m -> st (S t) = to m.
       Axiom sendrImpSt: forall {r}, rmarksend t r -> toRSComp (to r) (st t).
@@ -118,7 +112,7 @@ Module Type System (dataTypes: DataTypes).
       assert (sth: t + S t' = S (t + t')) by omega.
       rewrite sth in *.
       pose proof (change hard) as contra.
-      unfold isMMarksend in contra; unfold isMRecv in contra.
+(*      unfold isMMarksend in contra; unfold isMRecv in contra. *)
       firstorder.
     Qed.
 
@@ -385,7 +379,8 @@ Module Type System (dataTypes: DataTypes).
       firstorder.
 
       pose proof (sb.sendrImpNoSendr t'GtTc rsendr rsendr') as [t'' [cond neg]].
-      unfold sb.isRMarksend in *; unfold St.toRSComp in *; unfold St.st in *; unfold St.rmarksend in *.
+      (*unfold sb.isRMarksend in *.*)
+      unfold St.toRSComp in *; unfold St.st in *; unfold St.rmarksend in *.
       assert (toRLes: to r <= state c t'') by firstorder.
       pose proof (sb.sendrImpSt rsendr) as toGtt.
       unfold St.toRSComp in *; unfold St.st in *.
@@ -405,7 +400,8 @@ Module Type System (dataTypes: DataTypes).
       apply (IHt tc td tcLeT tdLet r m' rsendr msendm' noRecv noRecv').
 
       pose proof (sb.sendrImpNoSendr tcGtT' rsendr' rsendr) as [tmur [cond neg]].
-      unfold sb.isRMarksend in *; unfold St.toRSComp in *; unfold St.st in *; unfold St.rmarksend in *.
+      (* unfold sb.isRMarksend in *. *)
+      unfold St.toRSComp in *; unfold St.st in *; unfold St.rmarksend in *.
       assert (toRLeS: to r' <= state c tmur) by omega.
       pose proof (sb.sendrImpSt rsendr') as toGtt.
       unfold St.toRSComp in *; unfold St.st in *.
@@ -548,7 +544,7 @@ Module Type System (dataTypes: DataTypes).
       intros t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 toR1EqToR2 t1LtT2.
       pose proof (db.sendrImpSt sendr1) as gt1.
       pose proof (db.sendrImpSt sendr2) as gt2.
-      unfold Dir.toRSComp, Dir.st, db.isRMarksend, Dir.rmarksend in *.
+      unfold Dir.toRSComp, Dir.st, Dir.rmarksend in *.
       pose proof (db.sendrImpNoSendr t1LtT2 sendr1 sendr2) as [t5 [cond dr]].
       unfold Dir.st, Dir.toRSComp in *.
       assert (toR1GeDirT5: to r1 >= dir p c t5) by omega; clear dr.
