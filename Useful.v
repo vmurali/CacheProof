@@ -49,7 +49,7 @@ Section classical.
   End minExists.
 
   Section maxExists.
-    Context {P : nat -> Prop}.
+    Context {P: nat -> Prop}.
     Theorem maxExists {max} (exPx: exists x, x <= max /\ P x): exists x, x <= max /\ P x /\ forall y, S x <= y <= max -> ~ P y.
     Proof.
       destruct exPx as [x rest].
