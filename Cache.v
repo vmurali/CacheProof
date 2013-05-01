@@ -170,20 +170,32 @@ Module Type System.
         Definition rrecv := r.recv p c.
         Definition toRSComp x y := x > y.
         Definition timeStamp := timestamp c.
+
       End ForT.
     End St.
+
+    About St.
 
     Module db := StateBehave Dir.
 
     Module sb := StateBehave St.
 
     Set Implicit Arguments.
+    Definition twoEqPRespFalse := forall t t1 m1, t1 <= t -> m.marksend p c t1 m1 ->
+      forall t2 m2, t2 <= t -> m.marksend p c t2 m2 ->
+        (forall t3, t3 <= t -> ~ m.recv p c t3 m1) -> (forall {t4}, t4 <= t -> ~ m.recv p c t4 m2) -> t1 = t2.
+
+    Definition twoPReqNeedsResp := forall t t1 r1, t1 <= t -> r.marksend p c t1 r1 -> forall t2 r2,
+      t2 <= t -> r.marksend p c t2 r2 -> (forall t3, t3 <= t -> ~ r.recv p c t3 r1) ->
+      (forall t4, t4 <= t -> ~ r.recv p c t4 r2) -> to r1 = to r2 -> t1 < t2 -> exists tm m, t1 < tm < t2 /\ m.marksend p c tm m.
+
+
     Section ForT.
       Variable t: Time.
 
-      Axiom stSendmImpSt: forall {m}, m.marksend c p t m -> state c t > to m.
-
       Axiom init: dir p c 0 = state c 0.
+
+      Axiom stSendmImpSt: forall {m}, m.marksend c p t m -> state c t > to m.
 
       Axiom dirSendmImpRecvr: forall {m}, m.marksend p c t m -> exists r, r.recv c p t r.
 
@@ -193,19 +205,10 @@ Module Type System.
 
       Axiom dirRecvmCond: forall {m}, m.recv c p t m -> from m = dir p c t.
 
-      Definition twoEqPRespFalse := forall t1 m1, t1 <= t -> m.marksend p c t1 m1 ->
-        forall t2 m2, t2 <= t -> m.marksend p c t2 m2 ->
-          (forall t3, t3 <= t -> ~ m.recv p c t3 m1) -> (forall {t4}, t4 <= t -> ~ m.recv p c t4 m2) -> t1 = t2.
-
-      Definition twoPReqNeedsResp := forall t1 r1, t1 <= t -> r.marksend p c t1 r1 -> forall t2 r2,
-      t2 <= t -> r.marksend p c t2 r2 -> (forall t3, t3 <= t -> ~ r.recv p c t3 r1) ->
-      (forall t4, t4 <= t -> ~ r.recv p c t4 r2) -> to r1 = to r2 -> t1 < t2 -> exists tm m, t1 < tm < t2 /\ m.marksend p c tm m.
-
-
-      Axiom pReqResp: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3}, forall {m}, m.marksend p c t1 m ->
+      Axiom pRespReq: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3}, forall {m}, m.marksend p c t1 m ->
         forall {r}, r.marksend p c t2 r -> r.recv p c t3 r -> t1 <= t2 -> exists t4, t4 < t3 /\ m.recv p c t4 m.
 
-      Axiom pRespReq: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3}, forall {r}, r.marksend p c t1 r ->
+      Axiom pReqResp: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3}, forall {r}, r.marksend p c t1 r ->
         forall {m}, m.marksend p c t2 m -> m.recv p c t3 m -> t1 <= t2 -> exists t4, t4 < t3 /\ r.recv p c t4 r.
 
       Axiom stVoluntary:
@@ -218,17 +221,6 @@ Module Type System.
       Axiom stRecvrNoSendm: forall {r}, r.recv p c t r -> forall {m}, m.marksend c p t m -> state c t > to r.
 
       Axiom stRecvrSendm: forall {r}, r.recv p c t r -> state c t > to r -> exists {m}, m.marksend c p t m.
-
-
-(*
-      Axiom dirRecvrSendm: forall {r}, r.recv c p t r -> state p t >= to r -> compat c p rel t -> m.isMarksend p c t.
-
-      Axiom stRecvrSendm: forall {r}, r.recv p c t r -> (forall {c'}, parent c' = c -> dir c c' t <= to r) ->
-        state c t > to r -> m.isMarksend c p t.
-
-      Axiom stRecvrNoSendm: forall {r}, r.recv p c t r -> (forall {c'}, parent c' = c -> dir c c' t <= to r) ->
-        state c t <= to r -> ~ m.isMarksend c p t.
-*)
 
       Lemma whenChildHighRecvm: state c (S t) > state c t -> exists m,
         m.recv p c t m /\ to m = state c (S t).
@@ -463,7 +455,7 @@ Module Type System.
       apply (@cReqPRespCrossInd (tc + tp) tc tp tcLeT tpLeT).
     Qed.
 
-    Lemma noTwoPResp: forall tx, (twoEqPRespFalse tx).
+    Lemma noTwoPResp: twoEqPRespFalse.
     Proof.
       intros tx t1 m1 t1LeTx sendm1 t2 m2 t2LeTx sendm2 norecvm1 norecvm2.
       pose proof (dirSendmImpRecvr sendm1) as [r1 recvr1].
@@ -550,7 +542,7 @@ Module Type System.
       omega.
     Qed.
 
-    Lemma noTwoPReqNon: forall t, twoPReqNeedsResp t.
+    Lemma noTwoPReqNon: twoPReqNeedsResp.
     Proof.
       intros t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 toR1EqToR2 t1LtT2.
       pose proof (db.sendrImpSt sendr1) as gt1.
@@ -565,8 +557,6 @@ Module Type System.
       assert (cond3: t1 < tm < t2) by omega.
       firstorder.
     Qed.
-
-    About noTwoPReqNon.
 
     Lemma mainInd: forall {t},
       (forall {to}, to <= t -> state c to <= dir p c to) /\
@@ -942,7 +932,7 @@ Module Type System.
       rewrite t2EqTp in *.
       apply (db.noSendmSendr msendmp sendr1).
       assert (tpLeT2: tp <= t2) by omega.
-      pose proof (pReqResp (@noTwoPResp t) (@noTwoPReqNon t) msendmp sendr1 recvr1 tpLeT2) as [t4 [t4LtTp recvmp]].
+      pose proof (pRespReq noTwoPResp noTwoPReqNon msendmp sendr1 recvr1 tpLeT2) as [t4 [t4LtTp recvmp]].
       generalize norecvmp recvmp t4LtTp; clear; firstorder.
       pose proof (dirSendrImpNoSendm t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
       pose proof (m.recvImpMarkSend recvm) as [t'' [t''LeT' sendm]].
@@ -971,7 +961,7 @@ Module Type System.
       rewrite tsrEqT' in *.
       apply (db.noSendmRecvm sends recvm).
       assert (t2LeTsr: t2 <= tsr) by omega.
-      pose proof (pRespReq (@noTwoPResp t) (@noTwoPReqNon t) sendr1 sends recvs t2LeTsr) as [tf [tfLtTs recv'r1]].
+      pose proof (pReqResp noTwoPResp noTwoPReqNon sendr1 sends recvs t2LeTsr) as [tf [tfLtTs recv'r1]].
       assert (tfLtTc: tf < tc) by omega.
       pose proof (r.uniqRecv2 recvr1 recv'r1) as tcEqTf.
       omega.
@@ -1171,7 +1161,7 @@ Module Type System.
                   rewrite tsEqT in *;
                     apply (db.noSendmRecvm sendm' recvm) |
                       generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
-                        pose proof (pRespReq (@noTwoPResp t) (@noTwoPReqNon t) sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
+                        pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
       pose proof (r.uniqRecv2 recvr recv'r) as t4EqT2; omega]).
       destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', m.marksend c p ts m')) as [ ex2 | notEx2].
       pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
@@ -1212,7 +1202,7 @@ Module Type System.
       omega.
 
       assert (tLeT1: t <= t1) by omega.
-      pose proof (pReqResp (@noTwoPResp 0) (@noTwoPReqNon 0) sendm sendr recvr tLeT1) as [t' [t'LtT2 recvm]].
+      pose proof (pRespReq noTwoPResp noTwoPReqNon sendm sendr recvr tLeT1) as [t' [t'LtT2 recvm]].
       pose proof (m.recvImpMarkSend recvm) as [t'' [tLeT' send'm]].
       pose proof (m.uniqMarksend2 sendm send'm) as t''EqT.
       rewrite <- t''EqT in *. clear t''EqT t'' send'm.
@@ -1233,7 +1223,7 @@ Module Type System.
                   rewrite tsEqT in *; pose proof (m.uniqMarksend1 sendm sendm') as mEqM'; rewrite mEqM' in *;
                     pose proof (m.uniqRecv2 recvm recvm') as trEqT'; omega |
                       generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
-                        pose proof (pRespReq (@noTwoPResp t) (@noTwoPReqNon t) sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
+                        pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
                           pose proof (r.uniqRecv2 recvr recv'r) as t4EqT2; omega].
       
       destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', m.marksend c p ts m')) as [ ex2 | notEx2].
@@ -1283,7 +1273,7 @@ Module Type System.
             destruct opts as [t3LtT1 | t4GeT1]; [
               generalize notEx t3LtT1 sendm; clear; firstorder;
                 intuition |
-                  pose proof (pRespReq (@noTwoPResp 0) (@noTwoPReqNon 0) sendr sendm recvm t4GeT1) as [t5 [t4LtT4 recv'r]];
+                  pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm recvm t4GeT1) as [t5 [t4LtT4 recv'r]];
                     pose proof (r.uniqRecv2 recvr recv'r) as t5EqT2; omega]).
       destruct (classical (exists t3, t3 < t2 /\ exists m, m.marksend c p t3 m)) as [ex2 | notEx2].
       pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[m' sendm'] notAfter2]]].
