@@ -24,26 +24,52 @@ Module Type DataTypes.
   Parameter mch rch: Channel.
 End DataTypes.
 
-Module Channel (dataTypes: DataTypes).
+Module Type Channel (dataTypes: DataTypes).
   Import dataTypes.
 
-  Variable marksend: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Variable recv: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Variable marksend: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Variable recv: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
+
+  Set Implicit Arguments.
+  Section local.
+    Variable s: Channel.
+    Variable p c : Cache.
+    Axiom uniqMarksend1: forall {m n t}, marksend s p c t m -> marksend s p c t n -> m = n.
+    Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c t1 m -> marksend s p c t2 m -> t1 = t2.
+    Axiom uniqRecv1: forall {m n t}, recv s p c t m -> recv s p c t n -> m = n.
+    Axiom uniqRecv2: forall {m t1 t2}, recv s p c t1 m -> recv s p c t2 m -> t1 = t2.
+    Axiom recvImpMarkSend: forall {m t}, recv s p c t m -> exists t', t' <= t /\ marksend s p c t' m.
+  End local.
+End Channel.
+
+Module ChnlPerAddr (dataTypes: DataTypes) (ch: Channel dataTypes).
+  Import dataTypes.
+  Definition marksend ch p c a t m := ch.marksend ch p c t m /\ addr m = a.
+  Definition recv ch p c a t m := ch.recv ch p c t m /\ addr m = a.
 
   Set Implicit Arguments.
   Section local.
     Variable s: Channel.
     Variable p c : Cache.
     Variable a: Addr.
-    Axiom uniqMarksend1: forall {m n t}, marksend s p c a t m -> marksend s p c a t n -> m = n.
-    Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c a t1 m -> marksend s p c a t2 m -> t1 = t2.
-    Axiom uniqRecv1: forall {m n t}, recv s p c a t m -> recv s p c a t n -> m = n.
-    Axiom uniqRecv2: forall {m t1 t2}, recv s p c a t1 m -> recv s p c a t2 m -> t1 = t2.
-    Axiom recvImpMarkSend: forall {m t}, recv s p c a t m -> exists t', t' <= t /\ marksend s p c a t' m.
-  End local.
-End Channel.
+    Definition uniqMarksend1 {m n t} (sendm : marksend s p c a t m) (sendn : marksend s p c a t n) :=
+      ch.uniqMarksend1 (proj1 sendm) (proj1 sendn).
+    Definition uniqMarksend2 {m t1 t2} (sendm1: marksend s p c a t1 m) (sendm2: marksend s p c a t2 m) :=
+      ch.uniqMarksend2 (proj1 sendm1) (proj1 sendm2).
+    Definition uniqRecv1 {m n t} (recvm: recv s p c a t m) (recvn: recv s p c a t n) :=
+      ch.uniqRecv1 (proj1 recvm) (proj1 recvn).
+    Definition uniqRecv2 {m t1 t2} (recvm1: recv s p c a t1 m) (recvm2: recv s p c a t2 m) :=
+      ch.uniqRecv2 (proj1 recvm1) (proj1 recvm2).
 
-Module Type System (dataTypes: DataTypes).
+    Definition recvImpMarkSend {m t} (recvm: recv s p c a t m) :=
+      match ch.recvImpMarkSend (proj1 recvm) with
+        | ex_intro x Px => ex_intro (fun t' =>
+          t' <= t /\ marksend s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 recvm)))
+      end.
+  End local.
+End ChnlPerAddr.
+
+Module Type System (dataTypes: DataTypes) (ch: Channel dataTypes).
   Import dataTypes.
 
   Axiom classical: forall P, P \/ ~ P.
@@ -132,8 +158,8 @@ Module Type System (dataTypes: DataTypes).
   End StateBehave.
 
   Module Type LocalRules.
-    Module ch := Channel dataTypes.
-    Import ch.
+    Module chPerA := ChnlPerAddr dataTypes ch.
+    Import chPerA.
 
     Variables p c: Cache.
     Hypothesis rel: parent c = p.
