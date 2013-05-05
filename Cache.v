@@ -206,10 +206,8 @@ Module Type StBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StS
 
     Axiom voluntary:
       forall {r}, marksend rch c p a t r -> forall {t' m}, t' > t -> marksend mch c p a t' m ->
-        (forall {tm}, t < tm <= t' -> state c a tm < to r) -> exists r1, recv rch p c a t' r1.
-
-    Axiom recvrNoSendm: forall {r}, recv rch p c a t r -> forall {m}, marksend mch c p a t m ->
-      state c a t > to r.
+        (forall {tm}, t < tm <= t' -> state c a tm < to r) ->
+        exists r1, recv rch p c a t' r1 /\ state c a t' > to r1.
 
     Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, marksend mch c p a t m.
   End ForT.
@@ -1021,7 +1019,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (stcLet2: forall t', t1 < t' <= tc -> state c a t' < to r) by (
       intros t' cond; specialize (stcLet1 t' cond); omega).
     clear stcLet1 gtRel.
-    pose proof (st.voluntary rsendr t1LtTc msendmc stcLet2) as [r1 recvr1].
+    pose proof (st.voluntary rsendr t1LtTc msendmc stcLet2) as [r1 [recvr1 sTcGtToR1]].
     pose proof (recvImpMarkSend recvr1) as [t2 [t2LeT1 sendr1]].
     assert (t2LeTp: t2 = tp \/ t2 > tp \/ t2 < tp) by omega.
     destruct t2LeTp as [t2EqTp | [t2GtTp | t2LtTp]].
@@ -1033,7 +1031,6 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (dir.sendrImpNoSendm t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
     pose proof (recvImpMarkSend recvm) as [t'' [t''LeT' sendm]].
     pose proof (st.sendmChange sendm) as stEqToM. unfold st.st in *.
-    pose proof (st.recvrNoSendm recvr1 msendmc) as sTcGtToR1.
     assert (stTcGtStST'': state c a tc > state c a (S t'')) by omega.
     assert (opts: t'' = tc \/ t'' > tc \/ t'' < tc) by omega.
     destruct opts as [t''EqTc | [t''GtTc | t''LtTc]].
