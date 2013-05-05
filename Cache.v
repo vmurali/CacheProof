@@ -389,13 +389,15 @@ Module Type PairProperties (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt).
 
   Definition twoEqPRespFalse := forall a t t1 m1, t1 <= t -> marksend mch p c a t1 m1 ->
     forall t2 m2, t2 <= t -> marksend mch p c a t2 m2 ->
-      (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) -> (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
+      (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) ->
+      (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
       t1 = t2.
 
-  Definition twoPReqNeedsResp := forall a t t1 r1, t1 <= t -> marksend rch p c a t1 r1 -> forall t2 r2,
-    t2 <= t -> marksend rch p c a t2 r2 -> (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
-    (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> to r1 = to r2 -> t1 < t2 ->
-    exists tm m, t1 < tm < t2 /\ marksend mch p c a tm m.
+  Definition twoPReqNeedsResp := forall a t t1 r1, t1 <= t -> marksend rch p c a t1 r1 ->
+    forall t2 r2, t2 <= t -> marksend rch p c a t2 r2 ->
+      (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
+      (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> t1 < t2 ->
+      to r1 = to r2 -> exists tm, t1 < tm < t2 /\ exists m, marksend mch p c a tm m.
 
   Section ForA.
     Context {a: Addr}.
@@ -629,10 +631,9 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
   Lemma noTwoPReqNon: twoPReqNeedsResp.
   Proof.
-    intros a t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 toR1EqToR2 t1LtT2.
+    intros a t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 t1LtT2 toR1EqToR2.
     pose proof (dir.sendrImpSt sendr1) as gt1.
     pose proof (dir.sendrImpSt sendr2) as gt2.
-    unfold dir.toRSComp, dir.st.
     pose proof (dir.sendrImpNoSendr t1LtT2 sendr1 sendr2) as [t5 [cond dr]].
     unfold dir.st, dir.toRSComp in *.
     assert (toR1GeDirT5: to r1 >= dir p c a t5) by omega; clear dr.
