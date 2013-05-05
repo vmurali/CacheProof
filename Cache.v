@@ -397,7 +397,7 @@ Module Type PairProperties (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt).
     forall t2 r2, t2 <= t -> marksend rch p c a t2 r2 ->
       (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
       (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> t1 < t2 ->
-      to r1 = to r2 -> exists tm, t1 < tm < t2 /\ exists m, marksend mch p c a tm m.
+      to r1 <= to r2 -> exists tm, t1 < tm < t2 /\ exists m, marksend mch p c a tm m.
 
   Section ForA.
     Context {a: Addr}.
@@ -631,7 +631,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
   Lemma noTwoPReqNon: twoPReqNeedsResp.
   Proof.
-    intros a t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 t1LtT2 toR1EqToR2.
+    intros a t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 t1LtT2 toR1GeToR2.
     pose proof (dir.sendrImpSt sendr1) as gt1.
     pose proof (dir.sendrImpSt sendr2) as gt2.
     pose proof (dir.sendrImpNoSendr t1LtT2 sendr1 sendr2) as [t5 [cond dr]].
