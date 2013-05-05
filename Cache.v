@@ -393,7 +393,7 @@ Module Type PairProperties (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt).
       (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
       t1 = t2.
 
-  Definition twoPReqNeedsResp := forall a t t1 r1, t1 <= t -> marksend rch p c a t1 r1 ->
+  Definition twoPReqEqNeedsPResp := forall a t t1 r1, t1 <= t -> marksend rch p c a t1 r1 ->
     forall t2 r2, t2 <= t -> marksend rch p c a t2 r2 ->
       (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
       (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> t1 < t2 ->
@@ -401,12 +401,12 @@ Module Type PairProperties (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt).
 
   Section ForA.
     Context {a: Addr}.
-    Axiom pRespReq: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3},
+    Axiom pRespReq: twoEqPRespFalse -> twoPReqEqNeedsPResp -> forall {t1 t2 t3},
       forall {m}, marksend mch p c a t1 m ->
         forall {r}, marksend rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
           exists t4, t4 < t3 /\ recv mch p c a t4 m.
 
-    Axiom pReqResp: twoEqPRespFalse -> twoPReqNeedsResp -> forall {t1 t2 t3},
+    Axiom pReqResp: twoEqPRespFalse -> twoPReqEqNeedsPResp -> forall {t1 t2 t3},
       forall {r}, marksend rch p c a t1 r ->
         forall {m}, marksend mch p c a t2 m -> recv mch p c a t3 m -> t1 <= t2 ->
           exists t4, t4 < t3 /\ recv rch p c a t4 r.
@@ -418,7 +418,7 @@ Module Type PairTheoremsType (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt
   Import dt ch p pp.
 
   Axiom noTwoPResp: twoEqPRespFalse.
-  Axiom noTwoPReqNon: twoPReqNeedsResp.
+  Axiom noTwoPReqNon: twoPReqEqNeedsPResp.
 
   Axiom conservative: forall {a t}, dir p c a t >= state c a t.
   Axiom cReqRespSent: forall {a t1 t2 r}, marksend rch p c a t1 r -> recv rch p c a t2 r ->
@@ -629,7 +629,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     omega.
   Qed.
 
-  Lemma noTwoPReqNon: twoPReqNeedsResp.
+  Lemma noTwoPReqNon: twoPReqEqNeedsPResp.
   Proof.
     intros a t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 t1LtT2 toR1GeToR2.
     pose proof (dir.sendrImpSt sendr1) as gt1.
