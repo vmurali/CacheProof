@@ -209,7 +209,7 @@ Module Type StBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StS
         (forall {tm}, t < tm <= t' -> state c a tm < to r) ->
         exists r1, recv rch p c a t' r1 /\ state c a t' > to r1.
 
-    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, marksend mch c p a t m.
+(*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, marksend mch c p a t m.*)
   End ForT.
 End StBase.
 
@@ -323,6 +323,8 @@ Module Type DirBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: Di
     Axiom sendrImpNoSendm: forall {t1 t2 r1 m2}, t1 < t2 -> marksend rch p c a t1 r1 ->
       marksend mch p c a t2 m2 ->
       exists t', t1 < t' < t2 /\ exists m, recv mch c p a t' m /\ to m <= to r1.
+
+(*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, marksend mch p c a t m /\ to m >= to r.*)
   End ForT.
 End DirBase.
 
