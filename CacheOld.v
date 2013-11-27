@@ -23,17 +23,17 @@ Module Type LocalBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
     Context {a: Addr}.
 
     Axiom change: st a (S t) <> st a t -> (exists m, marksend mch src dst a t m) \/
-      (exists m, proc mch dst src a t m).
+      (exists m, deq mch dst src a t m).
     Axiom sendmChange: forall {m}, marksend mch src dst a t m -> st a (S t) = to m.
-    Axiom procmChange: forall {m}, proc mch dst src a t m -> st a (S t) = to m.
+    Axiom deqmChange: forall {m}, deq mch dst src a t m -> st a (S t) = to m.
     Axiom sendrImpSt: forall {r}, marksend rch src dst a t r -> toRSComp (to r) (st a t).
     Axiom sendrImpNoSendr: forall {t1 t2 r1 r2}, t1 < t2 -> marksend rch src dst a t1 r1 ->
       marksend rch src dst a t2 r2 -> exists t', t1 < t' <= t2 /\ ~ toRSComp (to r1) (st a t').
     Axiom sendmFrom: forall {m}, marksend mch src dst a t m -> from m = st a t.
     Axiom sendrFrom: forall {r}, marksend rch src dst a t r -> from r = st a t.
     Axiom sendmTime: forall {m}, marksend mch src dst a t m -> time m = timeStamp src a t.
-    Axiom noSendmProcm: forall {m}, marksend mch src dst a t m ->
-      forall {m'}, proc mch dst src a t m' -> False.
+    Axiom noSendmDeqm: forall {m}, marksend mch src dst a t m ->
+      forall {m'}, deq mch dst src a t m' -> False.
     Axiom noSendmSendr: forall {m}, marksend mch src dst a t m -> forall {r}, marksend rch src dst a t r -> False.
   End ForT.
 End LocalBehavior.
@@ -43,7 +43,7 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
 
   Section ForLs.
     Lemma nochange': forall {a t t'}, (forall tn, t <= tn < t + t' ->
-      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) ->
+      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ deq mch dst src a tn m)) ->
     st a t = st a (t + t').
     Proof.
       intros a t t'.
@@ -52,13 +52,13 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
       firstorder.
       intros noChange.
       assert (help: forall tn, t <= tn < t + t' -> (forall m, ~ marksend mch src dst a tn m) /\
-        (forall m, ~ proc mch dst src a tn m)) by (
+        (forall m, ~ deq mch dst src a tn m)) by (
           intros tn comp;
             assert (comp2: t <= tn < t + S t') by omega;
               firstorder).
       assert (stTEqstT': st a t = st a (t + t')) by firstorder.
       assert (nothing: (forall m, ~ marksend mch src dst a (t + t') m) /\
-        forall m, ~ proc mch dst src a (t + t') m) by
+        forall m, ~ deq mch dst src a (t + t') m) by
       (assert (t <= t + t' < t + S t'); firstorder).
       rewrite stTEqstT'.
       assert (two: st a (t + S t') = st a (t + t') \/ st a (t + S t') <> st a (t + t')) by decide equality.
@@ -71,7 +71,7 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
     Qed.
 
     Lemma noChange: forall {a t t'}, t < t' -> (forall tn, t <= tn < t' ->
-      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) -> st a t = st a t'.
+      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ deq mch dst src a tn m)) -> st a t = st a t'.
     Proof.
       intros a t t' tLtT'.
       remember (t' - t) as td.
@@ -81,7 +81,7 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
     Qed.
 
     Lemma noChange2: forall {a t t'}, t <= t' -> (forall tn, t <= tn < t' ->
-      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) -> st a t = st a t'.
+      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ deq mch dst src a tn m)) -> st a t = st a t'.
     Proof.
       intros a t t' tLeT'.
       assert (opts: t = t' \/ t < t') by omega.
@@ -123,13 +123,10 @@ Module Type StBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StS
 
     Axiom sendmImpSt: forall {m}, marksend mch c p a t m -> state c a t > to m.
 
-(*
     Axiom voluntary:
       forall {r}, marksend rch c p a t r -> forall {t' m}, t' > t -> marksend mch c p a t' m ->
         (forall {tm}, t < tm <= t' -> state c a tm < to r) ->
-        exists r1, proc rch p c a t'' r1 /\ state c a t'' > to r1 /\
-                        forall t''', t''' <= t' -> ~ deq rch p c a t''' r1.
-*)
+        exists r1, deq rch p c a t' r1 /\ state c a t' > to r1.
 
 (*    Axiom deqrSendm: forall {r}, deq rch p c a t r -> state c a t > to r -> exists {m}, marksend mch c p a t m.*)
   End ForT.
@@ -141,8 +138,8 @@ Module St (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p 
 
   Section ForT.
     Context {a: Addr}.
-    Lemma whenChildHighProcm: forall {t}, state c a (S t) > state c a t -> exists m,
-      proc mch p c a t m /\ to m = state c a (S t).
+    Lemma whenChildHighDeqm: forall {t}, state c a (S t) > state c a t -> exists m,
+      deq mch p c a t m /\ to m = state c a (S t).
     Proof.
       intros t sStgst.
       assert (sStnst: state c a (S t) <> state c a t) by omega.
@@ -153,17 +150,17 @@ Module St (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p 
       omega.
       exists m.
       intuition.
-      pose proof (procmChange deqmm) as sStem.
+      pose proof (deqmChange deqmm) as sStem.
       unfold src, dst in *.
       intuition.
     Qed.
 
     Lemma whenChildHigh': forall {t t'}, state c a (S (t' + t)) > state c a t ->
-      exists t'', t'' <= t' /\ exists m, proc mch p c a (t'' + t) m /\ to m >= state c a (S (t' + t)).
+      exists t'', t'' <= t' /\ exists m, deq mch p c a (t'' + t) m /\ to m >= state c a (S (t' + t)).
     Proof.
       intros t t' sSt'tgst.
       induction t'.
-      pose proof (whenChildHighProcm sSt'tgst) as [m [deqmm mesSt]].
+      pose proof (whenChildHighDeqm sSt'tgst) as [m [deqmm mesSt]].
       exists 0.
       assert (temp: 0 + t = t) by omega.
       rewrite temp in *; clear temp.
@@ -186,7 +183,7 @@ Module St (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p 
       exists t''.
       intuition.
       assert (gt: state c a (S (S t' + t)) > state c a (S (t' + t))) by omega; clear gt'.
-      pose proof (whenChildHighProcm gt) as [m [deqmm mesSt]].
+      pose proof (whenChildHighDeqm gt) as [m [deqmm mesSt]].
       exists (S t').
       intuition.
       exists m.
@@ -194,7 +191,7 @@ Module St (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p 
     Qed.
 
     Lemma whenChildHigh: forall {t t'}, t' > t -> state c a t' > state c a t ->
-      exists t'', t <= t'' < t' /\ exists m, proc mch p c a t'' m /\ to m >= state c a t'.
+      exists t'', t <= t'' < t' /\ exists m, deq mch p c a t'' m /\ to m >= state c a t'.
     Proof.
       intros t tPlust'.
       intros diff.
@@ -210,7 +207,7 @@ Module St (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p 
     Qed.
 
     Lemma whenChildHighConv: forall {t t'}, t' >= t ->
-      (~ exists t'', t <= t'' < t' /\ exists m, proc mch p c a t'' m /\ to m >= state c a t') ->
+      (~ exists t'', t <= t'' < t' /\ exists m, deq mch p c a t'' m /\ to m >= state c a t') ->
       state c a t' <= state c a t.
     Proof.
       intros t t' t'GeT notE.
