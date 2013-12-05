@@ -1,0 +1,214 @@
+Each node (n) has interfaces (channels) to
+a) Req from any of the children (req c n)
+b) Resp to any of the children (resp n c)
+c) Req to any of the children (req n c)
+d) Resp from any of the children (resp c n)
+e) Req to parent (req c n)
+f) Resp from parent (resp n c)
+g) Req from parent (req p n)
+h) Resp to parent (resp n p)
+
+Leaf node (n) has interfaces to
+a) Req from processor (preq n)
+b) Resp to processor (presp n)
+
+Each node n stores for each address a (at time t)
+a) state (st n a t)
+b) directory state, ie shadow state for each of its children c (dir n c a t)
+c) data (data n a t)
+d) wait for parent (wait n a t x): wait for response from parent for state x
+e) wait for child (cwait n c a t x): wait for response from child for state <= x
+
+In addition, for the purposes of the proof, each node, for each address a stores
+timestamp: ts n a t, the timestamp during time t
+
+For each channel a node is reading from, we have
+a) recv ch a m t: Recv on channel ch, for address a, message m (request or response) at time t
+b) proc ch a m t: Start processing the mesg
+c) deq ch a m t: Deq the message
+d) processing: the period between proc and deq
+
+For each channel a node is writing to, we have
+a) mark ch a m t: Mark a message m to be sent on channel ch, for address a, at time t
+b) send: Actually send the message on the channel
+c) marking: the period between mark and send
+
+A resp message m from parent to child contains the following fields:
+to m: The state to which the child would have to go to
+dt d: The data portion of the message
+time d: The timestamp at the parent
+
+A resp message m from child to parent contains the following fields:
+to m: The state to which the child has gone to
+dt d: The data portion of the message
+time d: The timestamp at the child
+
+A req message r from parent to child contains the following fields:
+to r: The state to which the parent wants the child to go to
+
+A req message r from child to parent contains the following fields:
+to r: The state to which the child wants to go to
+
+Processing response from parent p in node n at time t:
+------------------------------------------------------
+recv (resp p n) a m t -> 
+  exists t' >= t, proc (resp p n) a m t'
+
+proc (resp p n) a m t ->
+  st n a (t+1) = to m /\
+  (wait n a t (to m) -> forall x, ~ wait n a (t+1) x) /\
+  (st n a t == I ->
+    data n a t = dt m /\ ts n a t = time m) /\
+  deq (resp p n) a m t
+
+Processing response from child c in node n at time t:
+-----------------------------------------------------
+recv (resp c n) a m t ->
+  exists t' >= t, proc (resp c n) a m t'
+
+proc (resp c n) a m t ->
+  dir n c a (t+1) = to m /\
+  (cwait n c a t x /\ to m <= x -> forall y, ~ cwait n c a (t+1) y) /\
+  (dir n c a t > S ->
+    data n a t = dt m /\ ts n a t = time m) /\
+  deq (resp c n) a m t
+
+Processing request from parent p in node n at time t:
+-----------------------------------------------------
+
+When to start proc:
+(forall t', exists t'' >= t', forall a' r', ~ processing (req p n) a' r' t'' /\ forall (i in child n), ~ cwait n i a t'') ->
+  recv (req p n) a r t -> exists tp >= t, proc (req p n) a r tp
+
+proc (req p n) a r t -> (forall r', ~ processing (req p n) a r' t) /\ forall (i in child n), ~ cwait n i a t
+
+What happens when we start processing:
+
+proc (req p n) a r t ->
+  forall (c in child n), dir n c a t > to r ->
+    cwait n c a (t+1) (to r) /\
+      exists r', mark (req n c) a r' t /\
+        to r' = to r
+
+Finish processing:
+
+processing (req p n) a r t /\ forall (c in child n), dir n c a t <= to r /\ forall m, ~ marking (resp n p) a m t ->
+  (st n a t > to r ->
+     st n a (t+1) = to r /\
+     exists m, mark (resp n p) a m t /\
+       to m = to r /\ (st n a t > S -> dt m = data n a t /\ time m = ts n a t)) /\
+
+processing (req p n) a r t /\ exists m, send (resp n p a m t) /\ forall ch a' m', ~ marking ch a' m' t ->
+  deq (req p n) a r t
+
+Processing request from child c in node n whose parent is p at time t:
+----------------------------------------------------------------------
+
+When to start proc:
+(forall t', exists t'' >= t', forall i a' r', ~ processing (req i n) a' r' t'') ->
+  recv (preq n) a r t -> exists tp >= t, proc (preq n) a r tp
+
+proc (preq n) a r t -> (forall r', ~ processing (req p n) a r' t) /\ forall r', ~ processing (preq n) a r' t)
+
+First do replacement if necessary
+// Space denotes availability of space for an address in the node (space a t)
+
+// replace(a) denotes the set of addresses to replace a
+
+processing (req c n) a r t /\ ~ space a t /\ exists a' in replace(a), forall ch r', ~ processing ch a' r' t ->
+  ((forall i in child n, dir n i a' t > I /\ forall x, ~ cwait n i a' t) -> exists m, mark (req n c) a' m t /\ to m = I /\ cwait n i a' (t+1) = I) /\
+  (forall i in child n, dir n i a' t = I -> exists m, mark (resp n p) a' m t /\ to m = I /\ (st n a' t > S -> dt m = data n a' t /\ time m = ts n a' t))
+
+Start processing:
+processing (preq n) a r t /\ space a t ->
+  ((forall (i != c, in child n), ~ isCompatible(dir n i a t, to r) /\ forall x, ~ cwait n i a t x) ->
+     cwait n i a (t+1) (compatible(to r)) /\
+       exists r', mark (req n i) a r' t /\
+         to r' = compatible(to r)) /\
+  (st n a t < to r /\ forall x, ~ wait n a t x) ->
+    wait n a (t+1) (to r) /\
+      exists r', mark (req n p) a r' t /\
+        to r' = to r
+
+Finish processing:
+processing (req c n) a r t /\ forall (i != c, in child n), isCompatible(dir n i a t, to r) /\ st n a t >= to r /\ ~ exists m, marking (resp c n) a m t->
+    dir n c a (t+1) = to r /\
+    (exists m, mark (resp n c) a m t /\
+       to m = to r /\ (dir n c a t = I -> dt m = data n a t /\ time m = ts n a t)) /\
+
+processing (req c n) a r t /\ (exists m, send (resp c n) a m t) /\ forall ch m' a, ~ marking ch a m' t ->
+  deq (preq n) a r t
+
+Processing L1 (node n) req at time t (parent p):
+------------------------------------------------
+When to start proc:
+(forall t', exists t'' >= t', forall a' r', ~ processing (preq n) a' r' t'') ->
+  recv (preq n) a r t -> exists tp >= t, proc (preq n) a r tp
+
+proc (preq n) a r t -> (forall r', ~ processing (req p n) a r' t) /\ forall r', ~ processing (preq n) a r' t)
+
+// Space denotes availability of space for an address in the node (space a t)
+
+proc (preq n) a r t /\ to r > st n a t /\ space a t ->
+  wait n a (t+1) (to r) /\
+  exists r', mark (req n p) a r' t /\
+    to r' = to r
+
+// replace(a) denotes the set of addresses to replace a
+
+proc (preq n) a r t /\ ~ space a t /\ exists a' in replace(a), forall r', ~ processing (preq n) a' r' t ->
+  (exists m, mark (resp n p) a' m t /\ to m = I /\ (st n a' t > S -> dt m = data n a' t /\ time m = ts n a' t)) /\
+  wait n a (t+1) (to r) /\
+  exists r', mark (req n p) a r' t /\
+    to r' = to r
+
+processing (preq n) a r t /\ to r <= st n a t /\ ~ exists m, mark (presp n) a m t ->
+  (to r = S -> exists m, mark (presp n) a m t /\ dt m = data n a t /\ time m = ts n a t) /\
+  (to r > S -> data n a (t+1) = dt r /\ ts n a (t+1) = t) 
+
+processing (preq n) a r t /\ (exists m, send (presp n) a m t) /\ forall ch m' a', ~ marking ch a' m' t ->
+  deq (preq n) a r t
+
+Atomicity Theorem: (Here n1, n2, n, n', n'' are all L1 caches)
+ forall a m t, send (presp n) a m t ->
+   exists r n' (t' < t), deq (preq n') a r t' /\ to r > S /\ t' = time m /\ forall n'' (t' <= t'' < t) r', ~ deq (preq n'') a r' t'' /\ to r' > S
+
+Deadlock freedom Theorem: (Again, n denotes L1 cache)
+recv (preq n) a r t -> exists t', deq (preq n) a r t'
+
+
+Optional voluntary rules:
+-------------------------
+/*
+Voluntary sending response from node n to parent p at time t:
+-------------------------------------------------------------
+((~ exists i r, processing (req i n) a r t) /\
+ forall c in child n, dir n c a t <= x /\ st n a t > x) ->
+   st n a (t+1) = x /\
+   exists m, mark (resp n p) a m t /\
+     to m = x /\
+       (x > S -> dt m = data n a t /\ time m = ts n a t)
+
+Voluntary sending request from node n to parent p at time t:
+------------------------------------------------------------
+((~ exists i r, processing (req i n) a r t) /\
+  st n a t < x) ->
+    wait n a (t+1) x /\
+    exists r, mark (req n p) a r t /\
+      to r = x
+
+Voluntary sending request from node n to children at time t:
+------------------------------------------------------------
+(~exists i r, processing (req i n) a r t) ->
+  forall (c in child n), dir n c a t > x ->
+    cwait n c a (t+1) x /\
+      exists r, mark (req n c) a r t /\
+        to r = x
+*/
+
+Conditions on message order in channels, across channels, for a particular address:
+a) Resp from a particular child to the parent for an address must be processed in order, ie
+proc (resp c p) a m1 t1 /\ proc (resp c p) a m2 t2 /\ mark (resp c p) a m1 t1' /\ mark (resp c p) a m2 t2' /\ t1' < t2' -> t1 < t2
+b) Req from parent should never be processed before an earlier response from parent for an addres, ie
+proc (resp p c) a m t1 /\ proc (req p c) a r t2 /\ mark (resp p c) a m t1' /\ mark (req p c) a r t2' /\ t1' < t2' -> t1 < t2
+
