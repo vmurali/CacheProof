@@ -77,10 +77,10 @@ Processing request from parent p in node n at time t:
 -----------------------------------------------------
 
 When to start proc:
-(forall t', exists t'' >= t', forall a' r', ~ processing (req p n) a' r' t'' /\ forall (i in child n), ~ cwait n i a t'') ->
+(forall t', exists t'' >= t', forall a' r', ~ processing (req p n) a' r' t'' /\ forall (i in child n) x, ~ cwait n i a t'' x) ->
   recv (req p n) a r t -> exists tp >= t, proc (req p n) a r tp
 
-proc (req p n) a r t -> (forall r', ~ processing (req p n) a r' t) /\ forall (i in child n), ~ cwait n i a t
+proc (req p n) a r t -> (forall r', ~ processing (req p n) a r' t) /\ forall (i in child n) x, ~ cwait n i a t x
 
 What happens when we start processing:
 
@@ -106,7 +106,7 @@ Processing request from child c in node n whose parent is p at time t:
 
 When to start proc:
 (forall t', exists t'' >= t', forall i a' r', ~ processing (req i n) a' r' t'') ->
-  recv (preq n) a r t -> exists tp >= t, proc (preq n) a r tp
+  recv (req c n) a r t -> exists tp >= t, proc (req c n) a r tp
 
 proc (preq n) a r t -> (forall r', ~ processing (req p n) a r' t) /\ forall r', ~ processing (preq n) a r' t)
 
@@ -115,9 +115,9 @@ First do replacement if necessary
 
 // replace(a) denotes the set of addresses to replace a
 
-processing (req c n) a r t /\ ~ space a t /\ exists a' in replace(a), forall ch r', ~ processing ch a' r' t ->
-  ((forall i in child n, dir n i a' t > I /\ forall x, ~ cwait n i a' t) -> exists m, mark (req n c) a' m t /\ to m = I /\ cwait n i a' (t+1) = I) /\
-  (forall i in child n, dir n i a' t = I -> exists m, mark (resp n p) a' m t /\ to m = I /\ (st n a' t > S -> dt m = data n a' t /\ time m = ts n a' t))
+processing (req c n) a r t /\ ~ space a t /\ exists a' in replace(a), ((forall r', ~ processing (req p n) a' r' t) /\ forall (i in child n) x, ~ cwait n i a' t x) ->
+  ((forall i in child n, dir n i a' t > I) -> exists m, mark (req n c) a' m t /\ to m = I /\ cwait n i a' (t+1) = I) /\
+  ((forall i in child n, dir n i a' t = I) -> exists m, mark (resp n p) a' m t /\ to m = I /\ (st n a' t > S -> dt m = data n a' t /\ time m = ts n a' t))
 
 Start processing:
 processing (preq n) a r t /\ space a t ->
@@ -136,7 +136,7 @@ processing (req c n) a r t /\ forall (i != c, in child n), isCompatible(dir n i 
     (exists m, mark (resp n c) a m t /\
        to m = to r /\ (dir n c a t = I -> dt m = data n a t /\ time m = ts n a t)) /\
 
-processing (req c n) a r t /\ (exists m, send (resp c n) a m t) /\ forall ch m' a, ~ marking ch a m' t ->
+processing (req c n) a r t /\ forall ch m' a, ~ marking ch a m' t ->
   deq (preq n) a r t
 
 Processing L1 (node n) req at time t (parent p):
@@ -162,20 +162,22 @@ proc (preq n) a r t /\ ~ space a t /\ exists a' in replace(a), forall r', ~ proc
   exists r', mark (req n p) a r' t /\
     to r' = to r
 
-processing (preq n) a r t /\ to r <= st n a t /\ ~ exists m, mark (presp n) a m t ->
-  (to r = S -> exists m, mark (presp n) a m t /\ dt m = data n a t /\ time m = ts n a t) /\
-  (to r > S -> data n a (t+1) = dt r /\ ts n a (t+1) = t) 
+Load processing:
+----------------
+// Not empty is a way of checking if the response queue is not empty
+processing (preq n) a r t /\ to r <= st n a t /\ to r = S /\ notEmpty (presp n) a t /\ ~ exists m, mark (presp n) a m t ->
+  (exists m, mark (presp n) a m t /\ send (presp n) a m t /\ dt m = data n a t /\ time m = ts n a t) /\
+  deq (preq n) a r t
 
-processing (preq n) a r t /\ (exists m, send (presp n) a m t) /\ forall ch m' a', ~ marking ch a' m' t ->
+Store processing:
+-----------------
+processing (preq n) a r t /\ to r <= st n a t /\ to r > S /\ ~ exists m, mark (presp n) a m t ->
+  (data n a (t+1) = dt r /\ ts n a (t+1) = t)  /\
   deq (preq n) a r t
 
 Atomicity Theorem: (Here n1, n2, n, n', n'' are all L1 caches)
- forall a m t, send (presp n) a m t ->
+ forall a r' t, deq (preq n) a r' t /\ to r = S -> exists m, send (presp n) a m t  /\
    exists r n' (t' < t), deq (preq n') a r t' /\ to r > S /\ t' = time m /\ forall n'' (t' <= t'' < t) r', ~ deq (preq n'') a r' t'' /\ to r' > S
-
-Deadlock freedom Theorem: (Again, n denotes L1 cache)
-recv (preq n) a r t -> exists t', deq (preq n) a r t'
-
 
 Optional voluntary rules:
 -------------------------
