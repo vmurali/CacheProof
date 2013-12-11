@@ -1,0 +1,52 @@
+Request label l
+---------------
+l.proc = Processor the label got generated
+l.addr = Address corresponding to label
+l.index = The integer for ordering labels within a processor
+l.type = Load or Store
+
+Axiom uniqLabels:
+forall l1 l2, l1 = l2 ->
+  l1.proc = l2.proc /\
+  l1.addr = l2.addr /\
+  l1.index = l2.index /\
+  l1.type = l2.type
+
+Axiom uniqIndicesPerProc:
+forall l1 l2, l1.proc = l2.proc /\ l1.index = l2.index -> l1 = l2
+
+Resp label rl
+-------------
+rl.proc = Processor where the response got generated
+rl.ldl = Load label for the response
+rl.stl = Store label for the response or Initial
+rl.time = Time at which response was generated
+
+Theorem correctResp:
+forall rl,
+  rl.proc = rl.ldl.proc /\
+  rl.ldl.type = Load /\
+  ( rl.stl = Initial \/
+   (rl.stl <> Initial /\ rl.stl.type = Store /\ rl.ldl.addr = rl.stl.addr))
+
+Theorem uniqRespTimes:
+forall rl1 rl2,
+  rl1.time = rl2.time -> rl1 = rl2
+
+Theorem uniqRespLdLabel:
+forall rl1 rl2,
+  rl1.ldl = rl2.ldl -> rl1 = rl2
+
+Theorem storeAtomicity1:
+forall rl,
+  rl.stl <> Initial /\ rl.proc = rl.stl.proc -> rl.stl.index < rl.ldl.index
+
+Theorem storeAtomicity2:
+forall rl1 rl2 rl3,
+  rl1.time < rl2.time < rl3.time /\ rl1.ldl.addr = rl2.ldl.addr = rl3.ldl.addr /\
+    rl1.stl <> rl2.stl -> rl1.stl <> rl3.stl
+
+Theorem storeAtomicity3:
+forall rl1 rl2,
+  rl1.stl <> Initial /\ rl1.time < rl2.time /\ rl1.addr = rl2.addr /\ rl1.stl.proc = rl2.stl.proc
+    -> rl1.stl.index < rl2.stl.index

@@ -1,0 +1,65 @@
+Theorem dirAlwaysCompatible:
+The states of the directory is always compatible.
+Proof:
+At t=0, it is compatible.
+Let's assume it's compatible till t. To prove for t+1.
+Case 1:
+If the directory neither receives nor sends a response, states remain same. So compatible
+Case 2:
+If the directory receives a response, then the dir state goes down (by parentDowngradesOnRecv)
+State went from M to something. Every other directory state must be I. So compatible
+State went from S to I. Every other directory state must be <= S, so compatible
+Case 3:
+If the directory sent a response, then it ensures that the directory is compatible.
+
+Theorem fullLatestValue:
+a) If all directory is in state <= S, then parent has the latest value.
+b) If a cache is in state >= S, then it has the latest value.
+Proof:
+At t=0, this is true (all are Initial).
+Let's assume it's true till t. To prove for t+1.
+a)
+Case 1:
+If the directory neither receives nor sends a response, states remain same.  If
+the directory had no cache in M state, then no cache (because of conservative
+theorem) can write to that location, and hence directory has the same latest
+value (by induction hypothesis) at t+1
+Case 2:
+If the directory receives a response, then the response is either M->I, M->S or S->I.
+Case 2a:
+Response is M->x. Data is updated. It must be sent at time ts <= t from
+the child. By induction
+hypothesis, child has latest value at ts. Now, since directory is compatible,
+and since state for this child is M, no other dir has M permissions. So no
+other cache has M (because of conservative). So no store could have taken place
+between when the child sent M->x and when parent received it. So parent has
+latest value at t+1.
+Case 2b:
+Response is S->I. Data is not updated. No other dir can be in state M
+(because of compatible, and conservative), and parent already had latest value
+by induction hypothesis.
+Case 3:
+If the directory sends a response I->S, the previous state must have been compatible with S,
+so none of the other cacches can be M. So by induction hypothesis directory had
+the latest value and it will remain latest value at t+1.
+b)
+Case 1:
+If the child neither receives nor sends a response, states remain same. If the
+previous state was >= S, then none of the other children are in M by singleM.
+So, no write could have taken place other than its own. So it still has latest value.
+Case 2a:
+If the child receives a response I->y, data is updated. When the directory sent the response, it
+had the latest copy, and it must be compatible with the other states,
+so other states are < M, since y > I. By cross, no response would be received
+from this cache to the directory, so the state of the directory never goes back
+to I. By compatible, no directory can have M. By conservative, no other cache
+has M permissions. So, no other cache can write the into that location, thus
+this data is the latest value.
+Case 2b:
+If the child receives a response S->y, data is not updated. By induction
+hypothesis, the cache already had latest value and by singleM, no other cache
+could have written into that location, so it remains latest value.
+Case 3:
+If the child sends response M->S, by induction, the cache already had latest
+value and by singleM, no other cache could have written into that location, so
+it remains latest value.
