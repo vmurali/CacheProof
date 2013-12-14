@@ -4,14 +4,14 @@ Require Import Omega.
 Module Type Channel (dt: DataTypes).
   Import dt.
 
-  Parameter marksend: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter send: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter recv: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter proc: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter deq: Channel -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter marksend: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter send: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter recv: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter proc: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter deq: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
 
   Section local.
-    Context {s: Channel}.
+    Context {s: ChannelType}.
     Context {p c : Cache}.
     Axiom uniqMarksend1: forall {m n t}, marksend s p c t m -> marksend s p c t n -> m = n.
     Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c t1 m -> marksend s p c t2 m -> t1 = t2.
@@ -81,14 +81,14 @@ End Channel.
 Module Type ChannelPerAddr (dt: DataTypes).
   Import dt.
 
-  Parameter marksend: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter send: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter recv: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter proc: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter deq: Channel -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Parameter marksend: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Parameter send: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Parameter recv: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Parameter proc: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Parameter deq: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
 
   Section local.
-    Context {s: Channel}.
+    Context {s: ChannelType}.
     Context {p c : Cache} {a: Addr}.
     Axiom uniqMarksend1: forall {m n t}, marksend s p c a t m -> marksend s p c a t n -> m = n.
     Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c a t1 m -> marksend s p c a t2 m -> t1 = t2.
@@ -123,7 +123,7 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
 
   Set Implicit Arguments.
   Section local.
-    Variable s: Channel.
+    Variable s: ChannelType.
     Variable p c : Cache.
     Variable a: Addr.
     Definition uniqMarksend1 {m n t} (sendm : marksend s p c a t m) (sendn : marksend s p c a t n) :=

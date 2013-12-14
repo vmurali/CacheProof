@@ -37,16 +37,21 @@ Theorem uniqRespLdLabel:
 forall rl1 rl2,
   rl1.ldl = rl2.ldl -> rl1 = rl2
 
+Theorem storeAtomicity0:
+forall st1 rl2,
+  rl2.proc = st1.proc /\ rl2.ldl.addr = st1.addr /\ st1.index < rl2.index -> rl1.stl <> Initial
+
 Theorem storeAtomicity1:
 forall rl,
   rl.stl <> Initial /\ rl.proc = rl.stl.proc -> rl.stl.index < rl.ldl.index
 
 Theorem storeAtomicity2:
+forall rl1 rl2,
+  rl1.stl.proc = rl2.stl.proc /\ rl1.ldl.addr = rl2.ldl.addr
+  rl1.stl <> Initial /\ rl1.time < rl2.time /\ rl1.addr = rl2.addr /\ rl1.stl.proc = rl2.stl.proc
+    -> rl1.stl.index < rl2.stl.index
+
+Theorem storeAtomicity3:
 forall rl1 rl2 rl3,
   rl1.time < rl2.time < rl3.time /\ rl1.ldl.addr = rl2.ldl.addr = rl3.ldl.addr /\
     rl1.stl <> rl2.stl -> rl1.stl <> rl3.stl
-
-Theorem storeAtomicity3:
-forall rl1 rl2,
-  rl1.stl <> Initial /\ rl1.time < rl2.time /\ rl1.addr = rl2.addr /\ rl1.stl.proc = rl2.stl.proc
-    -> rl1.stl.index < rl2.stl.index

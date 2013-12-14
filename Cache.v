@@ -31,7 +31,7 @@ Module Type LocalBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
       marksend rch src dst a t2 r2 -> exists t', t1 < t' <= t2 /\ ~ toRSComp (to r1) (st a t').
     Axiom sendmFrom: forall {m}, marksend mch src dst a t m -> from m = st a t.
     Axiom sendrFrom: forall {r}, marksend rch src dst a t r -> from r = st a t.
-    Axiom sendmTime: forall {m}, marksend mch src dst a t m -> time m = timeStamp src a t.
+    (*Axiom sendmTime: forall {m}, marksend mch src dst a t m -> time m = timeStamp src a t.*)
     Axiom noSendmProcm: forall {m}, marksend mch src dst a t m ->
       forall {m'}, proc mch dst src a t m' -> False.
     Axiom noSendmSendr: forall {m}, marksend mch src dst a t m -> forall {r}, marksend rch src dst a t r -> False.

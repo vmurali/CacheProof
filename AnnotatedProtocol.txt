@@ -3,26 +3,17 @@ forall a, m.data[a] = Initial
 
 
 Load request at L1
-when p2cReq.first = <Ld a>
+when p2cReq[c].first = <Ld a ll>
      /\ c.state[a] >= S {
-  LOAD REQUEST: label l is <c,c.index>, such that
-         l.type = Load, l.proc = c, l.addr = a, l.index = c.index
-  LOAD RESPONSE: label rl is <c, c.index>, such that
-         l.ldl = <c,c.index>, l.stl = c.data[a], l.time = t
-  c2pResp[c].enq(<<c,c.index> c.data[a] t>)    // Returning a <ldl stl t> tuple
-                  // Real protocol: c2pResp[c].enq(c.data[a])
-  c.index = c.index + 1
+  c2pLdResp[c].enq(<ll c.data[a] t>)
   p2cReq.deq
 }
 
 Store request at L1
-when p2cReq.first = <St a>       // No longer sending data for stores
+when p2cReq[c].first = <St a sl>
      /\ c.state[a] > S {
-  STORE REQUEST: label l is <c,c.index>, such that
-         l.type = Store, l.proc = c, l.addr = a, l.index = c.index
-  c.data[a] = <c, c.index>       // I am storing a unique store label instead of data
-                  // Real protocol: c.data[a] = v, which comes as input <St a v>
-  c.index = c.index + 1
+  c.data[a] = sl
+  c2pStResp[c].enq(<sl t>)
   p2cReq.deq
 }
 
