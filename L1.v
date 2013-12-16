@@ -562,9 +562,6 @@ Declare Module l1T: L1Theorems dt l1 l1BInReal.
 Module l1S := mkL1StoreAtomicity dt l1 l1BInReal l1T.
 
 Module mkStoreAtomicity'
-       (* (dt: DataTypes) (l1: L1Axioms dt) (li: L1InputTypes dt l1)
-       (l1BInReal: L1InputAxioms dt l1) (l1T: L1Theorems dt l1 l1BInReal)
-       (l1S: L1StoreAtomicity dt l1 l1BInReal l1T) *)
        (l1BIn: L1BaseInputAxioms dt li) 
 : StoreAtomicity dt li l1BIn.
   Import dt l1BIn l1 l1T l1S li.
@@ -676,3 +673,4 @@ Module mkStoreAtomicity'
     assumption.
   Qed.
 End mkStoreAtomicity'.
+
