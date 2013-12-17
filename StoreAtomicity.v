@@ -28,29 +28,29 @@ End L1BaseInputAxioms.
 Module Type StoreAtomicity (dt: DataTypes) (l1B: L1InputTypes dt) (l1In: L1BaseInputAxioms dt l1B).
   Import dt l1B l1In.
 
-  Axiom respHasReq:
+  Parameter respHasReq:
     forall {r}, exists q, labelR r = labelQ q.
 
-  Axiom respProc:
+  Parameter respProc:
     forall {r q}, labelR r = labelQ q -> procR r = procQ q.
 
-  Axiom uniqRespLabels:
+  Parameter uniqRespLabels:
     forall {r1 r2}, labelR r1 = labelR r2 ->
                     procR r1 = procR r2 /\ timeR r1 = timeR r2 /\
                     forall {q}, labelQ q = labelR r1 -> desc q = Ld ->
                                 stl r1 = stl r2.
 
-  Axiom uniqRespTimes:
+  Parameter uniqRespTimes:
     forall {r1 r2}, timeR r1 = timeR r2 ->
                     forall {q1 q2}, labelR r1 = labelQ q1 -> labelR r2 = labelQ q2 ->
                                     loc q1 = loc q2 -> desc q1 = St -> labelR r1 = labelR r2.
 
 
-  Axiom localOrdering:
+  Parameter localOrdering:
     forall {r1 r2 q1 q2}, labelR r1 = labelQ q1 -> labelR r2 = labelQ q2 -> procQ q1 = procQ q2 ->
                           loc q1 = loc q2 -> index q1 < index q2 -> ~ timeR r1 > timeR r2.
 
-  Axiom storeAtomicity:
+  Parameter storeAtomicity:
     forall {r q},
       labelR r = labelQ q -> desc q = Ld ->
       match stl r with
