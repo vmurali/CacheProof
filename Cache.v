@@ -1578,4 +1578,16 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     unfold dirSemi.st in *.
     omega.
   Qed.
+
+  Theorem pRecvRespPrevState:
+    forall {m a tr ts}, proc mch c p a tr m -> marksend mch c p a ts m ->
+                        dir p c a tr = state c a ts.
+    Proof.
+      intros.
+      pose proof (dir.procmCond H).
+      pose proof (st.sendmFrom H0).
+      rewrite H1 in H2.
+      assumption.
+    Qed.
+      
 End PairTheorems.
