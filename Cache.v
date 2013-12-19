@@ -4,13 +4,6 @@ Require Import Useful.
 Require Import DataTypes.
 Require Import Channel.
 
-Module Type LocalState (dt: DataTypes).
-  Import dt.
-  Parameter st: Addr -> Time -> State.
-  Parameter src dst: Cache.
-  Parameter toRSComp: State -> State -> Prop.
-End LocalState.
-
 Module Type LocalBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
 
@@ -22,19 +15,18 @@ Module Type LocalBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
     Context {t: Time}.
     Context {a: Addr}.
 
-    Axiom change: st a (S t) <> st a t -> (exists m, marksend mch src dst a t m) \/
+    Axiom change: st a (S t) <> st a t -> (exists m, mark mch src dst a t m) \/
       (exists m, proc mch dst src a t m).
-    Axiom sendmChange: forall {m}, marksend mch src dst a t m -> st a (S t) = to m.
+    Axiom sendmChange: forall {m}, mark mch src dst a t m -> st a (S t) = to m.
     Axiom procmChange: forall {m}, proc mch dst src a t m -> st a (S t) = to m.
-    Axiom sendrImpSt: forall {r}, marksend rch src dst a t r -> toRSComp (to r) (st a t).
-    Axiom sendrImpNoSendr: forall {t1 t2 r1 r2}, t1 < t2 -> marksend rch src dst a t1 r1 ->
-      marksend rch src dst a t2 r2 -> exists t', t1 < t' <= t2 /\ ~ toRSComp (to r1) (st a t').
-    Axiom sendmFrom: forall {m}, marksend mch src dst a t m -> from m = st a t.
-    Axiom sendrFrom: forall {r}, marksend rch src dst a t r -> from r = st a t.
-    (*Axiom sendmTime: forall {m}, marksend mch src dst a t m -> time m = timeStamp src a t.*)
-    Axiom noSendmProcm: forall {m}, marksend mch src dst a t m ->
+    Axiom sendrImpSt: forall {r}, mark rch src dst a t r -> toRSComp (to r) (st a t).
+    Axiom sendrImpNoSendr: forall {t1 t2 r1 r2}, t1 < t2 -> mark rch src dst a t1 r1 ->
+      mark rch src dst a t2 r2 -> exists t', t1 < t' <= t2 /\ ~ toRSComp (to r1) (st a t').
+    Axiom sendmFrom: forall {m}, mark mch src dst a t m -> from m = st a t.
+    Axiom sendrFrom: forall {r}, mark rch src dst a t r -> from r = st a t.
+    Axiom noSendmProcm: forall {m}, mark mch src dst a t m ->
       forall {m'}, proc mch dst src a t m' -> False.
-    Axiom noSendmSendr: forall {m}, marksend mch src dst a t m -> forall {r}, marksend rch src dst a t r -> False.
+    Axiom noSendmSendr: forall {m}, mark mch src dst a t m -> forall {r}, mark rch src dst a t r -> False.
   End ForT.
 End LocalBehavior.
 
@@ -43,7 +35,7 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
 
   Section ForLs.
     Lemma nochange': forall {a t t'}, (forall tn, t <= tn < t + t' ->
-      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) ->
+      (forall m, ~ mark mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) ->
     st a t = st a (t + t').
     Proof.
       intros a t t'.
@@ -51,13 +43,13 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
       intro false.
       firstorder.
       intros noChange.
-      assert (help: forall tn, t <= tn < t + t' -> (forall m, ~ marksend mch src dst a tn m) /\
+      assert (help: forall tn, t <= tn < t + t' -> (forall m, ~ mark mch src dst a tn m) /\
         (forall m, ~ proc mch dst src a tn m)) by (
           intros tn comp;
             assert (comp2: t <= tn < t + S t') by omega;
               firstorder).
       assert (stTEqstT': st a t = st a (t + t')) by firstorder.
-      assert (nothing: (forall m, ~ marksend mch src dst a (t + t') m) /\
+      assert (nothing: (forall m, ~ mark mch src dst a (t + t') m) /\
         forall m, ~ proc mch dst src a (t + t') m) by
       (assert (t <= t + t' < t + S t'); firstorder).
       rewrite stTEqstT'.
@@ -71,7 +63,7 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
     Qed.
 
     Lemma noChange: forall {a t t'}, t < t' -> (forall tn, t <= tn < t' ->
-      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) -> st a t = st a t'.
+      (forall m, ~ mark mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) -> st a t = st a t'.
     Proof.
       intros a t t' tLtT'.
       remember (t' - t) as td.
@@ -81,7 +73,7 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
     Qed.
 
     Lemma noChange2: forall {a t t'}, t <= t' -> (forall tn, t <= tn < t' ->
-      (forall m, ~ marksend mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) -> st a t = st a t'.
+      (forall m, ~ mark mch src dst a tn m) /\ (forall m, ~ proc mch dst src a tn m)) -> st a t = st a t'.
     Proof.
       intros a t t' tLeT'.
       assert (opts: t = t' \/ t < t') by omega.
@@ -121,15 +113,15 @@ Module Type StBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StS
   Section ForT.
     Context {a: Addr} {t: Time}.
 
-    Axiom sendmImpSt: forall {m}, marksend mch c p a t m -> state c a t > to m.
+    Axiom sendmImpSt: forall {m}, mark mch c p a t m -> state c a t > to m.
 
 
     Axiom voluntary:
-      forall {r}, marksend rch c p a t r -> forall {t' m}, t' > t -> marksend mch c p a t' m ->
+      forall {r}, mark rch c p a t r -> forall {t' m}, t' > t -> mark mch c p a t' m ->
         (forall {tm}, t < tm <= t' -> state c a tm < to r) ->
         exists r1, proc rch p c a t' r1 /\ state c a t' > to r1.
 
-(*    Axiom procrSendm: forall {r}, proc rch p c a t r -> state c a t > to r -> exists {m}, marksend mch c p a t m.*)
+(*    Axiom procrSendm: forall {r}, proc rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
   End ForT.
 End StBase.
 
@@ -231,20 +223,20 @@ Module Type DirBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: Di
   Section ForT.
     Context {a: Addr} {t: Time}.
 
-    Axiom sendmImpProcr: forall {m}, marksend mch p c a t m -> exists r, proc rch c p a t r.
+    Axiom sendmImpProcr: forall {m}, mark mch p c a t m -> exists r, proc rch c p a t r.
 
-    Axiom sendmImpProcrGe: forall {m}, marksend mch p c a t m ->
+    Axiom sendmImpProcrGe: forall {m}, mark mch p c a t m ->
       forall {r}, proc rch c p a t r -> to m >= to r.
 
     Axiom procrCond: forall {r}, proc rch c p a t r -> from r >= dir p c a t.
 
     Axiom procmCond: forall {m}, proc mch c p a t m -> from m = dir p c a t.
 
-    Axiom sendrImpNoSendm: forall {t1 t2 r1 m2}, t1 < t2 -> marksend rch p c a t1 r1 ->
-      marksend mch p c a t2 m2 ->
+    Axiom sendrImpNoSendm: forall {t1 t2 r1 m2}, t1 < t2 -> mark rch p c a t1 r1 ->
+      mark mch p c a t2 m2 ->
       exists t', t1 < t' < t2 /\ exists m, proc mch c p a t' m /\ to m <= to r1.
 
-(*    Axiom procrImpSendm: forall {r}, proc rch c p a t r -> exists m, marksend mch p c a t m /\ to m >= to r.*)
+(*    Axiom procrImpSendm: forall {r}, proc rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
   End ForT.
 End DirBase.
 
@@ -256,7 +248,7 @@ Module Dir (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (d: DirSemi dt p
   Lemma dirProcImpLow: forall {a t m}, proc mch c p a t m -> dir p c a t > dir p c a (S t).
   Proof.
     intros a t m procm.
-    pose proof (procImpMarksend procm) as [t' [t'LeT sendm]].
+    pose proof (procImpMark procm) as [t' [t'LeT sendm]].
     pose proof (db.procmChange procm) as sth.
     pose proof (sb.sendmImpSt sendm) as sth2.
     pose proof (db.procmCond procm) as sth3.
@@ -266,7 +258,7 @@ Module Dir (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (d: DirSemi dt p
   Qed.
 
   Lemma whenDirLow': forall {a t t'}, dir p c a (t' + t) > dir p c a t ->
-    exists t'', t'' < t' /\ exists m, marksend mch p c a (t'' + t) m.
+    exists t'', t'' < t' /\ exists m, mark mch p c a (t'' + t) m.
   Proof.
     intros a t t'.
     induction t'.
@@ -287,7 +279,7 @@ Module Dir (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (d: DirSemi dt p
   Qed.
 
   Lemma whenDirLow: forall {a t t1}, t <= t1 -> dir p c a t1 > dir p c a t ->
-    exists t'', t <= t'' < t1 /\ exists m, marksend mch p c a t'' m.
+    exists t'', t <= t'' < t1 /\ exists m, mark mch p c a t'' m.
   Proof.
     intros a t t1 t1LeT1 dirGt.
     assert (opt: t = t1 \/ t < t1) by omega.
@@ -302,7 +294,7 @@ Module Dir (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (d: DirSemi dt p
   Qed.
 
   Lemma childSth: forall {a t x}, dir p c a t > x -> forall {td},
-    ~ (exists tn, t <= tn < t + td /\ ((exists m, marksend mch p c a tn m) \/
+    ~ (exists tn, t <= tn < t + td /\ ((exists m, mark mch p c a tn m) \/
       (exists m, proc mch c p a tn m /\ to m <= x))) ->
     dir p c a (t + td) > x.
   Proof.
@@ -313,7 +305,7 @@ Module Dir (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (d: DirSemi dt p
     rewrite H in *.
     intuition.
     intros nothing.
-    assert (contra: ~ exists tn, t <= tn < t + td /\ ((exists m, marksend mch p c a tn m) \/
+    assert (contra: ~ exists tn, t <= tn < t + td /\ ((exists m, mark mch p c a tn m) \/
       (exists m, proc mch c p a tn m /\ to m <= x))) by (unfold not; intros [tn [cond3 rest]];
         assert (cond2: t <= tn < t + S td) by omega;
           generalize nothing cond2 rest; clear; firstorder).
@@ -339,7 +331,7 @@ Module Dir (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (d: DirSemi dt p
   Qed.
 
   Lemma dirCantGoLower: forall {a t x}, dir p c a t > x -> forall {t1}, t <= t1 ->
-    ~ (exists tn, t <= tn < t1 /\ ((exists m, marksend mch p c a tn m) \/
+    ~ (exists tn, t <= tn < t1 /\ ((exists m, mark mch p c a tn m) \/
       (exists m, proc mch c p a tn m /\ to m <= x))) ->
     dir p c a (t1) > x.
   Proof.
@@ -356,28 +348,28 @@ Module Type PairProperties (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt).
 
   Axiom init: forall {a}, dir p c a 0 = state c a 0.
 
-  Definition twoEqPRespFalse := forall a t t1 m1, t1 <= t -> marksend mch p c a t1 m1 ->
-    forall t2 m2, t2 <= t -> marksend mch p c a t2 m2 ->
+  Definition twoEqPRespFalse := forall a t t1 m1, t1 <= t -> mark mch p c a t1 m1 ->
+    forall t2 m2, t2 <= t -> mark mch p c a t2 m2 ->
       (forall t3, t3 <= t -> ~ proc mch p c a t3 m1) ->
       (forall {t4}, t4 <= t -> ~ proc mch p c a t4 m2) ->
       t1 = t2.
 
-  Definition twoPReqEqNeedsPResp := forall a t t1 r1, t1 <= t -> marksend rch p c a t1 r1 ->
-    forall t2 r2, t2 <= t -> marksend rch p c a t2 r2 ->
+  Definition twoPReqEqNeedsPResp := forall a t t1 r1, t1 <= t -> mark rch p c a t1 r1 ->
+    forall t2 r2, t2 <= t -> mark rch p c a t2 r2 ->
       (forall t3, t3 <= t -> ~ proc rch p c a t3 r1) ->
       (forall t4, t4 <= t -> ~ proc rch p c a t4 r2) -> t1 < t2 ->
-      to r1 <= to r2 -> exists tm, t1 < tm < t2 /\ exists m, marksend mch p c a tm m.
+      to r1 <= to r2 -> exists tm, t1 < tm < t2 /\ exists m, mark mch p c a tm m.
 
   Section ForA.
     Context {a: Addr}.
     Axiom pRespReq: twoEqPRespFalse -> twoPReqEqNeedsPResp -> forall {t1 t2 t3},
-      forall {m}, marksend mch p c a t1 m ->
-        forall {r}, marksend rch p c a t2 r -> proc rch p c a t3 r -> t1 <= t2 ->
+      forall {m}, mark mch p c a t1 m ->
+        forall {r}, mark rch p c a t2 r -> proc rch p c a t3 r -> t1 <= t2 ->
           exists t4, t4 < t3 /\ proc mch p c a t4 m.
 
     Axiom pReqResp: twoEqPRespFalse -> twoPReqEqNeedsPResp -> forall {t1 t2 t3},
-      forall {r}, marksend rch p c a t1 r ->
-        forall {m}, marksend mch p c a t2 m -> proc mch p c a t3 m -> t1 <= t2 ->
+      forall {r}, mark rch p c a t1 r ->
+        forall {m}, mark mch p c a t2 m -> proc mch p c a t3 m -> t1 <= t2 ->
           exists t4, t4 < t3 /\ proc rch p c a t4 r.
   End ForA.
 End PairProperties.
@@ -390,17 +382,17 @@ Module Type PairTheoremsType (dt: DataTypes) (ch: ChannelPerAddr dt) (p: Pair dt
   Axiom noTwoPReqNon: twoPReqEqNeedsPResp.
 
   Axiom conservative: forall {a t}, dir p c a t >= state c a t.
-  Axiom cReqRespSent: forall {a t1 t2 r}, marksend rch p c a t1 r -> proc rch p c a t2 r ->
-    to r >= state c a t2 -> exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m /\ to m <= to r /\
+  Axiom cReqRespSent: forall {a t1 t2 r}, mark rch p c a t1 r -> proc rch p c a t2 r ->
+    to r >= state c a t2 -> exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m /\ to m <= to r /\
       (forall t4, t4 < t1 -> ~ proc mch c p a t4 m).
 
   Axiom pReqsCVolRespReqLt: forall {t a t1 t2 r1 r2}, t1 <= t -> t2 <= t ->
-    marksend rch p c a t1 r1 ->
-    marksend rch p c a t2 r2 -> t1 < t2 ->
-    (forall ts, t1 < ts < t2 -> forall r, ~ marksend rch p c a ts r) ->
-    (forall ts, t1 < ts < t2 -> forall m, ~ marksend mch p c a ts m) ->
+    mark rch p c a t1 r1 ->
+    mark rch p c a t2 r2 -> t1 < t2 ->
+    (forall ts, t1 < ts < t2 -> forall r, ~ mark rch p c a ts r) ->
+    (forall ts, t1 < ts < t2 -> forall m, ~ mark mch p c a ts m) ->
     (forall t3, t3 <= t -> ~ proc rch p c a t3 r1) ->
-    (forall t4, t4 <= t -> ~ proc rch p c a t4 r2) -> exists t5 m, marksend mch c p a t5 m /\
+    (forall t4, t4 <= t -> ~ proc rch p c a t4 r2) -> exists t5 m, mark mch c p a t5 m /\
       exists t6, t1 <= t6 < t2 /\ proc mch c p a t6 m /\ 
         (forall r, proc rch p c a t5 r -> to r >= state c a t5) /\ to r2 < to m.
 End PairTheoremsType.
@@ -417,9 +409,11 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
   Module dir := Dir dt p ch dirSemi dirBase stSemi stBase.
   Import dt ch p pp.
 
+  Import classical.
+
   Lemma cReqPRespCrossInd: forall {a t tc tp}, tc <= t -> tp <= t -> 
-    forall {r m}, marksend rch c p a tc r ->
-      marksend mch p c a tp m -> (forall tc', tc' < tc -> ~ proc mch p c a tc' m) ->
+    forall {r m}, mark rch c p a tc r ->
+      mark mch p c a tp m -> (forall tc', tc' < tc -> ~ proc mch p c a tc' m) ->
       (forall tp', tp' <= tp -> ~ proc rch c p a tp' r) -> False.
   Proof.
     intros a t.
@@ -429,22 +423,22 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (tp0: tp = 0) by omega; clear tpLeT.
     rewrite tc0 in *; rewrite tp0 in *; clear tc0 tp0.
     pose proof (dir.sendmImpProcr msendm) as [r' rprocr'].
-    pose proof (procImpMarksend rprocr') as [t' [t'Le0 rsendr']].
+    pose proof (procImpMark rprocr') as [t' [t'Le0 rsendr']].
     assert (t'0: t' = 0) by omega; clear t'Le0.
     rewrite t'0 in rsendr'; clear t'0.
-    pose proof (uniqMarksend1 rsendr rsendr') as rEqr'.
+    pose proof (uniqMark1 rsendr rsendr') as rEqr'.
     rewrite <- rEqr' in *; clear rEqr'.
     assert (zero: 0 <= 0) by omega.
     firstorder.
     intros tc tp tcLeST tpLeST r m rsendr msendm mprocNo rprocNo.
 
     pose proof (dir.sendmImpProcr msendm) as [r' rprocr'].
-    pose proof (procImpMarksend rprocr') as [t' [t'LeSt rsendr']].
+    pose proof (procImpMark rprocr') as [t' [t'LeSt rsendr']].
 
     assert (diff: t' = tc \/ t' > tc \/ t' < tc) by omega.
     destruct diff as [eq | [t'GtTc | tcGtT']].
     rewrite eq in rsendr'.
-    pose proof (uniqMarksend1 rsendr rsendr') as rEqr'.
+    pose proof (uniqMark1 rsendr rsendr') as rEqr'.
     rewrite <- rEqr' in *.
     assert (tpEq: tp <= tp) by omega.
     firstorder.
@@ -457,7 +451,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (tcLtT'': state c a tc < state c a t'') by omega.
     assert (t''GtTc: t'' > tc) by omega.
     pose proof (st.whenChildHigh t''GtTc tcLtT'') as [t''' [[tcLeT''' t'''LtT''] [m' [mprocm' _]]]].
-    pose proof (procImpMarksend mprocm') as [td [tdLeT''' msendm']].
+    pose proof (procImpMark mprocm') as [td [tdLeT''' msendm']].
     assert (tdLet: td <= t) by omega.
     assert (noProc: forall tc', tc' < tc -> ~ proc mch p c a tc' m') by (
       unfold not; intros tc' tc'LtTc mprocm'Tc';
@@ -477,7 +471,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (stt'LtstTc: state c a t' < state c a tmur) by omega.
     assert (tmurGtT': tmur > t') by omega.
     pose proof (st.whenChildHigh tmurGtT' stt'LtstTc) as [t'' [[tcLeT'' t''LtT'] [m' [mprocm' _]]]].
-    pose proof (procImpMarksend mprocm') as [td [tdLeT'' msendm']].
+    pose proof (procImpMark mprocm') as [td [tdLeT'' msendm']].
     assert (tdLet: td <= t) by omega.
     assert (noProc: forall tc', tc' < t' -> ~ proc mch p c a tc' m') by (
       unfold not; intros tc' tc'LtTc mprocm'Tc';
@@ -485,7 +479,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (opts: td = tp \/ td < tp \/ td > tp) by omega.
     destruct opts as [tprocTp | [tdLTp | tdGtTp]].
     rewrite tprocTp in *.
-    pose proof (uniqMarksend1 msendm msendm') as mEqm'.
+    pose proof (uniqMark1 msendm msendm') as mEqm'.
     rewrite <- mEqm' in *.
     assert (t''LtTc: t'' < tc) by omega.
     firstorder.
@@ -496,7 +490,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (t'LeT: t' <= t) by omega.
     apply (IHt t' td t'LeT tdLet r' m' rsendr' msendm' noProc noProc').
     pose proof (dir.sendmImpProcr msendm') as [r'' rprocr''].
-    pose proof (procImpMarksend rprocr'') as [ts [tsLeTd rsendr'']].
+    pose proof (procImpMark rprocr'') as [ts [tsLeTd rsendr'']].
     assert (tpLeT: tp <= t) by omega.
     assert (tsLeT: ts <= t) by omega.
     assert (hyp1: forall tc', tc' < ts -> ~ proc mch p c a tc' m) by (
@@ -511,8 +505,8 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     apply (IHt ts tp tsLeT tpLeT r'' m rsendr'' msendm hyp1 hyp2).
   Qed.
 
-  Lemma cReqPRespCross: forall {a tc tp r m}, marksend rch c p a tc r ->
-    marksend mch p c a tp m -> (forall tc', tc' < tc -> ~ proc mch p c a tc' m) ->
+  Lemma cReqPRespCross: forall {a tc tp r m}, mark rch c p a tc r ->
+    mark mch p c a tp m -> (forall tc', tc' < tc -> ~ proc mch p c a tc' m) ->
     (forall tp', tp' <= tp -> ~ proc rch c p a tp' r) -> False.
   Proof.
     intros a tc tp.
@@ -521,24 +515,50 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     apply (@cReqPRespCrossInd a (tc + tp) tc tp tcLeT tpLeT).
   Qed.
 
+  Lemma pRespFifo: forall {a ts1 ts2 tr2 m1 m2},
+                     ts1 < ts2 ->
+                     mark mch p c a ts1 m1 ->
+                     mark mch p c a ts2 m2 ->
+                     proc mch p c a tr2 m2 ->
+                     exists tr1, tr1 < tr2 /\ proc mch p c a tr1 m1.
+    intros a ts1 ts2 tr2 m1 m2 ts1_lt_ts2 markm1 markm2 procm2.
+    pose proof (dir.sendmImpProcr markm2) as [r2 procr2].
+    assert (noRecvr: forall tp', tp' <= ts1 -> ~ proc rch c p a tp' r2)
+      by (
+          unfold not; intros tp' tp'_le_ts1 proc'r2;
+          pose proof (uniqProc2 procr2 proc'r2);
+          omega).
+    pose proof (procImpMark procr2) as [tsr2 [tsr2_le_ts2 markr2]].
+    destruct (classical (exists tr1, tr1 < tr2 /\ proc mch p c a tr1 m1)) as [easy|hard].
+    assumption.
+    assert (noRecvm1: forall tr1, tr1 < tr2 -> ~ proc mch p c a tr1 m1) by firstorder.
+    clear hard.
+    pose proof (procImpMarkBefore procm2 markm2) as ts2_le_tr2.
+    assert (tsr2_le_tr2: tsr2 <= tr2) by omega.
+    assert (noRecv'm1: forall tc', tc' < tsr2 -> ~ proc mch p c a tc' m1) by
+        (
+          intros tc' tc'_lt_tsr2; assert (tc'_lt_tr2: tc' < tr2) by omega; generalize noRecvm1 tc'_lt_tr2; clear; firstorder).
+    pose proof (cReqPRespCross markr2 markm1 noRecv'm1 noRecvr) as [].
+  Qed.
+
   Lemma noTwoPResp: twoEqPRespFalse.
   Proof.
     intros a tx t1 m1 t1LeTx sendm1 t2 m2 t2LeTx sendm2 noprocm1 noprocm2.
     pose proof (dir.sendmImpProcr sendm1) as [r1 procr1].
     pose proof (dir.sendmImpProcr sendm2) as [r2 procr2].
-    pose proof (procImpMarksend procr1) as [t3 [t3LeT1 sendr1]].
-    pose proof (procImpMarksend procr2) as [t4 [t4LeT2 sendr2]].
+    pose proof (procImpMark procr1) as [t3 [t3LeT1 sendr1]].
+    pose proof (procImpMark procr2) as [t4 [t4LeT2 sendr2]].
     assert (opts: t3 = t4 \/ t3 < t4 \/ t4 < t3) by omega.
     destruct opts as [t3EqT4|[t3LtT4|t4LtT3]].
-    rewrite t3EqT4 in *; pose proof (uniqMarksend1 sendr1 sendr2) as r1EqR2.
+    rewrite t3EqT4 in *; pose proof (uniqMark1 sendr1 sendr2) as r1EqR2.
     rewrite r1EqR2 in *; apply (uniqProc2 procr1 procr2).
 
     assert (noProc: ~ exists t, t3 <= t < t4 /\ exists m, proc mch p c a t m) by (
       unfold not; intros [t [cond [m procm]]];
-        pose proof (procImpMarksend procm) as [t5 [t5LeT sendm]];
+        pose proof (procImpMark procm) as [t5 [t5LeT sendm]];
           assert (opts: t5 = t1 \/ t5 < t1 \/ t5 > t1) by omega;
             destruct opts as [t5EqT1 | [t5LtT1 | t5GtT1]]; [
-              rewrite t5EqT1 in *; pose proof (uniqMarksend1 sendm1 sendm) as m1EqM;
+              rewrite t5EqT1 in *; pose proof (uniqMark1 sendm1 sendm) as m1EqM;
                 rewrite m1EqM in *; assert (tLeTx: t <= tx) by omega;
                   generalize tLeTx noprocm1 procm; clear; firstorder |
                     assert (one: forall tc', tc' < t3 -> ~ proc mch p c a tc' m) by (
@@ -549,7 +569,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
                         rewrite <- t5EqTp' in *; firstorder);
                     apply (cReqPRespCross sendr1 sendm one two) |
                       pose proof (dir.sendmImpProcr sendm) as [r procr];
-                        pose proof (procImpMarksend procr) as [t6 [t6LeT5 sendr]];
+                        pose proof (procImpMark procr) as [t6 [t6LeT5 sendr]];
                           assert (one: forall tc', tc' < t6 -> ~ proc mch p c a tc' m1) by (
                             unfold not; intros tc' tc'LtT6 proc'm1; assert (tc'LeT6: tc' <= tx) by omega;
                               generalize noprocm1 proc'm1 tc'LeT6; clear; firstorder);
@@ -572,10 +592,10 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
     assert (noProc: ~ exists t, t4 <= t < t3 /\ exists m, proc mch p c a t m) by (
       unfold not; intros [t [cond [m procm]]];
-        pose proof (procImpMarksend procm) as [t5 [t5LeT sendm]];
+        pose proof (procImpMark procm) as [t5 [t5LeT sendm]];
           assert (opts: t5 = t2 \/ t5 < t2 \/ t5 > t2) by omega;
             destruct opts as [t5EqT1 | [t5LtT1 | t5GtT1]]; [
-              rewrite t5EqT1 in *; pose proof (uniqMarksend1 sendm2 sendm) as m1EqM;
+              rewrite t5EqT1 in *; pose proof (uniqMark1 sendm2 sendm) as m1EqM;
                 rewrite m1EqM in *; assert (tLeTx: t <= tx) by omega;
                   generalize tLeTx noprocm2 procm; clear; firstorder |
                     assert (one: forall tc', tc' < t4 -> ~ proc mch p c a tc' m) by (
@@ -586,7 +606,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
                         rewrite <- t5EqTp' in *; firstorder);
                     apply (cReqPRespCross sendr2 sendm one two)|
                       pose proof (dir.sendmImpProcr sendm) as [r procr];
-                        pose proof (procImpMarksend procr) as [t6 [t6LeT5 sendr]];
+                        pose proof (procImpMark procr) as [t6 [t6LeT5 sendr]];
                           assert (one: forall tc', tc' < t6 -> ~ proc mch p c a tc' m2) by (
                             unfold not; intros tc' tc'LtT6 proc'm1; assert (tc'LeT6: tc' <= tx) by omega;
                               generalize noprocm2 proc'm1 tc'LeT6; clear; firstorder);
@@ -623,17 +643,16 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     firstorder.
   Qed.
 
-  Import classical.
   Lemma mainInd: forall {a t},
     (forall {to}, to <= t -> state c a to <= dir p c a to) /\
-    (forall {tc tp}, tc <= t -> tp <= t -> forall {mc}, marksend mch c p a tc mc ->
-      forall {mp}, marksend mch p c a tp mp -> (forall tc', tc' < tc -> ~ proc mch p c a tc' mp) ->
+    (forall {tc tp}, tc <= t -> tp <= t -> forall {mc}, mark mch c p a tc mc ->
+      forall {mp}, mark mch p c a tp mp -> (forall tc', tc' < tc -> ~ proc mch p c a tc' mp) ->
         (forall tp', tp' < tp -> ~ proc mch c p a tp' mc) -> False) /\
-    (forall {t1 t2 t3}, t3 <= t -> forall {m}, marksend mch c p a t1 m ->
-      forall {r}, marksend rch c p a t2 r -> proc rch c p a t3 r -> t1 <= t2 ->
+    (forall {t1 t2 t3}, t3 <= t -> forall {m}, mark mch c p a t1 m ->
+      forall {r}, mark rch c p a t2 r -> proc rch c p a t3 r -> t1 <= t2 ->
         (forall t4, t4 < t3 -> ~ proc mch c p a t4 m) -> False) /\
-    (forall {t1 t2 t3}, t3 <= t -> forall {m}, marksend mch c p a t1 m ->
-      forall {m'}, marksend mch c p a t2 m' -> proc mch c p a t3 m' -> t1 < t2 ->
+    (forall {t1 t2 t3}, t3 <= t -> forall {m}, mark mch c p a t1 m ->
+      forall {m'}, mark mch c p a t2 m' -> proc mch c p a t3 m' -> t1 < t2 ->
         (forall t4, t4 < t3 -> ~ proc mch c p a t4 m) -> False).
   Proof.
     intros a t.
@@ -649,14 +668,14 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (tcEq0: tc = 0) by omega; assert (tpEq0: tp = 0) by omega.
     rewrite tcEq0 in *; rewrite tpEq0 in *.
     pose proof (dir.sendmImpProcr msendmp) as [r rprocr].
-    pose proof (procImpMarksend rprocr) as [t' [t'Le0 rsendr]].
+    pose proof (procImpMark rprocr) as [t' [t'Le0 rsendr]].
     assert (t'Eq0: t' = 0) by omega.
     rewrite t'Eq0 in *.
     apply (st.noSendmSendr msendmc rsendr).
     constructor.
     intros t1 t2 t3 t3Le0 m msendm r rsendr rprocr t1LeT2 neg.
-    pose proof (procImpMarksend rprocr) as [t5 [t5LeT3 rsendrT5]].
-    pose proof (uniqMarksend2 rsendr rsendrT5) as t2EqT5.
+    pose proof (procImpMark rprocr) as [t5 [t5LeT3 rsendrT5]].
+    pose proof (uniqMark2 rsendr rsendrT5) as t2EqT5.
     assert (t30: t3 = 0) by omega.
     rewrite t2EqT5, t30 in *.
     assert (t1Le0: t1 <= 0) by omega.
@@ -665,8 +684,8 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     rewrite t10, t50 in *.
     apply (st.noSendmSendr msendm rsendr).
     intros t1 t2 t3 t3Le0 m msendm m' msendm' mprocm' t1LeT2 neg.
-    pose proof (procImpMarksend mprocm') as [t5 [t5LeT3 msendm'T5]].
-    pose proof (uniqMarksend2 msendm' msendm'T5) as t2EqT5.
+    pose proof (procImpMark mprocm') as [t5 [t5LeT3 msendm'T5]].
+    pose proof (uniqMark2 msendm' msendm'T5) as t2EqT5.
     assert (t30: t3 = 0) by omega.
     rewrite t2EqT5, t30 in *.
     assert (t1Le0: t1 <= 0) by omega.
@@ -680,7 +699,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (cross': forall to0, to0 <= S t -> state c a to0 <= dir p c a to0).
     intros tm toLtT.
     destruct (classical (exists ts, ts < tm /\ ((exists m, proc mch c p a ts m) \/
-      (exists m, marksend mch p c a ts m)))) as [chnge|noChnge].
+      (exists m, mark mch p c a ts m)))) as [chnge|noChnge].
     pose proof (maxExists' classical chnge) as lastChnge; clear chnge.
     destruct lastChnge as [ts [tsLtTo [procOrSend noPrevChnge]]].
     assert (eq: dir p c a (S ts) = dir p c a tm) by (
@@ -689,10 +708,10 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
           intuition|
             apply dir.noChange; [ intuition | generalize noPrevChnge; clear; firstorder]]).
     destruct procOrSend as [[m mprocm] | [m msendm]].
-    pose proof (procImpMarksend mprocm) as [t' [t'LeTs msendm]].
+    pose proof (procImpMark mprocm) as [t' [t'LeTs msendm]].
     destruct (classical (exists tc, t' < tc < tm /\ exists m, proc mch p c a tc m)) as [proc|noProc].
     destruct proc as [tc [comp [m' mprocm']]].
-    pose proof (procImpMarksend mprocm') as [t'' [t''LeTc msendm']].
+    pose proof (procImpMark mprocm') as [t'' [t''LeTc msendm']].
     assert (gOrl: t'' > ts \/ t'' <= ts) by omega.
     destruct gOrl as [t''GtTs | t''LeTs].
     assert (t''LtTc: t'' < tm) by omega.
@@ -726,7 +745,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (stoLesSt': state c a tm <= state c a (S t')) by omega.
     congruence.
     pose proof (dir.sendmImpProcr msendm) as [r rprocr].
-    pose proof (procImpMarksend rprocr) as [t' [t'LeTs rsendr]].
+    pose proof (procImpMark rprocr) as [t' [t'LeTs rsendr]].
     destruct (classical (exists tc, tc < tm /\ proc mch p c a tc m)) as [[tc [tcLtTo mprocm]] | notEx].
     assert (eqOrNot: tm = S tc \/ tm > S tc) by omega.
     destruct eqOrNot as [toEqStc | toGtStc].
@@ -737,17 +756,17 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (noLower: ~ exists t'', S tc <= t'' < tm /\ exists m', proc mch p c a t'' m' /\ to m' >= state c a tm)
       by (
         unfold not; intros [t'' [cond [m' [mprocm' _]]]];
-          pose proof (procImpMarksend mprocm') as [tf [tfLeT'' msendm']];
+          pose proof (procImpMark mprocm') as [tf [tfLeT'' msendm']];
             assert (diff: ts = tf \/ tf < ts \/ tf > ts) by omega;
               destruct diff as [tsEqTf | [tfLtTs | tfGtTs]]; [
                 rewrite <- tsEqTf in *;
-                  pose proof (uniqMarksend1 msendm msendm') as mEqM';
+                  pose proof (uniqMark1 msendm msendm') as mEqM';
                     rewrite <- mEqM' in *;
                       pose proof (uniqProc2 mprocm mprocm') as tcEqT'';
                         omega |
                           assert (t'LeTc: t' <= tc) by (
-                            pose proof (procImpMarksend mprocm) as [tsome [tsomeLe'' msendmTsome]];
-                              pose proof (uniqMarksend2 msendm msendmTsome) as tcEqTsome;
+                            pose proof (procImpMark mprocm) as [tsome [tsomeLe'' msendmTsome]];
+                              pose proof (uniqMark2 msendm msendmTsome) as tcEqTsome;
                                 rewrite <- tcEqTsome in *; omega);
                           pose proof @cReqPRespCross;
                             assert (cross1: forall tc', tc' < t' -> ~ proc mch p c a tc' m') by (
@@ -773,10 +792,10 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (tmGtTs: tm > t') by omega.
     assert (noProc: ~ exists t'', t' <= t'' < tm /\ exists m, proc mch p c a t'' m /\ to m >= state c a tm) by (
       unfold not; intros [t'' [cond [m' [mprocm' _]]]];
-        pose proof (procImpMarksend mprocm') as [t1 [t1LeT'' msendm']];
+        pose proof (procImpMark mprocm') as [t1 [t1LeT'' msendm']];
           assert (t1NeTs: t1 = ts -> False) by (
             intros t1EqTs; rewrite t1EqTs in *;
-              pose proof (uniqMarksend1 msendm msendm') as mEqm';
+              pose proof (uniqMark1 msendm msendm') as mEqm';
                 rewrite <- mEqm' in *; 
                   generalize notEx cond mprocm'; clear; firstorder);
           assert (eqOrNot: t1 = ts \/ t1 > ts \/ t1 < ts) by omega;
@@ -802,7 +821,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (eqOrNot: 0 = tm \/ 0 < tm) by omega.
     destruct eqOrNot as [tmEq0 | tmGt0].
     rewrite <- tmEq0 in *; pose proof @init as init; rewrite init in *; omega.
-    assert (premise: forall tn, 0 <= tn < tm -> (forall m, ~ marksend mch p c a tn m) /\
+    assert (premise: forall tn, 0 <= tn < tm -> (forall m, ~ mark mch p c a tn m) /\
       (forall m, ~ proc mch c p a tn m)) by (
         intros tn [_ tnLtTm];
           constructor;
@@ -812,7 +831,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof @st.whenChildHigh.
     assert (not: ~ exists t'', 0 <= t'' < tm /\ exists m, proc mch p c a t'' m /\ to m >= state c a tm) by (
       unfold not; intros [t'' [[_ t''LtTm] [m [mprocm _]]]];
-        pose proof (procImpMarksend mprocm) as [t' [t'LeT'' msendm]];
+        pose proof (procImpMark mprocm) as [t' [t'LeT'' msendm]];
           assert (t'LtTm: t' < tm) by omega;
             generalize noChnge t'LtTm msendm; clear; firstorder).
     assert (done: ~ state c a tm > state c a 0) by (generalize (@st.whenChildHigh a 0 tm tmGt0) not;
@@ -822,8 +841,8 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     constructor.
     apply cross'.
 
-    assert (cReqResp': forall {t1 t2 t3}, t3 <= S t -> forall {m}, marksend mch c p a t1 m -> forall {r},
-      marksend rch c p a t2 r -> proc rch c p a t3 r -> t1 <= t2 -> (forall t4, t4 < t3 -> ~ proc mch c p a t4 m) ->
+    assert (cReqResp': forall {t1 t2 t3}, t3 <= S t -> forall {m}, mark mch c p a t1 m -> forall {r},
+      mark rch c p a t2 r -> proc rch c p a t3 r -> t1 <= t2 -> (forall t4, t4 < t3 -> ~ proc mch c p a t4 m) ->
       False).
     intros t1 t2 t3 t3LeSt m msendm r rsendr rprocr t1LeT2 neg.
     unfold Time in *.
@@ -832,8 +851,8 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     rewrite t1EqT2 in *.
     pose proof (st.noSendmSendr msendm rsendr); intuition.
     clear t1LeT2.
-    pose proof (procImpMarksend rprocr) as [t' [t'LeT3 rsend'r]].
-    pose proof (uniqMarksend2 rsendr rsend'r) as t2EqT'.
+    pose proof (procImpMark rprocr) as [t' [t'LeT3 rsend'r]].
+    pose proof (uniqMark2 rsendr rsend'r) as t2EqT'.
     rewrite <- t2EqT' in *.
     clear rsend'r t2EqT'.
     assert (t1LeT: t1 <= t) by omega.
@@ -841,7 +860,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
     assert (notty1: ~ exists t'', t1 <= t'' < t2 /\ exists m, proc mch p c a t'' m /\ to m >= state c a t2) by (
       unfold not; intros [t'' [cond [m0 [mprocm0 _]]]];
-        pose proof (procImpMarksend mprocm0) as [t5 [t5LeT'' msendm0]];
+        pose proof (procImpMark mprocm0) as [t5 [t5LeT'' msendm0]];
           assert (one: forall tc', tc' < t1 -> ~ proc mch p c a tc' m0) by (
             unfold not; intros tc' tc'LtT1 mprocM0Tc';
               pose proof (uniqProc2 mprocm0 mprocM0Tc') as t''EqTc';
@@ -871,17 +890,17 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     rewrite fromREq, <- stEq in *.
     assert (drGt: dir p c a t1 > dir p c a t3) by omega.
     assert (drNe: dir p c a t1 <> dir p c a t3) by omega.
-    assert (sendProc: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ marksend mch p c a tn m) /\
+    assert (sendProc: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ mark mch p c a tn m) /\
       (forall m, ~ proc mch c p a tn m)) by (
         unfold not; intros exp; assert (t1LtT3: t1 < t3) by omega; pose proof (dir.noChange t1LtT3 exp); firstorder).
-    assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ marksend mch p c a tn m) by (
+    assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ mark mch p c a tn m) by (
       clear cRespResp;
         unfold not; intros tn cond m0 msendm0;
           assert (tnLeT: tn <= t) by omega;
             assert (one: forall tc', tc' < t1 -> ~ proc mch p c a tc' m0) by (
               unfold not; intros tc' tc'LtT1 mprocm0;
-                pose proof (procImpMarksend mprocm0) as [tm [tmLeTc' msend'm0]];
-                  pose proof (uniqMarksend2 msendm0 msend'm0) as tmEqTc';
+                pose proof (procImpMark mprocm0) as [tm [tmLeTc' msend'm0]];
+                  pose proof (uniqMark2 msendm0 msend'm0) as tmEqTc';
                     rewrite <- tmEqTc' in *; omega);
             assert (two: forall tp', tp' < tn -> ~ proc mch c p a tp' m) by (
               unfold not; intros tp' tp'LtTn; assert (tp'LtT3: tp' < t3) by omega; firstorder);
@@ -890,11 +909,11 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, proc mch c p a tn m0)) as [ext|noEx].
     pose proof (maxExists' classical ext) as [tn [cond [[tnLtT3 [m0 mprocm0]] notAfter]]].
     
-    pose proof (procImpMarksend mprocm0) as [tr [trLeTn msendm0]].
+    pose proof (procImpMark mprocm0) as [tr [trLeTn msendm0]].
     assert (opts: tr = t1 \/ tr > t1 \/ tr < t1) by omega.
     destruct opts as [trEqT1 | [trGtT1 | trLtT1]].
     rewrite trEqT1 in *.
-    pose proof (uniqMarksend1 msendm msendm0) as mEqm0.
+    pose proof (uniqMark1 msendm msendm0) as mEqm0.
     rewrite <- mEqm0 in *.
     generalize neg cond mprocm0; clear; firstorder.
     assert (tnLeT: tn <= t) by omega.
@@ -904,7 +923,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     apply (cRespResp t1 tr tn tnLeT m msendm m0 msendm0 mprocm0 trGtT1 cond2).
     assert (notty2': ~ exists t'', tr <= t'' < t1 /\ exists m, proc mch p c a t'' m /\ to m >= state c a t1) by (
       unfold not; intros [t'' [cond2 [m1 [mprocm1 _]]]];
-        pose proof (procImpMarksend mprocm1) as [t5 [t5LeT'' msendm1]];
+        pose proof (procImpMark mprocm1) as [t5 [t5LeT'' msendm1]];
           assert (trLeT: tr <= t) by omega;
             assert (t5LeT: t5 <= t) by omega;
               assert (one: forall tc', tc' < tr -> ~ proc mch p c a tc' m1) by (
@@ -924,7 +943,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (st.whenChildHighConv strLeT1 notty2) as st1LeTr.
     pose proof (st.whenChildHighConv t1LtT2 notty) as sST1LeT2.
     assert (trLtT3: tr < t3) by omega.
-    assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ marksend mch p c a tn0 m) /\
+    assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ mark mch p c a tn0 m) /\
       (forall m, ~ proc mch c p a tn0 m)) by (
         intros tn0 cond2;
           constructor; [assert (cond3: t1 <= tn0 < t3) by omega; generalize noSend cond3; clear; firstorder|
@@ -947,7 +966,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
     intros tc tp tcLeSt tpLeSt mc msendmc mp msendmp noprocmp noprocmc.
     pose proof (dir.sendmImpProcr msendmp) as [r rprocr].
-    pose proof (procImpMarksend rprocr) as [t1 [t1LeTp rsendr]].
+    pose proof (procImpMark rprocr) as [t1 [t1LeTp rsendr]].
     assert (opts: t1 = tc \/ tc < t1 \/ t1 < tc) by omega.
     destruct opts as [t1EqTc | [tcLtT1 | t1LtTc]].
     rewrite t1EqTc in *.
@@ -956,11 +975,11 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     apply (cReqResp' tc t1 tp tpLeSt mc msendmc r rsendr rprocr tcLeT1 noprocmc).
     destruct (classical (exists tm, t1 <= tm < tc /\ exists m, proc mch p c a tm m)) as [ext|noExt].
     destruct ext as [tm [[t1LeTm tmLtTc] [m procm]]].
-    pose proof (procImpMarksend procm) as [tn [tnLeTm sendm]].
+    pose proof (procImpMark procm) as [tn [tnLeTm sendm]].
     assert (opts: tn = tp \/ tn < tp \/ tn > tp) by omega.
     destruct opts as [tnEqTp | [tnLtTp | tnGtTp]].
     rewrite tnEqTp in *.
-    pose proof (uniqMarksend1 sendm msendmp) as mEqMp.
+    pose proof (uniqMark1 sendm msendmp) as mEqMp.
     rewrite mEqMp in *.
     firstorder.
     assert (one: forall tc', tc' < t1 -> ~ proc mch p c a tc' m) by (
@@ -973,7 +992,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
           omega).
     apply (cReqPRespCross rsendr sendm one two).
     pose proof (dir.sendmImpProcr sendm) as [r1 procr1].
-    pose proof (procImpMarksend procr1) as [tq [tqLeTn sendr1]].
+    pose proof (procImpMark procr1) as [tq [tqLeTn sendr1]].
     assert (one: forall tc', tc' < tq -> ~ proc mch p c a tc' mp) by (
       unfold not; intros tc' tc'LtTq; assert (tc'LtTc: tc' < tc) by omega;
         apply (noprocmp tc' tc'LtTc)).
@@ -1001,7 +1020,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
       intros t' cond; specialize (stcLet1 t' cond); omega).
     clear stcLet1 gtRel.
     pose proof (st.voluntary rsendr t1LtTc msendmc stcLet2) as [r1 [procr1 sTcGtToR1]].
-    pose proof (procImpMarksend procr1) as [t2 [t2LeT1 sendr1]].
+    pose proof (procImpMark procr1) as [t2 [t2LeT1 sendr1]].
     assert (t2LeTp: t2 = tp \/ t2 > tp \/ t2 < tp) by omega.
     destruct t2LeTp as [t2EqTp | [t2GtTp | t2LtTp]].
     rewrite t2EqTp in *.
@@ -1010,13 +1029,13 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (pRespReq noTwoPResp noTwoPReqNon msendmp sendr1 procr1 tpLeT2) as [t4 [t4LtTp procmp]].
     generalize noprocmp procmp t4LtTp; clear; firstorder.
     pose proof (dir.sendrImpNoSendm t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [procm toMGeToR1]]]].
-    pose proof (procImpMarksend procm) as [t'' [t''LeT' sendm]].
+    pose proof (procImpMark procm) as [t'' [t''LeT' sendm]].
     pose proof (st.sendmChange sendm) as stEqToM. unfold st.st in *.
     assert (stTcGtStST'': state c a tc > state c a (S t'')) by omega.
     assert (opts: t'' = tc \/ t'' > tc \/ t'' < tc) by omega.
     destruct opts as [t''EqTc | [t''GtTc | t''LtTc]].
     rewrite t''EqTc in *.
-    pose proof (uniqMarksend1 msendmc sendm) as mEqMc.
+    pose proof (uniqMark1 msendmc sendm) as mEqMc.
     rewrite mEqMc in *.
     generalize t'LtTp procm noprocmc; clear; firstorder.
     assert (t'Let: t' <= t) by omega.
@@ -1029,7 +1048,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     rewrite St''EqTc in *.
     omega.
     pose proof (st.whenChildHigh St''LtTc stTcGtStST'') as [ts [cond [s [procs _]]]].
-    pose proof (procImpMarksend procs) as [tsr [tsrLeTs sends]].
+    pose proof (procImpMark procs) as [tsr [tsrLeTs sends]].
     assert (opts: tsr = t' \/ tsr > t' \/ tsr < t') by omega.
     destruct opts as [tsrEqT' | [tsrGtT' | tsrLtT']].
     rewrite tsrEqT' in *.
@@ -1057,10 +1076,10 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (eqOrNot: t1 = t2 \/ t1 < t2) by omega.
     destruct eqOrNot as [t1EqT2 | t1LtT2].
     rewrite t1EqT2 in *.
-    pose proof (uniqMarksend1 msendm rsendr) as mEqR; omega.
+    pose proof (uniqMark1 msendm rsendr) as mEqR; omega.
     clear t1LeT2.
-    pose proof (procImpMarksend rprocr) as [t' [t'LeT3 rsend'r]].
-    pose proof (uniqMarksend2 rsendr rsend'r) as t2EqT'.
+    pose proof (procImpMark rprocr) as [t' [t'LeT3 rsend'r]].
+    pose proof (uniqMark2 rsendr rsend'r) as t2EqT'.
     rewrite <- t2EqT' in *.
     clear rsend'r t2EqT'.
     assert (t1LeT: t1 <= t) by omega.
@@ -1068,7 +1087,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
     assert (notty1: ~ exists t'', t1 <= t'' < t2 /\ exists m, proc mch p c a t'' m /\ to m >= state c a t2) by (
       unfold not; intros [t'' [cond [m0 [mprocm0 _]]]];
-        pose proof (procImpMarksend mprocm0) as [t5 [t5LeT'' msendm0]];
+        pose proof (procImpMark mprocm0) as [t5 [t5LeT'' msendm0]];
           assert (one: forall tc', tc' < t1 -> ~ proc mch p c a tc' m0) by (
             unfold not; intros tc' tc'LtT1 mprocM0Tc';
               pose proof (uniqProc2 mprocm0 mprocM0Tc') as t''EqTc';
@@ -1098,17 +1117,17 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     rewrite fromREq, <- stEq in *.
     assert (drGt: dir p c a t1 > dir p c a t3) by omega.
     assert (drNe: dir p c a t1 <> dir p c a t3) by omega.
-    assert (sendProc: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ marksend mch p c a tn m) /\
+    assert (sendProc: ~ forall tn, t1 <= tn < t3 -> (forall m, ~ mark mch p c a tn m) /\
       (forall m, ~ proc mch c p a tn m)) by (
         unfold not; intros exp; assert (t1LtT3: t1 < t3) by omega; pose proof (dir.noChange t1LtT3 exp); firstorder).
-    assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ marksend mch p c a tn m) by (
+    assert (noSend: forall tn, t1 <= tn < t3 -> forall m, ~ mark mch p c a tn m) by (
       clear cRespResp;
         unfold not; intros tn cond m0 msendm0;
           assert (tnLeT: tn <= t) by omega;
             assert (one: forall tc', tc' < t1 -> ~ proc mch p c a tc' m0) by (
               unfold not; intros tc' tc'LtT1 mprocm0;
-                pose proof (procImpMarksend mprocm0) as [tm [tmLeTc' msend'm0]];
-                  pose proof (uniqMarksend2 msendm0 msend'm0) as tmEqTc';
+                pose proof (procImpMark mprocm0) as [tm [tmLeTc' msend'm0]];
+                  pose proof (uniqMark2 msendm0 msend'm0) as tmEqTc';
                     rewrite <- tmEqTc' in *; omega);
             assert (two: forall tp', tp' < tn -> ~ proc mch c p a tp' m) by (
               unfold not; intros tp' tp'LtTn; assert (tp'LtT3: tp' < t3) by omega; firstorder);
@@ -1117,11 +1136,11 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, proc mch c p a tn m0)) as [ext|noEx].
     pose proof (maxExists' classical ext) as [tn [cond [[tnLtT3 [m0 mprocm0]] notAfter]]].
     
-    pose proof (procImpMarksend mprocm0) as [tr [trLeTn msendm0]].
+    pose proof (procImpMark mprocm0) as [tr [trLeTn msendm0]].
     assert (opts: tr = t1 \/ tr > t1 \/ tr < t1) by omega.
     destruct opts as [trEqT1 | [trGtT1 | trLtT1]].
     rewrite trEqT1 in *.
-    pose proof (uniqMarksend1 msendm msendm0) as mEqm0.
+    pose proof (uniqMark1 msendm msendm0) as mEqm0.
     rewrite <- mEqm0 in *.
     generalize neg cond mprocm0; clear; firstorder.
     assert (tnLeT: tn <= t) by omega.
@@ -1131,7 +1150,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     apply (cRespResp t1 tr tn tnLeT m msendm m0 msendm0 mprocm0 trGtT1 cond2).
     assert (notty2': ~ exists t'', tr <= t'' < t1 /\ exists m, proc mch p c a t'' m /\ to m >= state c a t1) by (
       unfold not; intros [t'' [cond2 [m1 [mprocm1 _]]]];
-        pose proof (procImpMarksend mprocm1) as [t5 [t5LeT'' msendm1]];
+        pose proof (procImpMark mprocm1) as [t5 [t5LeT'' msendm1]];
           assert (trLeT: tr <= t) by omega;
             assert (t5LeT: t5 <= t) by omega;
               assert (one: forall tc', tc' < tr -> ~ proc mch p c a tc' m1) by (
@@ -1151,7 +1170,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (st.whenChildHighConv strLeT1 notty2) as st1LeTr.
     pose proof (st.whenChildHighConv t1LtT2 notty) as sST1LeT2.
     assert (trLtT3: tr < t3) by omega.
-    assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ marksend mch p c a tn0 m) /\
+    assert (noC: forall tn0, S tn <= tn0 < t3 -> (forall m, ~ mark mch p c a tn0 m) /\
       (forall m, ~ proc mch c p a tn0 m)) by (
         intros tn0 cond2;
           constructor; [assert (cond3: t1 <= tn0 < t3) by omega; generalize noSend cond3; clear; firstorder|
@@ -1178,7 +1197,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (tLeT: t <= t) by omega; firstorder.
   Qed.
 
-  Lemma cRespFifo: forall {a t1 t2 t3 m1 m2}, marksend mch c p a t1 m1 -> marksend mch c p a t2 m2 ->
+  Lemma cRespFifo: forall {a t1 t2 t3 m1 m2}, mark mch c p a t1 m1 -> mark mch c p a t2 m2 ->
     proc mch c p a t3 m2 -> t1 < t2 -> (forall t4, t4 < t3 -> ~ proc mch c p a t4 m1) -> False.
   Proof.
     intros a t1 t2 t3 m1 m2 sendm1 sendm2 procm2 t1LtT2.
@@ -1188,7 +1207,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     firstorder.
   Qed.
 
-  Lemma cross: forall {a t1 t2 m1 m2}, marksend mch c p a t1 m1 -> marksend mch p c a t2 m2 ->
+  Lemma cross: forall {a t1 t2 m1 m2}, mark mch c p a t1 m1 -> mark mch p c a t2 m2 ->
     (forall t3, t3 < t1 -> ~ proc mch p c a t3 m2) -> (forall t4, t4 < t2 -> ~ proc mch c p a t4 m1) -> False.
     intros a t1 t2 m1 m2 sendm1 sendm2 one two.
     assert (opts: t1 <= t2 \/ t1 > t2) by omega.
@@ -1202,32 +1221,32 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     apply (sec t1 t2 t1LeT1 t2LeT1 m1 sendm1 m2 sendm2 one two).
   Qed.
 
-  Theorem cReqRespSent: forall {a t1 t2 r}, marksend rch p c a t1 r -> proc rch p c a t2 r ->
-    to r >= state c a t2 -> exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m /\ to m <= to r /\
+  Theorem cReqRespSent: forall {a t1 t2 r}, mark rch p c a t1 r -> proc rch p c a t2 r ->
+    to r >= state c a t2 -> exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m /\ to m <= to r /\
       (forall t4, t4 < t1 -> ~ proc mch c p a t4 m).
   Proof.
     intros a t1 t2 r sendr procr toRGestT2.
-    destruct (classical (exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m /\ to m <= to r /\ forall t4,
+    destruct (classical (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m /\ to m <= to r /\ forall t4,
       t4 < t1 -> ~ proc mch c p a t4 m)) as [easy|hard].
     intuition.
-    pose proof (procImpMarksend procr) as [t1' [t1LeT2 send'r]].
-    pose proof (uniqMarksend2 sendr send'r) as t1'EqT1.
+    pose proof (procImpMark procr) as [t1' [t1LeT2 send'r]].
+    pose proof (uniqMark2 sendr send'r) as t1'EqT1.
     rewrite <- t1'EqT1 in *.
     clear t1'EqT1 send'r t1'.
 
     destruct (classical (exists t, t < t1 /\ ((exists m, proc mch c p a t m) \/
-      (exists m, marksend mch p c a t m)))) as [ex | notEx].
+      (exists m, mark mch p c a t m)))) as [ex | notEx].
     pose proof (maxExists' classical ex) as [t [tLtT1 [sendOrProc notAfter]]].
-    assert (nothing: forall y, S t <= y < t1 -> (forall m, ~ marksend mch p c a y m) /\
+    assert (nothing: forall y, S t <= y < t1 -> (forall m, ~ mark mch p c a y m) /\
       (forall m, ~ proc mch c p a y m)) by
     (intros y cond; assert (cond2: t < y < t1)by omega; generalize cond2 notAfter; clear; firstorder).
     pose proof (dir.noChange2 tLtT1 nothing) as dirEq.
     clear nothing; unfold dir.st in *.
     destruct sendOrProc as [[m procm] | [m sendm]].
-    pose proof (procImpMarksend procm) as [t' [t'LeT sendm]].
+    pose proof (procImpMark procm) as [t' [t'LeT sendm]].
     assert (noCProc: forall tm, t' <= tm < t2 -> forall m', ~ proc mch p c a tm m') by (
       unfold not; intros tm cond m' procm';
-        pose proof (procImpMarksend procm') as [ts [tsLeTm sendm']];
+        pose proof (procImpMark procm') as [ts [tsLeTm sendm']];
           assert (opts: ts < t \/ ts = t \/ t < ts < t1 \/ t1 <= ts) by omega;
             destruct opts as [tsLtT | [tsEqT | [tLtTsLtT1  | t1LeTs ]]]; [
               assert (one: forall x, x < t' -> ~ proc mch p c a x m') by ( unfold not; intros x xLtT' proc'm';
@@ -1240,11 +1259,11 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
                     generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
                       pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' procm' t1LeTs) as [t4 [t4LtTm proc'r]];
                         pose proof (uniqProc2 procr proc'r) as t4EqT2; omega]).
-    destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', marksend mch c p a ts m'))
+    destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
       as [ ex2 | notEx2].
     pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
     assert (nothing: forall y, S ts <= y < t2 ->
-      (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
+      (forall m, ~ mark mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
     (intros y cond; assert (cond1: t' < y < t2) by omega; assert (cond2: t' <= y < t2) by omega;
       generalize notAfter2 noCProc cond cond1 cond2; clear; firstorder).
     pose proof (st.noChange2 tsLtT2 nothing) as stEq.
@@ -1258,7 +1277,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     rewrite trEqT in *.
     pose proof (uniqProc1 procm procm') as mEqM'.
     rewrite mEqM' in *.
-    pose proof (uniqMarksend2 sendm sendm') as t'EqTs.
+    pose proof (uniqMark2 sendm sendm') as t'EqTs.
     omega.
     generalize notAfter cond procm'; clear; firstorder.
     assert (opts: to m' <= to r \/ to m' > to r) by omega.
@@ -1268,7 +1287,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     unfold st.st in *.
     omega.
     assert (nothing: forall y, S t' <= y < t2 ->
-      (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
+      (forall m, ~ mark mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
     (intros y cond; assert (cond2: t' <= y < t2) by omega;
       generalize notEx2 noCProc cond cond2; clear; firstorder).
     assert (t'LeT2: S t' <= t2) by omega.
@@ -1281,16 +1300,16 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
 
     assert (tLeT1: t <= t1) by omega.
     pose proof (pRespReq noTwoPResp noTwoPReqNon sendm sendr procr tLeT1) as [t' [t'LtT2 procm]].
-    pose proof (procImpMarksend procm) as [t'' [tLeT' send'm]].
-    pose proof (uniqMarksend2 sendm send'm) as t''EqT.
+    pose proof (procImpMark procm) as [t'' [tLeT' send'm]].
+    pose proof (uniqMark2 sendm send'm) as t''EqT.
     rewrite <- t''EqT in *. clear t''EqT t'' send'm.
     assert (noCProc: forall tm, t' < tm < t2 -> forall m', ~ proc mch p c a tm m').
     unfold not; intros tm cond m' procm';
-      pose proof (procImpMarksend procm') as [ts [tsLeTm sendm']];
+      pose proof (procImpMark procm') as [ts [tsLeTm sendm']];
         assert (opts: ts < t \/ ts = t \/ t < ts < t1 \/ t1 <= ts) by omega;
           destruct opts as [tsLtT | [tsEqT | [tLtTsLtT1  | t1LeTs ]]]; [
             pose proof (dir.sendmImpProcr sendm) as [r' procr'];
-              pose proof (procImpMarksend procr') as [tx [txLeT sendr']];
+              pose proof (procImpMark procr') as [tx [txLeT sendr']];
                 assert (one: forall t3, t3 < tx -> ~ proc mch p c a t3 m') by (
                   unfold not; intros t3 t3LtTx proc'm'; pose proof (uniqProc2 procm' proc'm') as t3EqTr;
                     omega);
@@ -1298,24 +1317,24 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
                   unfold not; intros t4 t4LeTs proc'r'; pose proof (uniqProc2 procr' proc'r') as t4EqTs;
                     omega);
                 apply (cReqPRespCross sendr' sendm' one two)|
-                  rewrite tsEqT in *; pose proof (uniqMarksend1 sendm sendm') as mEqM'; rewrite mEqM' in *;
+                  rewrite tsEqT in *; pose proof (uniqMark1 sendm sendm') as mEqM'; rewrite mEqM' in *;
                     pose proof (uniqProc2 procm procm') as trEqT'; omega |
                       generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
                         pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' procm' t1LeTs) as [t4 [t4LtTm proc'r]];
                           pose proof (uniqProc2 procr proc'r) as t4EqT2; omega].
     
-    destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', marksend mch c p a ts m'))
+    destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
       as [ ex2 | notEx2].
     pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
     assert (nothing: forall y, S ts <= y < t2 ->
-      (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
+      (forall m, ~ mark mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
     (intros y cond; assert (cond1: t' < y < t2) by omega;
       generalize notAfter2 noCProc cond cond1; clear; firstorder).
     pose proof (st.noChange2 tsLtT2 nothing) as stEq.
     unfold st.st in *.
     destruct (classical (exists tr, tr < t1 /\ proc mch c p a tr m')) as [ [tr [trLtT1 procm']] | noProc].
-    pose proof (procImpMarksend procm') as [ts' [ts'LeTr send'm']].
-    pose proof (uniqMarksend2 send'm' sendm') as ts'EqTs.
+    pose proof (procImpMark procm') as [ts' [ts'LeTr send'm']].
+    pose proof (uniqMark2 send'm' sendm') as ts'EqTs.
     assert (trGtT: tr > t) by omega.
     clear ts' ts'LeTr send'm' ts'EqTs.
     assert (opts: t < tr < t1 \/ t1 <= tr) by omega.
@@ -1337,7 +1356,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     unfold st.st in *.
     omega.
     assert (nothing: forall y, S t' <= y < t2 ->
-      (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
+      (forall m, ~ mark mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
     (generalize noCProc notEx2; clear; firstorder).
     pose proof (st.noChange2 t'LtT2 nothing) as stEq.
     unfold st.st in *.
@@ -1347,17 +1366,17 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     unfold dir.toRSComp, dir.st, st.st in *.
     omega.
     assert (cNoProc: forall t4, t4 < t2 -> forall m, ~ proc mch p c a t4 m) by (
-      unfold not; intros t4 t4LtT2 m procm; pose proof (procImpMarksend procm) as [t3 [t3LeT4 sendm]];
+      unfold not; intros t4 t4LtT2 m procm; pose proof (procImpMark procm) as [t3 [t3LeT4 sendm]];
         assert (opts: t3 < t1 \/ t3 >= t1) by omega;
           destruct opts as [t3LtT1 | t4GeT1]; [
             generalize notEx t3LtT1 sendm; clear; firstorder;
               intuition |
                 pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm procm t4GeT1) as [t5 [t4LtT4 proc'r]];
                   pose proof (uniqProc2 procr proc'r) as t5EqT2; omega]).
-    destruct (classical (exists t3, t3 < t2 /\ exists m, marksend mch c p a t3 m)) as [ex2 | notEx2].
+    destruct (classical (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m)) as [ex2 | notEx2].
     pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[m' sendm'] notAfter2]]].
     assert (nothing: forall y, S ts <= y < t2 ->
-      (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
+      (forall m, ~ mark mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
     (intros y cond;
       generalize notAfter2 cNoProc cond; clear; firstorder).
     pose proof (st.noChange2 tsLtT2 nothing) as stEq.
@@ -1371,12 +1390,12 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     unfold st.st in *.
     omega.
     assert (nothing1: forall y, 0 <= y < t2 ->
-      (forall m, ~ marksend mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
+      (forall m, ~ mark mch c p a y m) /\ (forall m, ~ proc mch p c a y m)) by
     (generalize cNoProc notEx2; clear; firstorder).
     assert (x1: 0 <= t2) by omega.
     pose proof (st.noChange2 x1 nothing1) as st1.
     assert (nothing2: forall y, 0 <= y < t1 ->
-      (forall m, ~ marksend mch p c a y m) /\ (forall m, ~ proc mch c p a y m)) by
+      (forall m, ~ mark mch p c a y m) /\ (forall m, ~ proc mch c p a y m)) by
     (generalize notEx; clear; firstorder).
     assert (x2: 0 <= t1) by omega.
     pose proof (dir.noChange2 x2 nothing2) as d1.
@@ -1386,45 +1405,44 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     omega.
   Qed.
 
-  Lemma vol: forall {a t}, forall {t1 r1}, marksend rch p c a t1 r1 ->
-    forall {t2 m2}, marksend mch c p a t2 m2 ->
+  Lemma vol: forall {a t}, forall {t1 r1}, mark rch p c a t1 r1 ->
+    forall {t2 m2}, mark mch c p a t2 m2 ->
     forall {t3}, t3 <= t -> t1 <= t3 -> proc mch c p a t3 m2 ->
       (forall {t4}, t4 <= t2 -> ~ proc rch p c a t4 r1) ->
-      (forall {t5}, t1 < t5 <= t3 -> forall r, ~ marksend rch p c a t5 r) ->
+      (forall {t5}, t1 < t5 <= t3 -> forall r, ~ mark rch p c a t5 r) ->
         forall r3, proc rch p c a t2 r3 -> to r3 < state c a t2 -> False.
   Proof.
     intros a.
     induction t.
-
     intros t1 r1 sendr1 t2 m2 sendm2 t3 t3LeT t1LeT3 procm2 notProcr1 notSendr r3
       procr3 toR3LtStT2.
     unfold Time in *.
-    pose proof (ch.procImpMarksend procm2) as [t' [t'LeT3 send'm2]].
-    pose proof (ch.uniqMarksend2 sendm2 send'm2) as t'EqT2.
+    pose proof (ch.procImpMark procm2) as [t' [t'LeT3 send'm2]].
+    pose proof (ch.uniqMark2 sendm2 send'm2) as t'EqT2.
     assert (t3Eq0: t3 = 0) by omega.
     assert (t2Eq0: t2 = 0) by omega.
     assert (t1Eq0: t1 = 0) by omega.
     rewrite t3Eq0, t2Eq0, t1Eq0 in *; clear t' t'LeT3 send'm2 t'EqT2 t1Eq0
       t2Eq0 t3Eq0 t3LeT t1LeT3.
-    pose proof (ch.procImpMarksend procr3) as [t' [t'Le0 send'r3]].
+    pose proof (ch.procImpMark procr3) as [t' [t'Le0 send'r3]].
     assert (t'Eq0: t' = 0) by omega; rewrite t'Eq0 in *.
-    pose proof (ch.uniqMarksend1 sendr1 send'r3) as r1EqR3.
+    pose proof (ch.uniqMark1 sendr1 send'r3) as r1EqR3.
     rewrite r1EqR3 in *.
     firstorder.
 
     intros t1 r1 sendr1 t2 m2 sendm2 t3 t3LeT t1LeT3 procm2 notProcr1 notSendr r3
       procr3 toR3LtStT2.
     unfold Time in *.
-    pose proof (ch.procImpMarksend procm2) as [t' [t2LeT3 send'm2]].
-    pose proof (ch.uniqMarksend2 sendm2 send'm2) as t'EqT2.
+    pose proof (ch.procImpMark procm2) as [t' [t2LeT3 send'm2]].
+    pose proof (ch.uniqMark2 sendm2 send'm2) as t'EqT2.
     rewrite <- t'EqT2 in *; clear send'm2 t' t'EqT2.
-    pose proof (ch.procImpMarksend procr3) as [ts [tsLeT2 sendr3]].
+    pose proof (ch.procImpMark procr3) as [ts [tsLeT2 sendr3]].
     assert (opts: ts > t3 \/ t1 < ts <= t3 \/ ts = t1 \/ ts < t1) by omega.
     destruct opts as [tsGtT3 | [cond | [tsEqT1 | tsLtT1]]].
     omega.
     generalize notSendr cond sendr3; clear; firstorder.
     assert (t2LeT2: t2 <= t2) by omega.
-    rewrite tsEqT1 in *. pose proof (ch.uniqMarksend1 sendr3 sendr1) as r1EqR3.
+    rewrite tsEqT1 in *. pose proof (ch.uniqMark1 sendr3 sendr1) as r1EqR3.
     rewrite r1EqR3 in *.
     generalize notProcr1 t2LeT2 procr3; clear; firstorder.
     pose proof (dir.sendrImpNoSendr tsLtT1 sendr3 sendr1) as exist. 
@@ -1435,7 +1453,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (dir.sendrImpSt sendr3) as gt.
     unfold dir.st, dir.toRSComp in *.
     assert (dirGt: dir p c a ts > dir p c a tx) by omega.
-    destruct (classical (exists tn, ts <= tn < tx /\ ((exists m, marksend mch p c a tn m) \/
+    destruct (classical (exists tn, ts <= tn < tx /\ ((exists m, mark mch p c a tn m) \/
     (exists m, proc mch c p a tn m /\ to m <= to r3)))) as [sth|notExist].
     destruct (minExists classical sth) as [tn [[cond2 sendOrProc] notBefore]].
     (* destruct sth as [tn [cond2 sendOrProc]]. *)
@@ -1448,7 +1466,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (cond4: ts <= t' < tx) by omega.
     assert (cond5: t' < tn) by omega.
     generalize notBefore procm' toM'LeToR3 cond4 cond5; clear; firstorder.
-    pose proof (ch.procImpMarksend procm) as [t'' [t''Letn sendm]].
+    pose proof (ch.procImpMark procm) as [t'' [t''Letn sendm]].
     assert (opts: t'' > t2 \/ t'' = t2 \/ t'' < t2) by omega.
     destruct opts as [t''GtT2 | [t''EqT2 | t''LtT2]].
     assert (notProc: forall tq, tq < tn -> ~ proc mch c p a tq m2) by (
@@ -1457,7 +1475,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
           omega).
     apply (cRespFifo sendm2 sendm procm t''GtT2 notProc).
     rewrite t''EqT2 in *.
-    pose proof (ch.uniqMarksend1 sendm sendm2) as mEqM2.
+    pose proof (ch.uniqMark1 sendm sendm2) as mEqM2.
     rewrite mEqM2 in *.
     pose proof (ch.uniqProc2 procm procm2) as t3EqTn.
     omega.
@@ -1467,7 +1485,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     destruct opts as [t''EqTy | t''LtTy].
     rewrite t''EqTy in *.
     apply (st.noSendmProcm sendm procq).
-    pose proof (ch.procImpMarksend procq) as [tz [tzLeTy sendq]].
+    pose proof (ch.procImpMark procq) as [tz [tzLeTy sendq]].
     assert (opts: tz < ts \/ tz = ts \/ tz > ts) by omega.
     destruct opts as [tzLtTs | [tzEqTs | tzGtTs]].
     assert (tzLtT1: tz < t1) by omega.
@@ -1492,7 +1510,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (nothing3: ~ exists ty, S t'' <= ty < t2 /\ exists q, proc mch p c a ty q /\
       to q >= state c a t2) by (generalize nothing2; clear; firstorder).
     pose proof (st.whenChildHighConv t''LtT2 nothing3) as stLe.
-    assert (contra: ~ exists tk, tk < tn /\ ts <= tk /\ exists m, marksend mch p c a tk m) by (
+    assert (contra: ~ exists tk, tk < tn /\ ts <= tk /\ exists m, mark mch p c a tk m) by (
       unfold not; intros [tk [tkLtTn [tsLeTk rest]]]; assert (h: ts <= tk < tx) by omega;
         generalize notBefore h tkLtTn tsLeTk rest; clear; firstorder).
     assert (tsLeTn: ts <= tn) by omega.
@@ -1515,12 +1533,12 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
   Qed.
 
   Lemma pReqsCVolRespReqLt: forall {t a t1 t2 r1 r2}, t1 <= t -> t2 <= t ->
-    marksend rch p c a t1 r1 ->
-    marksend rch p c a t2 r2 -> t1 < t2 ->
-    (forall ts, t1 < ts < t2 -> forall r, ~ marksend rch p c a ts r) ->
-    (forall ts, t1 < ts < t2 -> forall m, ~ marksend mch p c a ts m) ->
+    mark rch p c a t1 r1 ->
+    mark rch p c a t2 r2 -> t1 < t2 ->
+    (forall ts, t1 < ts < t2 -> forall r, ~ mark rch p c a ts r) ->
+    (forall ts, t1 < ts < t2 -> forall m, ~ mark mch p c a ts m) ->
     (forall t3, t3 <= t -> ~ proc rch p c a t3 r1) ->
-    (forall t4, t4 <= t -> ~ proc rch p c a t4 r2) -> exists t5 m, marksend mch c p a t5 m /\
+    (forall t4, t4 <= t -> ~ proc rch p c a t4 r2) -> exists t5 m, mark mch c p a t5 m /\
       exists t6, t1 <= t6 < t2 /\ proc mch c p a t6 m /\ 
         (forall r, proc rch p c a t5 r -> to r >= state c a t5) /\ to r2 < to m.
   Proof.
@@ -1532,7 +1550,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (dir.sendrImpSt sendr1) as dirSth.
     unfold dir.toRSComp, dir.st in *.
     assert (dirNotEq: dir p c a t' <> dir p c a t1) by omega.
-    destruct (classical (exists tn, tn < t' /\ t1 <= tn /\ ((exists m, marksend mch p c a tn m) \/
+    destruct (classical (exists tn, tn < t' /\ t1 <= tn /\ ((exists m, mark mch p c a tn m) \/
       exists m, proc mch c p a tn m))) as [ext|easy].
     pose proof (maxExists' classical ext) as [tn [tnLtT'[[t1LeTn sendOrProc] notAfter]]].
     destruct sendOrProc as [[m sendm] | [m procm]].
@@ -1544,11 +1562,11 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     assert (tnLtT2: tn < t2) by omega.
     generalize noSendM t1LtTn tnLtT2 sendm; clear; firstorder.
     assert (tnLeTn: tn <= tn) by omega.
-    pose proof (ch.procImpMarksend procm) as [tm [tmLeTn sendm]].
+    pose proof (ch.procImpMark procm) as [tm [tmLeTn sendm]].
     assert (noProc'R1: forall t4, t4 <= tm -> ~ proc rch p c a t4 r1) by (
       unfold not; intros t4 cond4 procr1; assert (sth: t4 <= t) by omega;
         generalize noProcR1 sth procr1; clear; firstorder).
-    assert (noSendAny: forall t5, t1 < t5 <= tn -> forall r, ~ marksend rch p c a t5 r) by (
+    assert (noSendAny: forall t5, t1 < t5 <= tn -> forall r, ~ mark rch p c a t5 r) by (
       intros t5 cond4; assert (sth: t1 < t5 < t2) by omega; generalize noSendR sth;
         clear; firstorder).
     pose proof (vol sendr1 sendm tnLeTn t1LeTn procm noProc'R1 noSendAny) as isVol.
@@ -1556,7 +1574,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
       intros r3 proc'r3; specialize (isVol r3 proc'r3); omega).
     assert (cond3: t1 <= tn < t2) by omega.
     assert (StnLeT': S tn <= t') by omega.
-    assert (noChange: forall tx, S tn <= tx < t' -> (forall m, ~ marksend mch p c a tx m) /\
+    assert (noChange: forall tx, S tn <= tx < t' -> (forall m, ~ mark mch p c a tx m) /\
       forall m, ~ proc mch c p a tx m) by (intros tx cond2;
         assert (cond4: tn < tx < t') by omega; assert (cond6: t1 <= tx) by omega;
           generalize notAfter cond4 cond6; clear; firstorder).
@@ -1572,7 +1590,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     unfold dir.st, dir.toRSComp in *.
     assert (H: to r2 < to m) by omega.
     generalize sendm cond3 procm isVolR H; clear; firstorder.
-    assert (Hik: forall tn, t1 <= tn < t' -> (forall m, ~ marksend mch p c a tn m) /\
+    assert (Hik: forall tn, t1 <= tn < t' -> (forall m, ~ mark mch p c a tn m) /\
       (forall m, ~ proc mch c p a tn m)) by (generalize easy; clear; firstorder).
     pose proof (dir.noChange t1LtT' Hik).
     unfold dirSemi.st in *.
@@ -1580,14 +1598,187 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
   Qed.
 
   Theorem pRecvRespPrevState:
-    forall {m a tr ts}, proc mch c p a tr m -> marksend mch c p a ts m ->
+    forall {m a tr ts}, proc mch c p a tr m -> mark mch c p a ts m ->
                         dir p c a tr = state c a ts.
-    Proof.
-      intros.
-      pose proof (dir.procmCond H).
-      pose proof (st.sendmFrom H0).
-      rewrite H1 in H2.
-      assumption.
-    Qed.
-      
+  Proof.
+    intros.
+    pose proof (dir.procmCond H).
+    pose proof (st.sendmFrom H0).
+    rewrite H1 in H2.
+    assumption.
+  Qed.
+
+  Theorem noPRespImpSameState:
+    forall {sm rm m a},
+      proc mch p c a rm m -> mark mch p c a sm m ->
+      (forall ti mi, ti < sm -> ~ proc mch c p a ti mi /\ ~ mark mch p c a ti mi) ->
+      state c a rm = dir p c a sm.
+    intros sm rm m a procm markm noRecvSend.
+    assert (noCRecv: forall t mt, 0 <= t < rm -> ~ proc mch p c a t mt).
+    unfold not; intros t mt t_lt_rm procmt.
+    pose proof (procImpMark procmt) as [t' [t'_le_t markmt]].
+    assert (stuff: t' < sm \/ t' = sm \/ sm < t') by omega.
+    destruct stuff as [t'_lt_sm | [t'_eq_sm | sm_lt_t']].
+    generalize noRecvSend t'_lt_sm markmt; clear; firstorder.
+    rewrite t'_eq_sm in *.
+    pose proof (uniqMark1 markm markmt) as m_eq_mt.
+    rewrite m_eq_mt in *.
+    pose proof (uniqProc2 procm procmt) as t_eq_rm.
+    omega.
+    pose proof (pRespFifo sm_lt_t' markm markmt procmt) as [t'' [t''_lt_t proc'm]].
+    pose proof (uniqProc2 procm proc'm) as t''_eq_rm.
+    omega.
+    assert (noCSend: forall t mt, 0 <= t < rm -> ~ mark mch c p a t mt).
+    unfold not; intros t mt t_lt_rm markmt.
+    assert (noRecvEarlier: forall ti, ti < sm -> ~ proc mch c p a ti mt) by
+        (generalize noRecvSend; clear; firstorder).
+    assert (noRecvEarlier': forall ti, ti < t -> ~ proc mch p c a ti m) by
+        (unfold not; intros ti ti_lt_t proc'm;
+         pose proof (uniqProc2 procm proc'm) as ti_eq_rm; omega).
+    apply (cross markmt markm noRecvEarlier' noRecvEarlier).
+    assert (z_le_sm: 0 <= sm) by omega.
+    assert (z_le_rm: 0 <= rm) by omega.
+    assert (first: state c a 0 = state c a rm) by (generalize (@st.noChange2 a 0 rm z_le_rm) noCRecv noCSend z_le_sm z_le_rm; clear; firstorder).
+    assert (second: dir p c a 0 = dir p c a sm) by (generalize (@dir.noChange2 a 0 sm z_le_sm) noRecvSend z_le_sm z_le_rm; clear; firstorder).
+    pose proof @init a as i0.
+    rewrite first in i0.
+    rewrite second in i0.
+    auto.
+  Qed.
+
+  Theorem noCRespImpSameState:
+    forall {sm rm m a},
+      proc mch p c a rm m -> mark mch p c a sm m ->
+      (forall ti mi, ti < rm -> ~ proc mch p c a ti mi /\ ~ mark mch c p a ti mi) ->
+      state c a rm = dir p c a sm.
+    intros sm rm m a procm markm noRecvSend.
+    assert (noPRecv: forall t mt, 0 <= t < sm -> ~ proc mch c p a t mt).
+    unfold not; intros t mt t_lt_sm procmt.
+    pose proof (procImpMark procmt) as [t' [t'_le_t markmt]].
+    pose proof (procImpMarkBefore procm markm) as sm_le_rm.
+    assert (t'_lt_rm: t' < rm) by omega.
+    generalize noRecvSend t'_lt_rm markmt; clear; firstorder.
+    assert (noPSend: forall t mt, t < sm -> ~ mark mch p c a t mt).
+    unfold not; intros t mt t_lt_sm markmt.
+    pose proof (pRespFifo t_lt_sm markmt markm procm) as stf.
+    generalize noRecvSend stf; clear; firstorder.
+    assert (z_le_sm: 0 <= sm) by omega.
+    assert (z_le_rm: 0 <= rm) by omega.
+    assert (first: dir p c a 0 = dir p c a sm) by (generalize (@dir.noChange2 a 0 sm z_le_sm) noPRecv noPSend z_le_sm z_le_rm; clear; firstorder).
+    assert (second: state c a 0 = state c a rm) by (generalize (@st.noChange2 a 0 rm z_le_rm) noRecvSend z_le_sm z_le_rm; clear; firstorder).
+    pose proof @init a as i0.
+    rewrite first in i0.
+    rewrite second in i0.
+    auto.
+  Qed.
+
+  Theorem cRecvRespPrevState:
+    forall {m a tr ts}, proc mch p c a tr m -> mark mch p c a ts m ->
+                        state c a tr = dir p c a ts.
+  Proof.
+    intros m a tr ts procm markm.
+    pose proof (procImpMarkBefore procm markm) as ts_le_tr.
+    destruct (classical (exists tm', tm' < tr /\ exists mm', proc mch p c a tm' mm'
+             \/ mark mch c p a tm' mm')) as
+        [ex | notEx].
+    pose proof (maxExists' classical ex) as [tm [tm_lt_tr [[mm procm_recvm_mm] notAfter]]].
+    assert (none: forall y,
+              S tm <= y < tr ->
+              (forall mm', ~ mark mch c p a y mm') /\ forall mm', ~ proc mch p c a y mm') by
+        (generalize notAfter; clear; firstorder).
+    pose proof st.noChange2 tm_lt_tr none as dir_S_tm_eq_dir_ts.
+    clear none.
+    destruct procm_recvm_mm as [procm_mm|markm_mm].
+    pose proof procImpMark procm_mm as [tn [tn_le_tm markm_mm]].
+    destruct (classical (exists tk, tn < tk < ts /\ exists mk, proc mch c p a tk mk))
+      as [[tk [tn_le_tk_lt_ts [mk procm_mk]]]|notRecv].
+    pose proof procImpMark procm_mk as [t2 [t2_le_tk markm_mk]].
+    assert (t2_lt_tr: t2 < tr) by omega.
+    assert (noProc: forall t4, t4 < tn -> ~ proc mch c p a t4 mk) by (
+    unfold not; intros t4 t4_lt_tn procm_mk'; pose proof (uniqProc2 procm_mk procm_mk');
+    omega).
+    assert (t2_le_tm: tm < t2 -> False) by (intros l1; generalize notAfter t2_lt_tr l1 markm_mk; clear; firstorder).
+    assert (t2_ne_tm: t2 = tm -> False) by (intro r; rewrite r in *; apply (st.noSendmProcm markm_mk procm_mm)).
+    assert (t2_lt_tm: t2 < tm) by omega.
+    assert (noProc': forall t3, t3 < t2 -> ~ proc mch p c a t3 mm) by (
+    unfold not; intros t3 t3_lt_t2 procm_mm'; pose proof (uniqProc2 procm_mm procm_mm');
+    omega).
+    pose proof (cross markm_mk markm_mm noProc' noProc); firstorder.
+    destruct (classical (exists tk, tn < tk < ts /\ exists mk, mark mch p c a tk mk)) as
+        [[tk [[tn_lt_tk tk_lt_ts] [mk markm_mk]]] | notSend].
+    pose proof (pRespFifo tk_lt_ts markm_mk markm procm) as [tl [tl_lt_tr procmk]].
+    pose proof (pRespFifo tn_lt_tk markm_mm markm_mk procmk) as [t' [t'_lt_tl proc'mm]].
+    pose proof (uniqProc2 procm_mm proc'mm) as tm_eq_t'.
+    rewrite <- tm_eq_t' in *.
+    generalize notAfter tl_lt_tr t'_lt_tl procmk; clear; firstorder.
+    assert (st: tn = ts \/ tn > ts \/ tn < ts) by omega.
+    destruct st as [eq|[gt|lt]].
+    rewrite eq in *.
+    pose proof (uniqMark1 markm_mm markm) as m_eq_mm.
+    rewrite m_eq_mm in *.
+    pose proof (uniqProc2 procm procm_mm) as tr_eq_tm.
+    omega.
+    pose proof (pRespFifo gt markm markm_mm procm_mm) as [tr1 [tr1_lt_tm proc'm]].
+    pose proof (uniqProc2 procm proc'm) as tr1_eq_tr.
+    omega.
+    assert (stEq: state c a (S tm) = state c a tr) by
+        ( generalize (@st.noChange2 a (S tm) tr tm_lt_tr) notAfter; clear; firstorder).
+    assert (dirEq: dir p c a (S tn) = dir p c a ts) by
+        ( generalize (@dir.noChange2 a (S tn) ts lt) notSend notRecv; clear; firstorder).
+    pose proof (st.procmChange procm_mm) as toM.
+    pose proof (dir.sendmChange markm_mm) as toM'.
+    unfold st.st in *. unfold dir.st in *.
+    rewrite stEq in toM.
+    rewrite dirEq in toM'.
+    rewrite <- toM' in toM.
+    assumption.
+    assert (noRecv: forall ti, ti < tm -> ~ proc mch p c a ti m) by
+        ( unfold not; intros ti ti_lt_tm proc'm;
+          pose proof (uniqProc2 procm proc'm) as ti_eq_tr; omega).
+    pose proof (cross markm_mm markm noRecv) as noRecvFalse.
+    assert (ex2: exists tn, tn < ts /\ proc mch c p a tn mm) by
+        (destruct (classical (exists tn, tn < ts /\ proc mch c p a tn mm)) as [easy|easy'];
+         [assumption |
+         generalize noRecvFalse easy'; clear; firstorder]).
+    destruct ex2 as [tn [tn_lt_ts procmm]].
+    clear noRecvFalse.
+    assert (noPRecv: forall tk, tn < tk < ts -> forall mi, ~ proc mch c p a tk mi).
+    unfold not; intros tk [tn_lt_tk tk_lt_ts] mi procmi.
+    pose proof (procImpMark procmi) as [tl [tl_le_tk markmi]].
+    assert (opts: tl = tm \/ tm < tl \/ tl < tm) by omega.
+    destruct opts as [eq | [tm_lt_tl | tl_lt_tm]].
+    rewrite eq in *.
+    pose proof (uniqMark1 markm_mm markmi) as m_eq_mi.
+    rewrite m_eq_mi in *.
+    pose proof (uniqProc2 procmm procmi) as sth.
+    omega.
+    assert (tl_lt_tr: tl < tr) by omega.
+    generalize notAfter tm_lt_tl tl_lt_tr markmi; clear; firstorder.
+    pose proof @cRespFifo.
+    assert (notRecv: forall t4, t4 < tn -> ~ proc mch c p a t4 mi) by
+        (unfold not; intros t4 t4_lt_tn proc'mi;
+         pose proof (uniqProc2 procmi proc'mi) as t4_eq_tk; omega).
+    apply (cRespFifo markmi markm_mm procmm tl_lt_tm notRecv).
+    assert (noPSend: forall tk, tn < tk < ts -> forall mi, ~ mark mch p c a tk mi).
+    unfold not; intros tk [tn_lt_tk tk_lt_ts] mi markmi.
+    pose proof (pRespFifo tk_lt_ts markmi markm procm) as [tl [tl_lt_tr procmi]].
+    pose proof (procImpMarkBefore procmi markmi) as tk_le_tl.
+    pose proof (procImpMarkBefore procmm markm_mm) as tm_le_tn.
+    assert (tm_lt_tl: tm < tl) by omega.
+    generalize tm_lt_tl tl_lt_tr procmi notAfter; clear; firstorder.
+    assert (stEq: state c a (S tm) = state c a tr) by
+        ( generalize (@st.noChange2 a (S tm) tr tm_lt_tr) notAfter; clear; firstorder).
+    assert (dirEq: dir p c a (S tn) = dir p c a ts) by
+        ( generalize (@dir.noChange2 a (S tn) ts tn_lt_ts) noPSend noPRecv; clear; firstorder).
+    pose proof (dir.procmChange procmm) as toM.
+    pose proof (st.sendmChange markm_mm) as toM'.
+    unfold st.st in *. unfold dir.st in *.
+    rewrite stEq in toM'.
+    rewrite dirEq in toM.
+    rewrite <- toM' in toM.
+    auto.
+    pose proof (noCRespImpSameState procm markm) as good.
+    generalize good notEx; clear; firstorder.
+  Qed.
+    
 End PairTheorems.

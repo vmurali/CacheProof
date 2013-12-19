@@ -4,7 +4,7 @@ Require Import Omega.
 Module Type Channel (dt: DataTypes).
   Import dt.
 
-  Parameter marksend: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter mark: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter send: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter recv: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter proc: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
@@ -13,8 +13,8 @@ Module Type Channel (dt: DataTypes).
   Section local.
     Context {s: ChannelType}.
     Context {p c : Cache}.
-    Axiom uniqMarksend1: forall {m n t}, marksend s p c t m -> marksend s p c t n -> m = n.
-    Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c t1 m -> marksend s p c t2 m -> t1 = t2.
+    Axiom uniqMark1: forall {m n t}, mark s p c t m -> mark s p c t n -> m = n.
+    Axiom uniqMark2: forall {m t1 t2}, mark s p c t1 m -> mark s p c t2 m -> t1 = t2.
     Axiom uniqSend1: forall {m n t}, send s p c t m -> send s p c t n -> m = n.
     Axiom uniqSend2: forall {m t1 t2}, send s p c t1 m -> send s p c t2 m -> t1 = t2.
     Axiom uniqRecv1: forall {m n t}, recv s p c t m -> recv s p c t n -> m = n.
@@ -23,7 +23,7 @@ Module Type Channel (dt: DataTypes).
     Axiom uniqProc2: forall {m t1 t2}, proc s p c t1 m -> proc s p c t2 m -> t1 = t2.
     Axiom uniqDeq1: forall {m n t}, deq s p c t m -> deq s p c t n -> m = n.
     Axiom uniqDeq2: forall {m t1 t2}, deq s p c t1 m -> deq s p c t2 m -> t1 = t2.
-    Axiom sendImpMarksend: forall {m t}, send s p c t m -> exists t', t' <= t /\ marksend s p c t' m.
+    Axiom sendImpMark: forall {m t}, send s p c t m -> exists t', t' <= t /\ mark s p c t' m.
     Axiom recvImpSend: forall {m t}, recv s p c t m -> exists t', t' <= t /\ send s p c t' m.
     Axiom procImpRecv: forall {m t}, proc s p c t m -> exists t', t' <= t /\ recv s p c t' m.
     Axiom deqImpProc: forall {m t}, deq s p c t m -> exists t', t' <= t /\ proc s p c t' m.
@@ -43,11 +43,11 @@ Module Type Channel (dt: DataTypes).
       assert (t''LeT: t'' <= t) by omega.
       firstorder.
     Qed.
-    Theorem deqImpMarksend: forall {m t}, deq s p c t m -> exists t', t' <= t /\ marksend s p c t' m.
+    Theorem deqImpMark: forall {m t}, deq s p c t m -> exists t', t' <= t /\ mark s p c t' m.
     Proof.
       intros m t deqm.
       pose proof (deqImpSend deqm) as [t' [t'LeT sendm]].
-      pose proof (sendImpMarksend sendm) as [t'' [t''LeT' marksendm]].
+      pose proof (sendImpMark sendm) as [t'' [t''LeT' markm]].
       assert (t''LeT: t'' <= t) by omega.
       firstorder.
     Qed.
@@ -59,29 +59,37 @@ Module Type Channel (dt: DataTypes).
       assert (t''LeT: t'' <= t) by omega.
       firstorder.
     Qed.
-    Theorem procImpMarksend: forall {m t}, proc s p c t m -> exists t', t' <= t /\ marksend s p c t' m.
+    Theorem procImpMark: forall {m t}, proc s p c t m -> exists t', t' <= t /\ mark s p c t' m.
     Proof.
       intros m t procm.
       pose proof (procImpSend procm) as [t' [t'LeT sendm]].
-      pose proof (sendImpMarksend sendm) as [t'' [t''LeT' marksendm]].
+      pose proof (sendImpMark sendm) as [t'' [t''LeT' markm]].
       assert (t''LeT: t'' <= t) by omega.
       firstorder.
     Qed.
-    Theorem recvImpMarksend: forall {m t}, recv s p c t m -> exists t', t' <= t /\ marksend s p c t' m.
+    Theorem recvImpMark: forall {m t}, recv s p c t m -> exists t', t' <= t /\ mark s p c t' m.
     Proof.
       intros m t recvm.
       pose proof (recvImpSend recvm) as [t' [t'LeT sendm]].
-      pose proof (sendImpMarksend sendm) as [t'' [t''LeT' marksendm]].
+      pose proof (sendImpMark sendm) as [t'' [t''LeT' markm]].
       assert (t''LeT: t'' <= t) by omega.
       firstorder.
     Qed.
+    Theorem procImpMarkBefore: forall {m ts tr}, proc s p c tr m -> mark s p c ts m -> ts <= tr.
+    Proof.
+      intros m ts tr procm markm.
+      pose proof (procImpMark procm) as [t' [t'_le_tr markm']].
+      pose proof uniqMark2 markm markm' as ts_eq_t'.
+      omega.
+    Qed.
+
   End local.
 End Channel.
 
 Module Type ChannelPerAddr (dt: DataTypes).
   Import dt.
 
-  Parameter marksend: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Parameter mark: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
   Parameter send: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
   Parameter recv: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
   Parameter proc: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
@@ -90,8 +98,8 @@ Module Type ChannelPerAddr (dt: DataTypes).
   Section local.
     Context {s: ChannelType}.
     Context {p c : Cache} {a: Addr}.
-    Axiom uniqMarksend1: forall {m n t}, marksend s p c a t m -> marksend s p c a t n -> m = n.
-    Axiom uniqMarksend2: forall {m t1 t2}, marksend s p c a t1 m -> marksend s p c a t2 m -> t1 = t2.
+    Axiom uniqMark1: forall {m n t}, mark s p c a t m -> mark s p c a t n -> m = n.
+    Axiom uniqMark2: forall {m t1 t2}, mark s p c a t1 m -> mark s p c a t2 m -> t1 = t2.
     Axiom uniqSend1: forall {m n t}, send s p c a t m -> send s p c a t n -> m = n.
     Axiom uniqSend2: forall {m t1 t2}, send s p c a t1 m -> send s p c a t2 m -> t1 = t2.
     Axiom uniqRecv1: forall {m n t}, recv s p c a t m -> recv s p c a t n -> m = n.
@@ -100,22 +108,24 @@ Module Type ChannelPerAddr (dt: DataTypes).
     Axiom uniqProc2: forall {m t1 t2}, proc s p c a t1 m -> proc s p c a t2 m -> t1 = t2.
     Axiom uniqDeq1: forall {m n t}, deq s p c a t m -> deq s p c a t n -> m = n.
     Axiom uniqDeq2: forall {m t1 t2}, deq s p c a t1 m -> deq s p c a t2 m -> t1 = t2.
-    Axiom sendImpMarksend: forall {m t}, send s p c a t m -> exists t', t' <= t /\ marksend s p c a t' m.
+    Axiom sendImpMark: forall {m t}, send s p c a t m -> exists t', t' <= t /\ mark s p c a t' m.
     Axiom recvImpSend: forall {m t}, recv s p c a t m -> exists t', t' <= t /\ send s p c a t' m.
     Axiom procImpRecv: forall {m t}, proc s p c a t m -> exists t', t' <= t /\ recv s p c a t' m.
     Axiom deqImpProc: forall {m t}, deq s p c a t m -> exists t', t' <= t /\ proc s p c a t' m.
     Axiom deqImpRecv: forall {m t}, deq s p c a t m -> exists t', t' <= t /\ recv s p c a t' m.
     Axiom deqImpSend: forall {m t}, deq s p c a t m -> exists t', t' <= t /\ send s p c a t' m.
-    Axiom deqImpMarksend: forall {m t}, deq s p c a t m -> exists t', t' <= t /\ marksend s p c a t' m.
+    Axiom deqImpMark: forall {m t}, deq s p c a t m -> exists t', t' <= t /\ mark s p c a t' m.
     Axiom procImpSend: forall {m t}, proc s p c a t m -> exists t', t' <= t /\ send s p c a t' m.
-    Axiom procImpMarksend: forall {m t}, proc s p c a t m -> exists t', t' <= t /\ marksend s p c a t' m.
-    Axiom recvImpMarksend: forall {m t}, recv s p c a t m -> exists t', t' <= t /\ marksend s p c a t' m.
+    Axiom procImpMark: forall {m t}, proc s p c a t m -> exists t', t' <= t /\ mark s p c a t' m.
+    Axiom recvImpMark: forall {m t}, recv s p c a t m -> exists t', t' <= t /\ mark s p c a t' m.
+    Axiom procImpMarkBefore: forall {m ts tr}, proc s p c a tr m -> mark s p c a ts m ->
+                                               ts <= tr.
   End local.
 End ChannelPerAddr.
 
 Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
   Import dt.
-  Definition marksend ch p c a t m := ch.marksend ch p c t m /\ addr m = a.
+  Definition mark ch p c a t m := ch.mark ch p c t m /\ addr m = a.
   Definition send ch p c a t m := ch.send ch p c t m /\ addr m = a.
   Definition recv ch p c a t m := ch.recv ch p c t m /\ addr m = a.
   Definition proc ch p c a t m := ch.proc ch p c t m /\ addr m = a.
@@ -126,10 +136,10 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
     Variable s: ChannelType.
     Variable p c : Cache.
     Variable a: Addr.
-    Definition uniqMarksend1 {m n t} (sendm : marksend s p c a t m) (sendn : marksend s p c a t n) :=
-      ch.uniqMarksend1 (proj1 sendm) (proj1 sendn).
-    Definition uniqMarksend2 {m t1 t2} (sendm1: marksend s p c a t1 m) (sendm2: marksend s p c a t2 m) :=
-      ch.uniqMarksend2 (proj1 sendm1) (proj1 sendm2).
+    Definition uniqMark1 {m n t} (sendm : mark s p c a t m) (sendn : mark s p c a t n) :=
+      ch.uniqMark1 (proj1 sendm) (proj1 sendn).
+    Definition uniqMark2 {m t1 t2} (sendm1: mark s p c a t1 m) (sendm2: mark s p c a t2 m) :=
+      ch.uniqMark2 (proj1 sendm1) (proj1 sendm2).
     Definition uniqSend1 {m n t} (sendm : send s p c a t m) (sendn : send s p c a t n) :=
       ch.uniqSend1 (proj1 sendm) (proj1 sendn).
     Definition uniqSend2 {m t1 t2} (sendm1: send s p c a t1 m) (sendm2: send s p c a t2 m) :=
@@ -147,11 +157,11 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
     Definition uniqDeq2 {m t1 t2} (deqm1: deq s p c a t1 m) (deqm2: deq s p c a t2 m) :=
       ch.uniqDeq2 (proj1 deqm1) (proj1 deqm2).
 
-    Definition sendImpMarksend {m t} (deqm: send s p c a t m) :=
-      match ch.sendImpMarksend (proj1 deqm) with
+    Definition sendImpMark {m t} (deqm: send s p c a t m) :=
+      match ch.sendImpMark (proj1 deqm) with
           | ex_intro x Px => 
               ex_intro (fun t' =>
-                          t' <= t /\ marksend s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
+                          t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition recvImpSend {m t} (deqm: recv s p c a t m) :=
@@ -189,11 +199,11 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
                           t' <= t /\ send s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
-    Definition deqImpMarksend {m t} (deqm: deq s p c a t m) :=
-      match ch.deqImpMarksend (proj1 deqm) with
+    Definition deqImpMark {m t} (deqm: deq s p c a t m) :=
+      match ch.deqImpMark (proj1 deqm) with
           | ex_intro x Px => 
               ex_intro (fun t' =>
-                          t' <= t /\ marksend s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
+                          t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition procImpSend {m t} (deqm: proc s p c a t m) :=
@@ -203,18 +213,29 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
                           t' <= t /\ send s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
-    Definition procImpMarksend {m t} (deqm: proc s p c a t m) :=
-      match ch.procImpMarksend (proj1 deqm) with
+    Definition procImpMark {m t} (deqm: proc s p c a t m) :=
+      match ch.procImpMark (proj1 deqm) with
           | ex_intro x Px => 
               ex_intro (fun t' =>
-                          t' <= t /\ marksend s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
+                          t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
-    Definition recvImpMarksend {m t} (deqm: recv s p c a t m) :=
-      match ch.recvImpMarksend (proj1 deqm) with
+    Definition recvImpMark {m t} (deqm: recv s p c a t m) :=
+      match ch.recvImpMark (proj1 deqm) with
           | ex_intro x Px =>
               ex_intro (fun t' =>
-                          t' <= t /\ marksend s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
+                          t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
+    Definition procImpMarkBefore: forall {m ts tr}, proc s p c a tr m -> mark s p c a ts m ->
+                                               ts <= tr.
+    Proof.
+      intros m ts tr procm markm.
+      unfold proc in *.
+      unfold mark in *.
+      destruct procm as [procm _].
+      destruct markm as [markm _].
+      apply (ch.procImpMarkBefore procm markm).
+    Qed.
+
   End local.
 End mkChannelPerAddr.
