@@ -8,8 +8,8 @@ Module Type LocalBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
 
   Parameter st: Addr -> Time -> State.
-  Parameter src dst: Cache.
   Parameter toRSComp: State -> State -> Prop.
+  Parameter src dst: Cache.
 
   Section ForT.
     Context {t: Time}.
@@ -86,23 +86,23 @@ Module LocalLemmas (dt: DataTypes) (ch: ChannelPerAddr dt) (lb: LocalBehavior dt
 End LocalLemmas.
 
 Module Type Pair (dt: DataTypes).
-  Variable p c : dt.Cache.
-  Variable isParent : dt.parent c = p.
+  Parameter p c : dt.Cache.
+  Parameter isParent : dt.parent c = p.
 End Pair.
 
 Module Type StSemi (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) :=
   LocalBehavior dt ch with
-  Definition st := dt.state p.c with
-    Definition src := p.c with
+      Definition st := dt.state p.c with
+      Definition src := p.c with
       Definition dst := p.p with
-        Definition toRSComp := gt.
+      Definition toRSComp := gt.
 
 Module Type DirSemi (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) :=
   LocalBehavior dt ch with
-  Definition st := dt.dir p.p p.c with
-    Definition src := p.p with
+      Definition st := dt.dir p.p p.c with
+      Definition src := p.p with
       Definition dst := p.c with
-        Definition toRSComp := lt.
+      Definition toRSComp := lt.
 
 Module Type StBase (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p ch).
   Module ll := LocalLemmas dt ch st.
@@ -144,7 +144,7 @@ Module St (dt: DataTypes) (p: Pair dt) (ch: ChannelPerAddr dt) (st: StSemi dt p 
       exists m.
       intuition.
       pose proof (procmChange procmm) as sStem.
-      unfold src, dst in *.
+      unfold st in *.
       intuition.
     Qed.
 
@@ -706,7 +706,7 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
       assert (two: S ts = tm \/ S ts < tm) by omega;
         destruct two as [eq|less]; [
           intuition|
-            apply dir.noChange; [ intuition | generalize noPrevChnge; clear; firstorder]]).
+            apply (@dir.noChange); [ intuition | generalize noPrevChnge; clear; firstorder]]).
     destruct procOrSend as [[m mprocm] | [m msendm]].
     pose proof (procImpMark mprocm) as [t' [t'LeTs msendm]].
     destruct (classical (exists tc, t' < tc < tm /\ exists m, proc mch p c a tc m)) as [proc|noProc].
@@ -1780,5 +1780,4 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     pose proof (noCRespImpSameState procm markm) as good.
     generalize good notEx; clear; firstorder.
   Qed.
-    
 End PairTheorems.
