@@ -4,7 +4,7 @@ Require Import Useful.
 Require Import DataTypes.
 Require Import Channel.
 
-Module Type Stuff (dt: DataTypes) (ch: ChannelPerAddr dt).
+Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
 
   Section CommonBeh.
@@ -156,11 +156,10 @@ Module Type Stuff (dt: DataTypes) (ch: ChannelPerAddr dt).
     Axiom classical: forall P, P \/ ~ P.
 
   End Pair.
-End Stuff.
+End BehaviorAxioms.
 
-Module Final (dt: DataTypes) (ch: ChannelPerAddr dt) (st: Stuff dt ch).
+Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorAxioms dt ch).
   Import dt ch st.
-  Print st.
   Section Pair.
     Context {p c: Cache}.
     Variable isParent: parent c = p.
@@ -1697,4 +1696,4 @@ Module Final (dt: DataTypes) (ch: ChannelPerAddr dt) (st: Stuff dt ch).
     Qed.
 
   End Pair.
-End Final.
+End mkBehaviorTheorems.
