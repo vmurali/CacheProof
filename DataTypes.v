@@ -25,4 +25,9 @@ Module Type DataTypes.
   Parameter Label : Set.
   Inductive StLabel := Initial | Store : Label -> StLabel.
   Parameter data: Cache -> Addr -> Time -> StLabel.
+
+  Definition Mo := 3.
+  Definition Ow := 2.
+  Definition Sh := 1.
+  Definition In := 0.
 End DataTypes.
