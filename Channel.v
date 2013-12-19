@@ -82,7 +82,13 @@ Module Type Channel (dt: DataTypes).
       pose proof uniqMark2 markm markm' as ts_eq_t'.
       omega.
     Qed.
-
+    Theorem recvImpMarkBefore: forall {m ts tr}, recv s p c tr m -> mark s p c ts m -> ts <= tr.
+    Proof.
+      intros m ts tr recvm markm.
+      pose proof (recvImpMark recvm) as [t' [t'_le_tr markm']].
+      pose proof uniqMark2 markm markm' as ts_eq_t'.
+      omega.
+    Qed.
   End local.
 End Channel.
 
@@ -119,6 +125,8 @@ Module Type ChannelPerAddr (dt: DataTypes).
     Axiom procImpMark: forall {m t}, proc s p c a t m -> exists t', t' <= t /\ mark s p c a t' m.
     Axiom recvImpMark: forall {m t}, recv s p c a t m -> exists t', t' <= t /\ mark s p c a t' m.
     Axiom procImpMarkBefore: forall {m ts tr}, proc s p c a tr m -> mark s p c a ts m ->
+                                               ts <= tr.
+    Axiom recvImpMarkBefore: forall {m ts tr}, recv s p c a tr m -> mark s p c a ts m ->
                                                ts <= tr.
   End local.
 End ChannelPerAddr.
@@ -237,5 +245,15 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
       apply (ch.procImpMarkBefore procm markm).
     Qed.
 
+    Definition recvImpMarkBefore: forall {m ts tr}, recv s p c a tr m -> mark s p c a ts m ->
+                                                    ts <= tr.
+    Proof.
+      intros m ts tr procm markm.
+      unfold proc in *.
+      unfold mark in *.
+      destruct procm as [procm _].
+      destruct markm as [markm _].
+      apply (ch.recvImpMarkBefore procm markm).
+    Qed.
   End local.
 End mkChannelPerAddr.
