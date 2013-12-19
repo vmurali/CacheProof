@@ -1781,3 +1781,9 @@ Module PairTheorems (classical: Classical) (dt: DataTypes) (ch: ChannelPerAddr d
     generalize good notEx; clear; firstorder.
   Qed.
 End PairTheorems.
+
+
+About PairTheoremsType.
+
+Section Test.
+  Module Make.
