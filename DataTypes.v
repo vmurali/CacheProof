@@ -1,5 +1,7 @@
 Module Type DataTypes.
 
+  Parameter classical: forall P, P \/ ~ P.
+
   Parameter Addr: Set.
   Inductive Desc := Ld | St.
   Parameter Cache: Set.
@@ -30,4 +32,6 @@ Module Type DataTypes.
   Definition Ow := 2.
   Definition Sh := 1.
   Definition In := 0.
+  Parameter maxState: forall {c a t}, state c a t <= Mo.
+  Parameter maxDir: forall {p c a t}, parent c = p -> dir p c a t <= Mo.
 End DataTypes.

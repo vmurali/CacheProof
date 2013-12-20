@@ -1695,5 +1695,52 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       generalize good notEx; clear; firstorder.
     Qed.
 
+    Theorem pRecvDowngrade: forall {m a t},
+                              recv mch c p a t m -> dir p c a t > dir p c a (S t).
+    Proof.
+      intros m a t recvm.
+      pose proof (recvImpMark recvm) as [ts [ts_le_t markm]].
+      pose proof (sendmFrom st markm) as fromM.
+      pose proof (sendmImpSt markm) as toM.
+      pose proof (recvmChange dt recvm) as dirSt.
+      pose proof (recvmCond recvm) as dirT.
+      omega.
+    Qed.
+
+    Theorem pSendUpgrade: forall {m a t}, mark mch p c a t m ->
+                                          dir p c a t < dir p c a (S t).
+    Proof.
+      intros m a t markm.
+      pose proof (sendmImpRecvr markm) as [r recvr].
+      pose proof (sendmImpRecvrGe markm recvr) as cond.
+      pose proof (recvrCond recvr) as fromR.
+      pose proof (recvImpMark recvr) as [t' [t'_le_t markr]].
+      pose proof (sendrImpSt st markr)  as toR.
+      pose proof (sendrFrom st markr) as fromR'.
+      pose proof (sendmChange dt markm) as toM.
+      omega.
+    Qed.
+
+    Theorem cSendDowngrade: forall {m a t}, mark mch c p a t m ->
+                                            state c a t > state c a (S t).
+    Proof.
+      intros m a t markm.
+      pose proof (sendmChange st markm) as toM.
+      pose proof (sendmFrom st markm) as fromM.
+      pose proof (sendmImpSt markm).
+      omega.
+    Qed.
+
+    Theorem cRecvUpgrade: forall {m a t}, recv mch p c a t m ->
+                                            state c a t < state c a (S t).
+    Proof.
+      intros m a t recvm.
+      pose proof (recvImpMark recvm) as [t' [t'LeT markm]].
+      pose proof (pSendUpgrade markm) as dirs.
+      pose proof (sendmChange dt markm) as toM.
+      pose proof (recvmChange st recvm) as toM'.
+      pose proof (cRecvRespPrevState recvm markm).
+      omega.
+    Qed.
   End Pair.
 End mkBehaviorTheorems.
