@@ -1,9 +1,9 @@
 Require Import Coq.Structures.Orders.
 Require Import Coq.Structures.OrdersTac.
 
-Module FinTOrder <: EqLtLe.
-  Inductive FTO := In | Sh | Ow | Mo.
-  Definition t := FTO.
+Module FiniteBase <: EqLtLe.
+  Inductive Finite := In | Sh | Ow | Mo.
+  Definition t := Finite.
   Definition lt x y := match x with
                          | In => match y with
                                    | In => False
@@ -25,15 +25,15 @@ Module FinTOrder <: EqLtLe.
                                  end
                          | Mo => False
                        end.
-  Definition eq (x y: FTO) := x = y.
+  Definition eq (x y: Finite) := x = y.
   Definition le x y := lt x y \/ eq x y.
-End FinTOrder.
+End FiniteBase.
 
-Module Type FTOrder := IsTotalOrder FinTOrder.
-Module Type FTNot := FTOrder <+ (EqLtLeNotation FinTOrder).
+Module Type FiniteTemp := IsTotalOrder FiniteBase.
+Module Type FiniteType := FiniteTemp <+ (EqLtLeNotation FiniteBase).
 
-Module FinTOrderIsTOrder : FTNot.
-  Import FinTOrder.
+Module Finite: FiniteType.
+  Import FiniteBase.
   Theorem eq_ref : Reflexive eq.
   Proof.
     unfold Reflexive; unfold eq.
@@ -103,4 +103,4 @@ Module FinTOrderIsTOrder : FTNot.
 
   Definition le_lteq := sth1.
   Definition lt_total := sth2.
-End FinTOrderIsTOrder.
+End Finite.
