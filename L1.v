@@ -17,7 +17,7 @@ Module Type L1Axioms (dt: DataTypes).
                     i1 < i2 -> ~ t1 > t2.
   Axiom processDeq: forall {c l a d i t}, deqR c l a d i t ->
                                           match d with
-                                            | Ld => state c a t >= Sh
+                                            | Ld => sle Sh (state c a t)
                                             | St => state c a t = Mo
                                           end.
   Axiom deqImpEnq: forall {c l a d i t}, deqR c l a d i t ->
@@ -48,7 +48,7 @@ Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt
   Parameter latestValue:
   forall {c a t},
     leaf c ->
-    state c a t >= Sh ->
+    sle Sh (state c a t) ->
     match data c a t with
       | Initial => forall {ti}, 0 <= ti <= t -> forall {ci li ii}, ~ deqR ci li a St ii ti
       | Store lb =>
@@ -60,8 +60,6 @@ Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt
   forall {c a t}, leaf c ->
     state c a t = Mo -> forall {co}, leaf co -> c <> co -> state co a t = In.
 End L1Theorems.
-
-Axiom cheat: forall t, t.
 
 Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1)
        (l1T: L1Theorems dt l1 l1In).
@@ -234,8 +232,11 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (processDeq H1) as someC2.
     rewrite H4 in *.
     rewrite tEq in *.
-    unfold Mo in *; unfold In in *; unfold Sh in *.
-    destruct d2; omega.
+    rewrite H8 in *.
+    unfold sle in *.
+    unfold slt in *.
+    destruct d2. firstorder.
+    discriminate.
     pose proof (enqStImpDeq st2) as [at2 [it2 deqt2]].
     pose proof (uniqDeqLabels deqt2 H1 H3).
     assert (tEq: t1 = t2) by (
@@ -261,8 +262,10 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (processDeq H1) as someC2.
     rewrite H4 in *.
     rewrite tEq in *.
-    unfold Sh in *; unfold Mo in *; unfold In in *.
-    destruct d2; omega.
+    rewrite H8 in someC2.
+    unfold sle in *; unfold slt in *.
+    destruct d2.
+    firstorder. discriminate.
   Qed.
 
   Theorem localOrdering':
