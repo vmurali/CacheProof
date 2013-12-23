@@ -128,4 +128,6 @@ Module Type DataTypes.
   Parameter Label : Set.
   Inductive StLabel := Initial | Store : Label -> StLabel.
   Parameter data: Cache -> Addr -> Time -> StLabel.
+  Parameter dataM: Mesg -> StLabel.
+
 End DataTypes.

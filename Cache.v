@@ -85,29 +85,34 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Section Pair.
     Context {p c: Cache}.
     Variable isParent: parent c = p.
-    Axiom st: @CommonBehavior (state c) sgt c p.
-    Axiom sendmImpSt: forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
-    Axiom voluntary:
+    Axiom st: parent c = p -> @CommonBehavior (state c) sgt c p.
+    Axiom sendmImpSt: parent c = p ->
+                      forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
+    Axiom voluntary: parent c = p ->
       forall {a t r}, mark rch c p a t r -> forall {t' m}, t' > t -> mark mch c p a t' m ->
         (forall {tm}, t < tm <= t' -> slt (state c a tm) (to r)) ->
         exists r1, recv rch p c a t' r1 /\ slt (to r1) (state c a t').
 
 (*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
 
-    Axiom dt: @CommonBehavior (dir p c) slt p c.
+    Axiom dt: parent c = p -> @CommonBehavior (dir p c) slt p c.
     Section ForT.
       Context {a: Addr} {t: Time}.
 
-      Axiom sendmImpRecvr: forall {m}, mark mch p c a t m -> exists r, recv rch c p a t r.
+      Axiom sendmImpRecvr: parent c = p -> 
+                           forall {m}, mark mch p c a t m -> exists r, recv rch c p a t r.
 
-      Axiom sendmImpRecvrGe: forall {m}, mark mch p c a t m ->
+      Axiom sendmImpRecvrGe: parent c = p ->
+                             forall {m}, mark mch p c a t m ->
                                          forall {r}, recv rch c p a t r -> sle (to r) (to m).
 
-      Axiom recvrCond: forall {r}, recv rch c p a t r -> sle (dir p c a t) (from r).
+      Axiom recvrCond: parent c = p ->
+                       forall {r}, recv rch c p a t r -> sle (dir p c a t) (from r).
 
-      Axiom recvmCond: forall {m}, recv mch c p a t m -> from m = dir p c a t.
+      Axiom recvmCond: parent c = p ->
+                       forall {m}, recv mch c p a t m -> from m = dir p c a t.
 
-      Axiom sendrImpNoSendm: 
+      Axiom sendrImpNoSendm: parent c = p ->
         forall {t1 t2 r1 m2},
           t1 < t2 -> mark rch p c a t1 r1 ->
           mark mch p c a t2 m2 ->
@@ -116,16 +121,16 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
       (*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
     End ForT.
 
-    Axiom init: forall {a}, dir p c a 0 = state c a 0.
+    Axiom init: parent c = p -> forall {a}, dir p c a 0 = state c a 0.
 
-    Definition twoEqPRespFalse :=
+    Definition twoEqPRespFalse (isParent: parent c = p) :=
       forall a t t1 m1, t1 <= t -> mark mch p c a t1 m1 ->
                         forall t2 m2, t2 <= t -> mark mch p c a t2 m2 ->
                                       (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) ->
                                       (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
                                       t1 = t2.
 
-    Definition twoPReqEqNeedsPResp :=
+    Definition twoPReqEqNeedsPResp (isParent: parent c = p) :=
       forall a t t1 r1,
         t1 <= t -> mark rch p c a t1 r1 ->
         forall t2 r2,
@@ -136,24 +141,24 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
 
     Section ForA.
       Context {a: Addr}.
-      Axiom pRespReq: twoEqPRespFalse ->
-                      twoPReqEqNeedsPResp ->
+      Axiom pRespReq: forall isParent: parent c = p,
+                      twoEqPRespFalse isParent ->
+                      twoPReqEqNeedsPResp isParent ->
                       forall {t1 t2 t3},
                       forall {m},
                         mark mch p c a t1 m ->
                         forall {r}, mark rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
                                     exists t4, t4 < t3 /\ recv mch p c a t4 m.
 
-      Axiom pReqResp: twoEqPRespFalse ->
-                      twoPReqEqNeedsPResp ->
+      Axiom pReqResp: forall isParent: parent c = p,
+        twoEqPRespFalse isParent ->
+                      twoPReqEqNeedsPResp isParent ->
                       forall {t1 t2 t3},
                       forall {r},
                         mark rch p c a t1 r ->
                         forall {m}, mark mch p c a t2 m -> recv mch p c a t3 m -> t1 <= t2 ->
                                     exists t4, t4 < t3 /\ recv rch p c a t4 r.
     End ForA.
-
-    Axiom classical: forall P, P \/ ~ P.
 
   End Pair.
 End BehaviorAxioms.
@@ -163,8 +168,8 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
   Section Pair.
     Context {p c: Cache}.
     Variable isParent: parent c = p.
-    Definition st := @st.st p c.
-    Definition dt := @st.dt p c.
+    Definition st := @st.st p c isParent.
+    Definition dt := @st.dt p c isParent.
 
 
       Lemma whenChildHighRecvm: forall {a t},
@@ -177,7 +182,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
               unfold slt in *;
               destruct (state c a t); destruct (state c a (S t)); auto; discriminate).
         pose proof (change st sStnst) as [[m sendmm] | [m recvmm] ].
-        pose proof (sendmImpSt sendmm) as stgm.
+        pose proof (sendmImpSt isParent sendmm) as stgm.
         pose proof (sendmChange st sendmm) as sStem.
         rewrite <- sStem in stgm.
         unfold slt in *; destruct (state c a t); destruct (state c a (S t)); auto; firstorder.
@@ -280,8 +285,8 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       intros a t m recvm.
       pose proof (recvImpMark recvm) as [t' [t'LeT sendm]].
       pose proof (recvmChange dt recvm) as sth.
-      pose proof (sendmImpSt sendm) as sth2.
-      pose proof (recvmCond recvm) as sth3.
+      pose proof (sendmImpSt isParent sendm) as sth2.
+      pose proof (recvmCond isParent recvm) as sth3.
       pose proof (sendmFrom st sendm) as sth4.
       rewrite sth4 in sth3.
       rewrite sth3 in sth2.
@@ -409,7 +414,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       assert (tc0: tc = 0) by omega; clear tcLeT.
       assert (tp0: tp = 0) by omega; clear tpLeT.
       rewrite tc0 in *; rewrite tp0 in *; clear tc0 tp0.
-      pose proof (sendmImpRecvr msendm) as [r' rrecvr'].
+      pose proof (sendmImpRecvr isParent msendm) as [r' rrecvr'].
       pose proof (recvImpMark rrecvr') as [t' [t'Le0 rsendr']].
       assert (t'0: t' = 0) by omega; clear t'Le0.
       rewrite t'0 in rsendr'; clear t'0.
@@ -419,7 +424,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       firstorder.
       intros tc tp tcLeST tpLeST r m rsendr msendm mrecvNo rrecvNo.
 
-      pose proof (sendmImpRecvr msendm) as [r' rrecvr'].
+      pose proof (sendmImpRecvr isParent msendm) as [r' rrecvr'].
       pose proof (recvImpMark rrecvr') as [t' [t'LeSt rsendr']].
 
       assert (diff: t' = tc \/ t' > tc \/ t' < tc) by omega.
@@ -478,7 +483,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                              omega).
       assert (t'LeT: t' <= t) by omega.
       apply (IHt t' td t'LeT tdLet r' m' rsendr' msendm' noRecv noRecv').
-      pose proof (sendmImpRecvr msendm') as [r'' rrecvr''].
+      pose proof (sendmImpRecvr isParent msendm') as [r'' rrecvr''].
       pose proof (recvImpMark rrecvr'') as [ts [tsLeTd rsendr'']].
       assert (tpLeT: tp <= t) by omega.
       assert (tsLeT: ts <= t) by omega.
@@ -513,7 +518,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                        recv mch p c a tr2 m2 ->
                        exists tr1, tr1 < tr2 /\ recv mch p c a tr1 m1.
       intros a ts1 ts2 tr2 m1 m2 ts1_lt_ts2 markm1 markm2 recvm2.
-      pose proof (sendmImpRecvr markm2) as [r2 recvr2].
+      pose proof (sendmImpRecvr isParent markm2) as [r2 recvr2].
       assert (noRecvr: forall tp', tp' <= ts1 -> ~ recv rch c p a tp' r2)
         by (
             unfold not; intros tp' tp'_le_ts1 recv'r2;
@@ -532,11 +537,11 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (cReqPRespCross markr2 markm1 noRecv'm1 noRecvr) as [].
     Qed.
 
-    Lemma noTwoPResp: @twoEqPRespFalse p c.
+    Lemma noTwoPResp: @twoEqPRespFalse p c isParent.
     Proof.
       intros a tx t1 m1 t1LeTx sendm1 t2 m2 t2LeTx sendm2 norecvm1 norecvm2.
-      pose proof (sendmImpRecvr sendm1) as [r1 recvr1].
-      pose proof (sendmImpRecvr sendm2) as [r2 recvr2].
+      pose proof (sendmImpRecvr isParent sendm1) as [r1 recvr1].
+      pose proof (sendmImpRecvr isParent sendm2) as [r2 recvr2].
       pose proof (recvImpMark recvr1) as [t3 [t3LeT1 sendr1]].
       pose proof (recvImpMark recvr2) as [t4 [t4LeT2 sendr2]].
       assert (opts: t3 = t4 \/ t3 < t4 \/ t4 < t3) by omega.
@@ -559,7 +564,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                                                                            unfold not; intros tp' tp'LeT1 recv'r1; pose proof (uniqRecv2 recvr1 recv'r1) as t5EqTp';
                                                                                                                                                            rewrite <- t5EqTp' in *; firstorder);
                                                                                         apply (cReqPRespCross sendr1 sendm one two) |
-                                                                                      pose proof (sendmImpRecvr sendm) as [r recvr];
+                                                                                      pose proof (sendmImpRecvr isParent sendm) as [r recvr];
                                                                                         pose proof (recvImpMark recvr) as [t6 [t6LeT5 sendr]];
                                                                                         assert (one: forall tc', tc' < t6 -> ~ recv mch p c a tc' m1) by (
                                                                                                                                                           unfold not; intros tc' tc'LtT6 recv'm1; assert (tc'LeT6: tc' <= tx) by omega;
@@ -598,7 +603,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                                                                            unfold not; intros tp' tp'LeT1 recv'r1; pose proof (uniqRecv2 recvr2 recv'r1) as t5EqTp';
                                                                                                                                                            rewrite <- t5EqTp' in *; firstorder);
                                                                                         apply (cReqPRespCross sendr2 sendm one two)|
-                                                                                      pose proof (sendmImpRecvr sendm) as [r recvr];
+                                                                                      pose proof (sendmImpRecvr isParent sendm) as [r recvr];
                                                                                         pose proof (recvImpMark recvr) as [t6 [t6LeT5 sendr]];
                                                                                         assert (one: forall tc', tc' < t6 -> ~ recv mch p c a tc' m2) by (
                                                                                                                                                           unfold not; intros tc' tc'LtT6 recv'm1; assert (tc'LeT6: tc' <= tx) by omega;
@@ -623,7 +628,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       firstorder.
     Qed.
 
-    Lemma noTwoPReqNon: @twoPReqEqNeedsPResp p c.
+    Lemma noTwoPReqNon: @twoPReqEqNeedsPResp p c isParent.
     Proof.
       intros a t t1 r1 t1LeT sendr1 t2 r2 t2LeT sendr2 norecvr1 norecvr2 t1LtT2 toR1GeToR2.
       pose proof (sendrImpSt dt sendr1) as gt1.
@@ -657,7 +662,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       constructor.
       intros to0 to0Le0.
       assert (to0Eq0: to0 = 0) by omega.
-      pose proof (@init p c a) as start.
+      pose proof (@init p c isParent a) as start.
       rewrite to0Eq0.
       assert (H: state c a 0 = dir p c a 0) by auto.
       apply (sle_eq H).
@@ -665,7 +670,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       intros tc tp tcLe0 tpLe0 mc msendmc mp msendmp _ _.
       assert (tcEq0: tc = 0) by omega; assert (tpEq0: tp = 0) by omega.
       rewrite tcEq0 in *; rewrite tpEq0 in *.
-      pose proof (sendmImpRecvr msendmp) as [r rrecvr].
+      pose proof (sendmImpRecvr isParent msendmp) as [r rrecvr].
       pose proof (recvImpMark rrecvr) as [t' [t'Le0 rsendr]].
       assert (t'Eq0: t' = 0) by omega.
       rewrite t'Eq0 in *.
@@ -743,7 +748,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                   congruence).
       pose proof (not_slt_sle nGt) as stoLesSt'.
       congruence.
-      pose proof (sendmImpRecvr msendm) as [r rrecvr].
+      pose proof (sendmImpRecvr isParent msendm) as [r rrecvr].
       pose proof (recvImpMark rrecvr) as [t' [t'LeTs rsendr]].
       destruct (classical (exists tc, tc < tm /\ recv mch p c a tc m)) as [[tc [tcLtTo mrecvm]] | notEx].
       assert (eqOrNot: tm = S tc \/ tm > S tc) by omega.
@@ -823,7 +828,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                           generalize (whenChildHigh tmGtTs contra) noRecv; clear; firstorder).
       pose proof (not_slt_sle contra1) as cont.
       pose proof (sendrImpSt st rsendr) as toRGtDir.
-      pose proof (sendmImpRecvrGe msendm rrecvr) as toMGeToR.
+      pose proof (sendmImpRecvrGe isParent msendm rrecvr) as toMGeToR.
       pose proof (sendmChange dt msendm) as toMEq.
       rewrite eq in toMEq.
       rewrite <- toMEq in toMGeToR.
@@ -831,7 +836,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       destruct (state c a t'); destruct (to r); destruct (dir p c a tm); auto.
       assert (eqOrNot: 0 = tm \/ 0 < tm) by omega.
       destruct eqOrNot as [tmEq0 | tmGt0].
-      rewrite <- tmEq0 in *; pose proof (@init p c a) as init.
+      rewrite <- tmEq0 in *; pose proof (@init p c isParent a) as init.
       assert (H: state c a 0 = dir p c a 0) by auto.
       apply (sle_eq H).
       assert (premise: forall tn, 0 <= tn < tm -> (forall m, ~ mark mch p c a tn m) /\
@@ -848,7 +853,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                               generalize noChnge t'LtTm msendm; clear; firstorder).
       assert (done: ~ sgt (state c a tm) (state c a 0)) by (generalize (@whenChildHigh a 0 tm tmGt0) not;
                                                       clear; firstorder).
-      pose proof (@init p c a) as start.
+      pose proof (@init p c isParent a) as start.
       rewrite <- start in done.
       rewrite dir0DirTm in done.
       unfold sgt in *; unfold sle; unfold slt in *; destruct (state c a tm); destruct (dir p c a tm); auto.
@@ -900,9 +905,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                     
                                                                     unfold not; intros st; pose proof (whenChildHigh St1LtT2 st) as some; firstorder]).
       pose proof (not_slt_sle notst2Gtst1) as stt2LestT1.
-      pose proof (recvrCond rrecvr) as fromRLe.
+      pose proof (recvrCond isParent rrecvr) as fromRLe.
       pose proof (sendrFrom st rsendr) as fromREq.
-      pose proof (sendmImpSt msendm) as stGt.
+      pose proof (sendmImpSt isParent msendm) as stGt.
       pose proof (sendmChange st msendm) as stEq.
       rewrite fromREq, <- stEq in *.
       assert (drGt: sgt (dir p c a t1) (dir p c a t3)) by
@@ -973,12 +978,12 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                            assert (t1LeTn0: t1 <= tn0) by omega; generalize cond4 t1LeTn0 notAfter; clear; firstorder]).
       assert (sTnLtT3: S tn <= t3) by omega.
       pose proof (noChange2 dt sTnLtT3 noC) as dirEq.
-      generalize st1LeTr sST1LeT2 sTnLtT3 dirEq rsendr rrecvr msendm msendm0 mrecvm0; clear; intros.
+      generalize isParent st1LeTr sST1LeT2 sTnLtT3 dirEq rsendr rrecvr msendm msendm0 mrecvm0; clear; intros.
       pose proof (sendmChange st msendm) as sEqTom.
-      pose proof (sendmImpSt msendm) as sGtTom.
+      pose proof (sendmImpSt isParent msendm) as sGtTom.
       pose proof (recvmChange dt mrecvm0) as dSEqTom0.
       pose proof (sendmChange st msendm0) as sSEqTom0.
-      pose proof (recvrCond rrecvr) as dLeFromr.
+      pose proof (recvrCond isParent rrecvr) as dLeFromr.
       pose proof (sendrFrom st rsendr) as sEqFromr.
       rewrite <- dSEqTom0 in sSEqTom0.
       rewrite <- sSEqTom0 in dirEq.
@@ -992,7 +997,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       constructor.
 
       intros tc tp tcLeSt tpLeSt mc msendmc mp msendmp norecvmp norecvmc.
-      pose proof (sendmImpRecvr msendmp) as [r rrecvr].
+      pose proof (sendmImpRecvr isParent msendmp) as [r rrecvr].
       pose proof (recvImpMark rrecvr) as [t1 [t1LeTp rsendr]].
       assert (opts: t1 = tc \/ tc < t1 \/ t1 < tc) by omega.
       destruct opts as [t1EqTc | [tcLtT1 | t1LtTc]].
@@ -1018,7 +1023,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                         pose proof (uniqRecv2 rrecvr recv'r) as tpEqTp';
                                                                         omega).
       apply (cReqPRespCross rsendr sendm one two).
-      pose proof (sendmImpRecvr sendm) as [r1 recvr1].
+      pose proof (sendmImpRecvr isParent sendm) as [r1 recvr1].
       pose proof (recvImpMark recvr1) as [tq [tqLeTn sendr1]].
       assert (one: forall tc', tc' < tq -> ~ recv mch p c a tc' mp) by (
                                                                         unfold not; intros tc' tc'LtTq; assert (tc'LtTc: tc' < tc) by omega;
@@ -1050,16 +1055,16 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
             unfold sle in *; unfold sgt in*; unfold slt in *; destruct (state c a t');
             destruct (state c a t1); destruct (to r); auto).
       clear stcLet1 gtRel.
-      pose proof (voluntary rsendr t1LtTc msendmc stcLet2) as [r1 [recvr1 sTcGtToR1]].
+      pose proof (voluntary isParent rsendr t1LtTc msendmc stcLet2) as [r1 [recvr1 sTcGtToR1]].
       pose proof (recvImpMark recvr1) as [t2 [t2LeT1 sendr1]].
       assert (t2LeTp: t2 = tp \/ t2 > tp \/ t2 < tp) by omega.
       destruct t2LeTp as [t2EqTp | [t2GtTp | t2LtTp]].
       rewrite t2EqTp in *.
       apply (noSendmSendr dt msendmp sendr1).
       assert (tpLeT2: tp <= t2) by omega.
-      pose proof (pRespReq noTwoPResp noTwoPReqNon msendmp sendr1 recvr1 tpLeT2) as [t4 [t4LtTp recvmp]].
+      pose proof (pRespReq isParent noTwoPResp noTwoPReqNon msendmp sendr1 recvr1 tpLeT2) as [t4 [t4LtTp recvmp]].
       generalize norecvmp recvmp t4LtTp; clear; firstorder.
-      pose proof (sendrImpNoSendm t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
+      pose proof (sendrImpNoSendm isParent t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
       pose proof (recvImpMark recvm) as [t'' [t''LeT' sendm]].
       pose proof (sendmChange st sendm) as stEqToM.
       assert (stTcGtStST'': slt (state c a (S t'')) (state c a tc)) by
@@ -1088,7 +1093,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       rewrite tsrEqT' in *.
       apply (noSendmRecvm dt sends recvm).
       assert (t2LeTsr: t2 <= tsr) by omega.
-      pose proof (pReqResp noTwoPResp noTwoPReqNon sendr1 sends recvs t2LeTsr) as [tf [tfLtTs recv'r1]].
+      pose proof (pReqResp isParent noTwoPResp noTwoPReqNon sendr1 sends recvs t2LeTsr) as [tf [tfLtTs recv'r1]].
       assert (tfLtTc: tf < tc) by omega.
       pose proof (uniqRecv2 recvr1 recv'r1) as tcEqTf.
       omega.
@@ -1145,9 +1150,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
         apply (slt_neq H) |
           unfold not; intros st; pose proof (whenChildHigh St1LtT2 st) as some; firstorder]).
       assert (stt2LestT1: sle (state c a t2) (state c a (S t1))) by (apply (not_slt_sle notst2Gtst1)).
-      pose proof (recvmCond rrecvr) as fromRLe.
+      pose proof (recvmCond isParent rrecvr) as fromRLe.
       pose proof (sendmFrom st rsendr) as fromREq.
-      pose proof (sendmImpSt msendm) as stGt.
+      pose proof (sendmImpSt isParent msendm) as stGt.
       pose proof (sendmChange st msendm) as stEq.
       rewrite fromREq, <- stEq in *.
       assert (drGt: slt (dir p c a t3) (dir p c a t1)) by
@@ -1220,12 +1225,12 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                            assert (t1LeTn0: t1 <= tn0) by omega; generalize cond4 t1LeTn0 notAfter; clear; firstorder]).
       assert (sTnLtT3: S tn <= t3) by omega.
       pose proof (noChange2 dt sTnLtT3 noC) as dirEq.
-      generalize st1LeTr sST1LeT2 sTnLtT3 dirEq rsendr rrecvr msendm msendm0 mrecvm0; clear; intros.
+      generalize st1LeTr isParent sST1LeT2 sTnLtT3 dirEq rsendr rrecvr msendm msendm0 mrecvm0; clear; intros.
       pose proof (sendmChange st msendm) as sEqTom.
-      pose proof (sendmImpSt msendm) as sGtTom.
+      pose proof (sendmImpSt isParent msendm) as sGtTom.
       pose proof (recvmChange dt mrecvm0) as dSEqTom0.
       pose proof (sendmChange st msendm0) as sSEqTom0.
-      pose proof (recvmCond rrecvr) as dLeFromr.
+      pose proof (recvmCond isParent rrecvr) as dLeFromr.
       pose proof (sendmFrom st rsendr) as sEqFromr.
       rewrite sEqFromr in dLeFromr.
       rewrite <- dirEq in dLeFromr.
@@ -1305,7 +1310,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                             rewrite tsEqT in *;
                                                                                               apply (noSendmRecvm dt sendm' recvm) |
                                                                                             generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
-                                                                                            pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
+                                                                                            pose proof (pReqResp isParent noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
                                                                                               pose proof (uniqRecv2 recvr recv'r) as t4EqT2; omega]).
       destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
         as [ ex2 | notEx2].
@@ -1353,7 +1358,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       firstorder.
 
       assert (tLeT1: t <= t1) by omega.
-      pose proof (pRespReq noTwoPResp noTwoPReqNon sendm sendr recvr tLeT1) as [t' [t'LtT2 recvm]].
+      pose proof (pRespReq isParent noTwoPResp noTwoPReqNon sendm sendr recvr tLeT1) as [t' [t'LtT2 recvm]].
       pose proof (recvImpMark recvm) as [t'' [tLeT' send'm]].
       pose proof (uniqMark2 sendm send'm) as t''EqT.
       rewrite <- t''EqT in *. clear t''EqT t'' send'm.
@@ -1362,7 +1367,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (recvImpMark recvm') as [ts [tsLeTm sendm']];
       assert (opts: ts < t \/ ts = t \/ t < ts < t1 \/ t1 <= ts) by omega;
       destruct opts as [tsLtT | [tsEqT | [tLtTsLtT1  | t1LeTs ]]]; [
-        pose proof (sendmImpRecvr sendm) as [r' recvr'];
+        pose proof (sendmImpRecvr isParent sendm) as [r' recvr'];
         pose proof (recvImpMark recvr') as [tx [txLeT sendr']];
         assert (one: forall t3, t3 < tx -> ~ recv mch p c a t3 m') by (
                                                                        unfold not; intros t3 t3LtTx recv'm'; pose proof (uniqRecv2 recvm' recv'm') as t3EqTr;
@@ -1374,7 +1379,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
         rewrite tsEqT in *; pose proof (uniqMark1 sendm sendm') as mEqM'; rewrite mEqM' in *;
         pose proof (uniqRecv2 recvm recvm') as trEqT'; omega |
         generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
-        pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
+        pose proof (pReqResp isParent noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
           pose proof (uniqRecv2 recvr recv'r) as t4EqT2; omega].
       
       destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
@@ -1429,7 +1434,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                   destruct opts as [t3LtT1 | t4GeT1]; [
                                                                                     generalize notEx t3LtT1 sendm; clear; firstorder;
                                                                                     intuition |
-                                                                                    pose proof (pReqResp noTwoPResp noTwoPReqNon sendr sendm recvm t4GeT1) as [t5 [t4LtT4 recv'r]];
+                                                                                    pose proof (pReqResp isParent noTwoPResp noTwoPReqNon sendr sendm recvm t4GeT1) as [t5 [t4LtT4 recv'r]];
                                                                                       pose proof (uniqRecv2 recvr recv'r) as t5EqT2; omega]).
       destruct (classical (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m)) as [ex2 | notEx2].
       pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[m' sendm'] notAfter2]]].
@@ -1458,7 +1463,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
           (generalize notEx; clear; firstorder).
       assert (x2: 0 <= t1) by omega.
       pose proof (noChange2 dt x2 nothing2) as d1.
-      pose proof (@init p c a) as start.
+      pose proof (@init p c isParent a) as start.
       pose proof (sendrImpSt dt sendr) as d2.
       rewrite d1 in start; rewrite <- start in st1; rewrite st1 in d2.
       pose proof (slt_slei_false d2 toRGestT2) as f.
@@ -1525,7 +1530,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       destruct opts as [tsEqTn | tsLtTn].
       rewrite tsEqTn in *.
       apply (noSendmSendr dt sendm sendr3).
-      pose proof (sendrImpNoSendm tsLtTn sendr3 sendm) as [t' [cond3 [m' [recvm' toM'LeToR3]]]].
+      pose proof (sendrImpNoSendm isParent tsLtTn sendr3 sendm) as [t' [cond3 [m' [recvm' toM'LeToR3]]]].
       assert (cond4: ts <= t' < tx) by omega.
       assert (cond5: t' < tn) by omega.
       generalize notBefore recvm' toM'LeToR3 cond4 cond5; clear; firstorder.
@@ -1564,7 +1569,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       apply (noSendmSendr dt sendq sendr3).
       pose proof @pReqResp.
       assert (tsLeTz: ts <= tz) by omega.
-      pose proof (pReqResp noTwoPResp noTwoPReqNon sendr3 sendq recvq tsLeTz) as sth2.
+      pose proof (pReqResp isParent noTwoPResp noTwoPReqNon sendr3 sendq recvq tsLeTz) as sth2.
       destruct sth2 as [t4 [t4LtTy recv'r3]].
       pose proof (ch.uniqRecv2 recvr3 recv'r3); omega.
       assert (nothing2: forall ty, S t'' <= ty < t2 -> forall q, ~ recv mch p c a ty q) by (
@@ -1582,9 +1587,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (not_slt_sle contra2) as good.
       pose proof (sendmChange st sendm) as eq1.
       pose proof (recvmChange dt recvm) as eq2.
-      pose proof (sendmImpSt sendm) as eq3.
+      pose proof (sendmImpSt isParent sendm) as eq3.
       pose proof (sendmFrom st sendm) as eq4.
-      pose proof (recvmCond recvm) as eq5.
+      pose proof (recvmCond isParent recvm) as eq5.
       generalize good eq1 eq2 eq3 eq4 eq5 toR3LtStT2 toMLeToR3 stLe.
       clear; intros.
       rewrite <- eq1 in *; clear eq1.
@@ -1680,7 +1685,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                           dir p c a tr = state c a ts.
     Proof.
       intros.
-      pose proof (recvmCond H).
+      pose proof (recvmCond isParent H).
       pose proof (sendmFrom st H0).
       rewrite H1 in H2.
       assumption.
@@ -1718,7 +1723,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       assert (z_le_rm: 0 <= rm) by omega.
       assert (first: state c a 0 = state c a rm) by (generalize (@noChange2 (state c) sgt c p st a 0 rm z_le_rm) noCRecv noCSend z_le_sm z_le_rm; clear; firstorder).
       assert (second: dir p c a 0 = dir p c a sm) by (generalize (@noChange2 (dir p c) slt p c dt a 0 sm z_le_sm) noRecvSend z_le_sm z_le_rm; clear; firstorder).
-      pose proof @init p c a as i0.
+      pose proof @init p c isParent a as i0.
       rewrite first in i0.
       rewrite second in i0.
       auto.
@@ -1744,7 +1749,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       assert (z_le_rm: 0 <= rm) by omega.
       assert (first: dir p c a 0 = dir p c a sm) by (generalize (@noChange2 (dir p c) slt p c dt a 0 sm z_le_sm) noPRecv noPSend z_le_sm z_le_rm; clear; firstorder).
       assert (second: state c a 0 = state c a rm) by (generalize (@noChange2 (state c) sgt c p st a 0 rm z_le_rm) noRecvSend z_le_sm z_le_rm; clear; firstorder).
-      pose proof @init p c a as i0.
+      pose proof @init p c isParent a as i0.
       rewrite first in i0.
       rewrite second in i0.
       auto.
@@ -1863,9 +1868,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       intros m a t recvm.
       pose proof (recvImpMark recvm) as [ts [ts_le_t markm]].
       pose proof (sendmFrom st markm) as fromM.
-      pose proof (sendmImpSt markm) as toM.
+      pose proof (sendmImpSt isParent markm) as toM.
       pose proof (recvmChange dt recvm) as dirSt.
-      pose proof (recvmCond recvm) as dirT.
+      pose proof (recvmCond isParent recvm) as dirT.
       rewrite fromM in dirT; rewrite dirT in toM.
       rewrite <- dirSt in toM; assumption.
     Qed.
@@ -1876,7 +1881,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       intros m a t markm.
       pose proof (sendmChange st markm) as toM.
       pose proof (sendmFrom st markm) as fromM.
-      pose proof (sendmImpSt markm).
+      pose proof (sendmImpSt isParent markm).
       rewrite <- toM in H; assumption.
     Qed.
 
@@ -1884,9 +1889,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                           slt (dir p c a t) (dir p c a (S t)).
     Proof.
       intros m a t markm.
-      pose proof (sendmImpRecvr markm) as [r recvr].
-      pose proof (sendmImpRecvrGe markm recvr) as cond.
-      pose proof (recvrCond recvr) as fromR.
+      pose proof (sendmImpRecvr isParent markm) as [r recvr].
+      pose proof (sendmImpRecvrGe isParent markm recvr) as cond.
+      pose proof (recvrCond isParent recvr) as fromR.
       pose proof (recvImpMark recvr) as [t' [t'_le_t markr]].
       pose proof (sendrImpSt st markr)  as toR.
       pose proof (sendrFrom st markr) as fromR'.

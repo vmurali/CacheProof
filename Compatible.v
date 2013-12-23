@@ -82,7 +82,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     destruct stuff as [eq|neq].
     assumption.
     assert (neq': dir n c a (S t) <> dir n c a t) by auto.
-    pose proof (change (@dt n c) neq') as resp.
+    pose proof (change (@dt n c c_child) neq') as resp.
     generalize noRespC resp; clear; firstorder.
     assumption.
     intros c c_child.
@@ -92,7 +92,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
            by (generalize sameDir; clear; firstorder).
     destruct markOrRecv as [markm | recvm].
     pose proof (sendPCond p_parent markm c_child) as dir_le_to_m.
-    pose proof (sendmChange (@st p n) markm) as sth.
+    pose proof (sendmChange (@st p n p_parent) markm) as sth.
     constructor.
 
     rewrite <- sth in dir_le_to_m.
@@ -103,7 +103,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     rewrite <- sameC'.
     generalize IHt c c_child H H0 H1; clear; firstorder.
     constructor.
-    pose proof (cRecvUpgrade recvm) as st_lt.
+    pose proof (cRecvUpgrade p_parent recvm) as st_lt.
     generalize (IHt c c_child) st_lt; clear; intros.
     destruct H as [stuff _].
     unfold sle in *; unfold sle in *; destruct (dir n c a t); destruct (state n a t);
@@ -124,7 +124,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
         decide equality.
     destruct eqOrNot as [eq|not].
     assumption.
-    pose proof (noRespP' (change (@st p n) not)) as done.
+    pose proof (noRespP' (change (@st p n p_parent) not)) as done.
     firstorder.
     assert (noP: forall p, ~ parent n = p) by firstorder.
     apply (@noParentSame n a t noP).
@@ -149,13 +149,13 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
                      + {dir n c' a (S t) <> dir n c' a t}) by decide equality.
     destruct eqOrNot as [eq|not].
     assumption.
-    specialize (noneElse (change (@dt n c') not)).
+    specialize (noneElse (change (@dt n c' c'_child) not)).
     firstorder.
     intros c0 c0_child.
     destruct (classical (c0 = c)) as [c0_eq_c|c0_ne_c].
     rewrite c0_eq_c in *.
     destruct resp as [markm | recvm].
-    pose proof (sendmChange (@dt n c) markm) as toM.
+    pose proof (sendmChange (@dt n c c_child) markm) as toM.
     rewrite toM.
     pose proof (sendCCond c_child markm) as [stuff [rest _]].
     constructor.
@@ -165,7 +165,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     rewrite stEq.
     specialize (rest H c' H0 H1).
     intuition.
-    pose proof (pRecvDowngrade recvm) as sth_gt.
+    pose proof (pRecvDowngrade c_child recvm) as sth_gt.
     constructor.
     destruct (IHt c c_child) as [good bad].
     unfold slt in *; unfold sle in *; destruct (dir n c a (S t)); destruct (dir n c a t);
@@ -194,7 +194,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     assert (eqMo: Mo = Mo) by auto.
     pose proof (slt_neq eqMo notToM) as f.
     intuition.
-    pose proof (pRecvDowngrade recvm) as sth_gt.
+    pose proof (pRecvDowngrade c_child recvm) as sth_gt.
     assert (gtz: slt In (dir n c a t)) by
         (destruct (dir n c a (S t)); destruct (dir n c a t); unfold slt in *; auto).
     pose proof (IHt c0 c0_child) as [_ sth1].
@@ -213,7 +213,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
            by decide equality.
     destruct eqOrNot as [eq|not].
     assumption.
-    pose proof (change (@dt n c) not) as ppp.
+    pose proof (change (@dt n c c_child) not) as ppp.
     generalize notEx c_child ppp; clear; firstorder.
     intros c c_child.
     constructor.
