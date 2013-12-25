@@ -8,43 +8,43 @@ Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
     Context {n: Cache}.
     Context {a: Addr}.
     Context {t: Time}.
-    Axiom sendPCond: forall {p}, parent n = p ->
+    Axiom sendPCond: forall {p}, parent n p ->
                                  forall {m},
                                    mark mch n p a t m ->
-                                   forall {c}, parent c = n -> sle (dir n c a t) (to m).
+                                   forall {c}, parent c n -> sle (dir n c a t) (to m).
     Axiom sendCCond: forall {c},
-                       parent c = n ->
+                       parent c n ->
                        forall {m},
                          mark mch n c a t m ->
                          sle (to m) (state n a t) /\
                          (to m = Mo ->
-                          forall {c'}, c' <> c -> parent c' = n -> dir n c' a t = In)
+                          forall {c'}, c' <> c -> parent c' n -> dir n c' a t = In)
                          /\ (to m <> Mo ->
-                             forall {c'}, c' <> c -> parent c' = n -> slt (dir n c' a t) Mo).
+                             forall {c'}, c' <> c -> parent c' n -> slt (dir n c' a t) Mo).
     Axiom oneRespC: forall {c1 c2},
-                      parent c1 = n -> parent c2 = n ->
+                      parent c1 n -> parent c2 n ->
                       forall {m1}, (mark mch n c1 a t m1 \/ recv mch c1 n a t m1) ->
                                    forall {m2},
                                      (mark mch n c2 a t m2 \/ recv mch c2 n a t m2) -> c1 = c2.
-    Axiom respPNoRespC: forall {p}, parent n = p ->
+    Axiom respPNoRespC: forall {p}, parent n p ->
                                     forall {m},
                                       (mark mch n p a t m \/ recv mch p n a t m) ->
-                                      forall {c}, parent c = n -> forall mc,
+                                      forall {c}, parent c n -> forall mc,
                                         ~ (mark mch n c a t mc \/ recv mch c n a t mc).
-    Axiom noParentSame: (forall {p}, parent n <> p) -> state n a (S t) = state n a t.
+    Axiom noParentSame: (forall {p}, ~ parent n p) -> state n a (S t) = state n a t.
   End Node.
-  Axiom oneParent: forall {n p1 p2}, parent n = p1 -> parent n = p2 -> p1 = p2.
+  Axiom oneParent: forall {n p1 p2}, parent n p1 -> parent n p2 -> p1 = p2.
   Axiom initCompat:
-    forall {n c}, parent c = n -> forall {a}, dir n c a 0 = In.
+    forall {n c}, parent c n -> forall {a}, dir n c a 0 = In.
 End CompatBehavior.
 
 Module Type CompatTheorem (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
   Parameter compatible:
-    forall {n a t c}, parent c = n ->
+    forall {n a t c}, parent c n ->
                       sle (dir n c a t) (state n a t) /\
                       (dir n c a t = Mo ->
-                       forall {c'}, c' <> c -> parent c' = n -> dir n c' a t = In).
+                       forall {c'}, c' <> c -> parent c' n -> dir n c' a t = In).
 End CompatTheorem.
 
 Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt ch) (ba: BehaviorAxioms dt ch)
@@ -53,10 +53,10 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
   Import dt ch cb ba mbt.
 
   Theorem compatible:
-    forall {n a t c}, parent c = n ->
-                      sle (dir n c a t) (state n a t) /\
-                      (dir n c a t = Mo ->
-                       forall {c'}, c' <> c -> parent c' = n -> dir n c' a t = In).
+    forall {n} a t {c}, parent c n ->
+                        sle (dir n c a t) (state n a t) /\
+                        (dir n c a t = Mo ->
+                         forall {c'}, c' <> c -> parent c' n -> dir n c' a t = In).
   Proof.
     intros n a.
     induction t.
@@ -69,11 +69,11 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     pose proof @initCompat n c' c'Child a as c2.
     assumption.
     destruct (classical (exists p m,
-                           parent n = p /\
+                           parent n p /\
                            (mark mch n p a t m \/ recv mch p n a t m))) as [respP|noRespP].
     destruct respP as [p [m [p_parent markOrRecv]]].
     pose proof @respPNoRespC n a t p p_parent m markOrRecv as noChild.
-    assert (sameDir: forall c, parent c = n -> dir n c a t = dir n c a (S t)).
+    assert (sameDir: forall c, parent c n -> dir n c a t = dir n c a (S t)).
     intros c c_child.
     pose proof respPNoRespC p_parent markOrRecv c_child as noRespC.
     assert (st_eq: dir n c a t = dir n c a (S t)).
@@ -88,7 +88,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     intros c c_child.
     pose proof (sameDir c c_child) as dir_eq.
     rewrite <- dir_eq in *.
-    assert (sameC': forall c', c' <> c -> parent c' = n -> dir n c' a t = dir n c' a (S t))
+    assert (sameC': forall c', c' <> c -> parent c' n -> dir n c' a t = dir n c' a (S t))
            by (generalize sameDir; clear; firstorder).
     destruct markOrRecv as [markm | recvm].
     pose proof (sendPCond p_parent markm c_child) as dir_le_to_m.
@@ -113,12 +113,12 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     specialize (sameDir c' c'_child).
     rewrite <- sameDir.
     generalize IHt c'_child c'Ne dirMo c_child; clear; firstorder.
-    assert (noRespP': forall p, parent n = p -> ~ ((exists m, mark mch n p a t m)
+    assert (noRespP': forall p, parent n p -> ~ ((exists m, mark mch n p a t m)
                                                    \/ (exists m, recv mch p n a t m)))
       by (
           generalize noRespP; clear; firstorder).
     assert (st_eq: state n a (S t) = state n a t).
-    destruct (classical (exists p, parent n = p)) as [[p p_parent] | nop].
+    destruct (classical (exists p, parent n p)) as [[p p_parent] | nop].
     specialize (noRespP' p p_parent).
     assert (eqOrNot: {state n a (S t) = state n a t} + {state n a (S t) <> state n a t}) by
         decide equality.
@@ -126,13 +126,13 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     assumption.
     pose proof (noRespP' (change (@st p n p_parent) not)) as done.
     firstorder.
-    assert (noP: forall p, ~ parent n = p) by firstorder.
+    assert (noP: forall p, ~ parent n p) by firstorder.
     apply (@noParentSame n a t noP).
     rewrite st_eq in *.
 
-    destruct (classical (exists c m, parent c = n /\ (mark mch n c a t m \/ recv mch c n a t m))) as [ex|notEx].
+    destruct (classical (exists c m, parent c n /\ (mark mch n c a t m \/ recv mch c n a t m))) as [ex|notEx].
     destruct ex as [c [m [c_child resp]]].
-    assert (noneElse: forall c', c' <> c -> parent c' = n ->
+    assert (noneElse: forall c', c' <> c -> parent c' n ->
                        ~ ((exists m, mark mch n c' a t m) \/ exists m, recv mch c' n a t m)).
     intros c' c'_ne_c c'_child.
     destruct (classical (exists m', mark mch n c' a t m' \/ recv mch c' n a t m'))
@@ -142,7 +142,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     assert (c' = c) by auto.
     firstorder.
     firstorder.
-    assert (stEq: forall c', c' <> c -> parent c' = n -> dir n c' a (S t) = dir n c' a t).
+    assert (stEq: forall c', c' <> c -> parent c' n -> dir n c' a (S t) = dir n c' a t).
     intros c' c'_ne_c c'_child.
     specialize (noneElse c' c'_ne_c c'_child).
     assert (eqOrNot: {dir n c' a (S t) = dir n c' a t} 
@@ -207,7 +207,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     specialize (stEq c' c'_ne_c c'_child).
     rewrite stEq.
     generalize IHt c0_child dirC0 c'_ne_c0 c'_child; clear; firstorder.
-    assert (same: forall c, parent c = n -> dir n c a (S t) = dir n c a t).
+    assert (same: forall c, parent c n -> dir n c a (S t) = dir n c a t).
     intros c c_child.
     assert (eqOrNot: {dir n c a (S t) = dir n c a t} + {dir n c a (S t) <> dir n c a t})
            by decide equality.

@@ -1,14 +1,17 @@
+Require Import List.
+
 Module Type DataTypes.
   Parameter classical: forall P, P \/ ~ P.
 
   Parameter Addr: Set.
   Inductive Desc := Ld | St.
-  Parameter Cache: Set.
-  Parameter leaf : Cache -> Prop.
-  Definition Proc := {c | leaf c}.
+
   Definition Index := nat.
 
-  Parameter parent: Cache -> Cache.
+  Parameter Cache: Set.
+  Parameter parent: Cache -> Cache -> Prop.
+  Parameter leaf: Cache -> Prop.
+
   Inductive State := In | Sh | Ow | Mo.
 
   Definition slt x y := match x with

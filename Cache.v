@@ -84,35 +84,35 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
 
   Section Pair.
     Context {p c: Cache}.
-    Variable isParent: parent c = p.
-    Axiom st: parent c = p -> @CommonBehavior (state c) sgt c p.
-    Axiom sendmImpSt: parent c = p ->
+    Variable isParent: parent c p.
+    Axiom st: parent c p -> @CommonBehavior (state c) sgt c p.
+    Axiom sendmImpSt: parent c p ->
                       forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
-    Axiom voluntary: parent c = p ->
+    Axiom voluntary: parent c p ->
       forall {a t r}, mark rch c p a t r -> forall {t' m}, t' > t -> mark mch c p a t' m ->
         (forall {tm}, t < tm <= t' -> slt (state c a tm) (to r)) ->
         exists r1, recv rch p c a t' r1 /\ slt (to r1) (state c a t').
 
 (*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
 
-    Axiom dt: parent c = p -> @CommonBehavior (dir p c) slt p c.
+    Axiom dt: parent c p -> @CommonBehavior (dir p c) slt p c.
     Section ForT.
       Context {a: Addr} {t: Time}.
 
-      Axiom sendmImpRecvr: parent c = p -> 
+      Axiom sendmImpRecvr: parent c p -> 
                            forall {m}, mark mch p c a t m -> exists r, recv rch c p a t r.
 
-      Axiom sendmImpRecvrGe: parent c = p ->
+      Axiom sendmImpRecvrGe: parent c p ->
                              forall {m}, mark mch p c a t m ->
                                          forall {r}, recv rch c p a t r -> sle (to r) (to m).
 
-      Axiom recvrCond: parent c = p ->
+      Axiom recvrCond: parent c p ->
                        forall {r}, recv rch c p a t r -> sle (dir p c a t) (from r).
 
-      Axiom recvmCond: parent c = p ->
+      Axiom recvmCond: parent c p ->
                        forall {m}, recv mch c p a t m -> from m = dir p c a t.
 
-      Axiom sendrImpNoSendm: parent c = p ->
+      Axiom sendrImpNoSendm: parent c p ->
         forall {t1 t2 r1 m2},
           t1 < t2 -> mark rch p c a t1 r1 ->
           mark mch p c a t2 m2 ->
@@ -121,16 +121,16 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
       (*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
     End ForT.
 
-    Axiom init: parent c = p -> forall {a}, dir p c a 0 = state c a 0.
+    Axiom init: parent c p -> forall {a}, dir p c a 0 = state c a 0.
 
-    Definition twoEqPRespFalse (isParent: parent c = p) :=
+    Definition twoEqPRespFalse (isParent: parent c p) :=
       forall a t t1 m1, t1 <= t -> mark mch p c a t1 m1 ->
                         forall t2 m2, t2 <= t -> mark mch p c a t2 m2 ->
                                       (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) ->
                                       (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
                                       t1 = t2.
 
-    Definition twoPReqEqNeedsPResp (isParent: parent c = p) :=
+    Definition twoPReqEqNeedsPResp (isParent: parent c p) :=
       forall a t t1 r1,
         t1 <= t -> mark rch p c a t1 r1 ->
         forall t2 r2,
@@ -141,7 +141,7 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
 
     Section ForA.
       Context {a: Addr}.
-      Axiom pRespReq: forall isParent: parent c = p,
+      Axiom pRespReq: forall isParent: parent c p,
                       twoEqPRespFalse isParent ->
                       twoPReqEqNeedsPResp isParent ->
                       forall {t1 t2 t3},
@@ -150,7 +150,7 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
                         forall {r}, mark rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
                                     exists t4, t4 < t3 /\ recv mch p c a t4 m.
 
-      Axiom pReqResp: forall isParent: parent c = p,
+      Axiom pReqResp: forall isParent: parent c p,
         twoEqPRespFalse isParent ->
                       twoPReqEqNeedsPResp isParent ->
                       forall {t1 t2 t3},
@@ -167,7 +167,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
   Import dt ch st.
   Section Pair.
     Context {p c: Cache}.
-    Variable isParent: parent c = p.
+    Variable isParent: parent c p.
     Definition st := @st.st p c isParent.
     Definition dt := @st.dt p c isParent.
 
@@ -1243,7 +1243,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       generalize sendRecv noSend noEx; clear; firstorder.
     Qed.
 
-    Theorem conservative: forall {a t}, sle (state c a t) (dir p c a t).
+    Theorem conservative: forall a t, sle (state c a t) (dir p c a t).
     Proof.
       intros a t.
       pose proof (@mainInd a t) as [first _].
