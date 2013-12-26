@@ -50,10 +50,10 @@ Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt
     leaf c ->
     sle Sh (state c a t) ->
     match data c a t with
-      | Initial => forall {ti}, 0 <= ti <= t -> forall {ci li ii}, ~ deqR ci li a St ii ti
+      | Initial => forall {ti}, 0 <= ti < t -> forall {ci li ii}, ~ deqR ci li a St ii ti
       | Store lb =>
         exists cb ib tb, tb < t /\ deqR cb lb a St ib tb /\
-                         forall {ti}, tb < ti <= t -> forall {ci li ii}, ~ deqR ci li a St ii ti
+                         forall {ti}, tb < ti < t -> forall {ci li ii}, ~ deqR ci li a St ii ti
     end.
 
   Parameter uniqM:
@@ -106,7 +106,7 @@ Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxi
         | Initial => forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
                        enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
                        deqR qc' ql' qa' qd' qi' qt' ->
-                       rl' = ql' -> 0 <= rt' <= rt -> ~ (qa = qa' /\ qd' = St)
+                       rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)
         | Store m =>
           exists rmc rml rms rmt qmc qml qma qmd qmi qmt
             (enqm: enqLd rmc rml rms rmt + enqSt rmc rml rmt),
@@ -115,7 +115,7 @@ Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxi
             rmt < rt /\ qma = qa /\ qmd = St /\
             forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
               enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' -> deqR qc' ql' qa' qd' qi' qt' ->
-              rl' = ql' -> rmt < rt' <= rt ->
+              rl' = ql' -> rmt < rt' < rt ->
               ~ (qa = qa' /\ qd' = St)
       end.
 End L1StoreAtomicity.
@@ -345,7 +345,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
         | Initial => forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
                        enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
                        deqR qc' ql' qa' qd' qi' qt' ->
-                       rl' = ql' -> 0 <= rt' <= rt -> ~ (qa = qa' /\ qd' = St)
+                       rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)
         | Store m =>
           exists rmc rml rms rmt qmc qml qma qmd qmi qmt
             (enqm: enqLd rmc rml rms rmt + enqSt rmc rml rmt),
@@ -354,7 +354,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
             rmt < rt /\ qma = qa /\ qmd = St /\
             forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
               enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' -> deqR qc' ql' qa' qd' qi' qt' ->
-              rl' = ql' -> rmt < rt' <= rt ->
+              rl' = ql' -> rmt < rt' < rt ->
               ~ (qa = qa' /\ qd' = St)
       end.
   Proof.
@@ -546,12 +546,12 @@ Module mkTop (dt: DataTypes) (l1: L1Axioms dt).
         labelR r = labelQ q -> desc q = Ld ->
         match stl r with
           | Initial => forall {r' q'},
-                         labelR r' = labelQ q' -> 0 <= timeR r' <= timeR r
+                         labelR r' = labelQ q' -> 0 <= timeR r' < timeR r
                          -> ~ (loc q = loc q' /\ desc q' = St)
           | Store m => exists rm qm, labelR rm = m /\ labelQ qm = m /\
                                      timeR rm < timeR r /\ loc qm = loc q /\ desc qm = St /\
                                      forall {r' q'},
-                                       labelR r' = labelQ q' -> timeR rm < timeR r' <= timeR r ->
+                                       labelR r' = labelQ q' -> timeR rm < timeR r' < timeR r ->
                                        ~ (loc q = loc q' /\ desc q' = St)
         end.
     Proof.
