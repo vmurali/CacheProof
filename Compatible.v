@@ -35,7 +35,7 @@ Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
   End Node.
   Axiom oneParent: forall {n p1 p2}, parent n p1 -> parent n p2 -> p1 = p2.
   Axiom initCompat:
-    forall {n c}, parent c n -> forall {a}, dir n c a 0 = In.
+    forall {n c}, parent c n -> forall a, dir n c a 0 = In.
 End CompatBehavior.
 
 Module Type CompatTheorem (dt: DataTypes) (ch: ChannelPerAddr dt).
@@ -58,7 +58,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
                         (dir n c a t = Mo ->
                          forall {c'}, c' <> c -> parent c' n -> dir n c' a t = In).
   Proof.
-    intros n a.
+    intros n a t.
     induction t.
     intros c cond.
     constructor.

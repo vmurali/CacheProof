@@ -11,6 +11,7 @@ Module Type DataTypes.
   Parameter Cache: Set.
   Parameter parent: Cache -> Cache -> Prop.
   Parameter leaf: Cache -> Prop.
+  Parameter descendent: Cache -> Cache -> Prop.
 
   Inductive State := In | Sh | Ow | Mo.
 

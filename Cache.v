@@ -83,6 +83,8 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   End CommonBeh.
 
   Section Pair.
+    Axiom noParentNoStChange: forall {c} a t,
+                                (forall {p}, ~ parent c p) -> state c a t = state c a 0.
     Context {p c: Cache}.
     Variable isParent: parent c p.
     Axiom st: parent c p -> @CommonBehavior (state c) sgt c p.
