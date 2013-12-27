@@ -13,25 +13,17 @@ Module Type DataTypes.
   Parameter leaf: Cache -> Prop.
   Parameter descendent: Cache -> Cache -> Prop.
 
-  Inductive State := In | Sh | Ow | Mo.
+  Inductive State := In | Sh | Mo.
 
   Definition slt x y := match x with
                           | In => match y with
                                     | In => False
                                     | Sh => True
-                                    | Ow => True
                                     | Mo => True
                                   end
                           | Sh => match y with
                                     | In => False
                                     | Sh => False
-                                    | Ow => True
-                                    | Mo => True
-                                  end
-                          | Ow => match y with
-                                    | In => False
-                                    | Sh => False
-                                    | Ow => False
                                     | Mo => True
                                   end
                           | Mo => False
@@ -41,25 +33,16 @@ Module Type DataTypes.
                           | In => match y with
                                     | In => True
                                     | Sh => True
-                                    | Ow => True
                                     | Mo => True
                                   end
                           | Sh => match y with
                                     | In => False
                                     | Sh => True
-                                    | Ow => True
-                                    | Mo => True
-                                  end
-                          | Ow => match y with
-                                    | In => False
-                                    | Sh => False
-                                    | Ow => True
                                     | Mo => True
                                   end
                           | Mo => match y with
                                     | In => False
                                     | Sh => False
-                                    | Ow => False
                                     | Mo => True
                                   end
                         end.

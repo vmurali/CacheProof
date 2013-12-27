@@ -20,8 +20,7 @@ Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
                          forall {c'}, c' <> c -> parent c' n -> sle (dir n c' a t)
                                       match to m with
                                         | Mo => In
-                                        | Ow => Sh
-                                        | Sh => Ow
+                                        | Sh => Sh
                                         | In => Mo
                                       end.
     Axiom oneRespC: forall {c1 c2},
@@ -49,8 +48,7 @@ Module Type CompatTheorem (dt: DataTypes) (ch: ChannelPerAddr dt).
                         forall {c'}, c' <> c -> parent c' n -> sle (dir n c' a t)
                                                                    match dir n c a t with
                                                                      | Mo => In
-                                                                     | Ow => Sh
-                                                                     | Sh => Ow
+                                                                     | Sh => Sh
                                                                      | In => Mo
                                                                    end.
 End CompatTheorem.
@@ -66,8 +64,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
                         forall {c'}, c' <> c -> parent c' n -> sle (dir n c' a t)
                                                                    match dir n c a t with
                                                                      | Mo => In
-                                                                     | Ow => Sh
-                                                                     | Sh => Ow
+                                                                     | Sh => Sh
                                                                      | In => Mo
                                                                    end.
   Proof.
