@@ -634,9 +634,23 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       pose proof @pSendPSameState as mui2.
 
 
+      pose proof (sendmFrom (dt c_child) sendm) as fromY.
+      pose proof (sendmChange (dt c_child) sendm) as toT.
+      pose proof (pSendUpgrade c_child sendm) as upd.
 
-      assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)) by admit.
-      assert (cLow: forall tx, ts < tx < S t -> slt (state c a tx) Mo) by admit.
+      assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)).
+      intros tx cond. assert (cond2: ts < tx <= t) by omega.
+      pose proof (pSendPSameState c_child sendm recvm cond2) as sth.
+      rewrite <- toT in sth.
+      rewrite <- sth in upd.
+      unfold slt in *; destruct (dir Parent c a ts); destruct (dir Parent c a tx); auto.
+      assert (cLow: forall tx, ts < tx < S t -> slt (state c a tx) Mo).
+      intros tx cond. assert (cond2: ts <= tx <= t) by omega.
+      pose proof (pSendCSameState c_child sendm recvm cond2) as sth.
+      pose proof (conservative c_child a ts) as cons11.
+      rewrite <- sth in cons11.
+      unfold slt in *; unfold sle in *; destruct (state c a tx); destruct (dir Parent c a ts);
+      destruct (dir Parent c a (S ts)); auto.
 
 
 
