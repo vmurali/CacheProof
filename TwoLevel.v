@@ -362,7 +362,7 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
 
 
 
-      assert (pHigh: forall tx, ts <= tx < S t -> ~ sle (dir Parent c a tx) In) by admit.
+      assert (pHigh: forall tx, ts <= tx < S t -> slt In (dir Parent c a tx)) by admit.
       assert (cLow: forall tx, ts <= tx < S t -> slt (state c a tx) Mo) by admit.
 
 
@@ -545,8 +545,7 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       remember (Child n) as c.
 
 
-      assert (pHigh: forall tx, ts <= tx < S t -> ~ sle (dir Parent c a tx) In)
-        by admit.
+      assert (pHigh: forall tx, ts <= tx < S t -> slt In (dir Parent c a tx)) by admit.
       assert (cLow: forall tx, ts <= tx < S t -> slt (state c a tx) Mo) by admit.
 
 
