@@ -445,13 +445,10 @@ Module mkL1InputTypes (d: DataTypes) (l1: L1Axioms d) <: L1InputTypes d.
   Definition Resp := RespSet.
 End mkL1InputTypes.
 
-Module mkL1InputAxioms (dt: DataTypes)
-       (l1A: L1Axioms dt): L1InputAxioms dt l1A.
+Module mkL1InputAxioms (dt: DataTypes) (l1A: L1Axioms dt).
   Module li := mkL1InputTypes dt l1A.
-  Import li.
   Declare Module lb: L1BaseInputAxioms dt li.
-  Import lb.
-    Import dt l1A.
+    Import lb li dt l1A.
     Theorem uniqDeqLabels:
       forall {c1 l1 a1 d1 i1 t1 c2 l2 a2 d2 i2 t2},
         deqR c1 l1 a1 d1 i1 t1 -> deqR c2 l2 a2 d2 i2 t2 -> l1 = l2 ->
