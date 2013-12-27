@@ -203,6 +203,12 @@ Module Type LatestValueAxioms (ch: ChannelPerAddr dt) (l1: L1Axioms dt).
       (exists m, (exists p, parent n p /\ recv mch p n a t m /\ from m = In) \/
                  (exists c, parent c n /\ recv mch c n a t m /\ slt Sh (from m))) \/
       exists l i, deqR n l a St i t.
+
+
+  Axiom deqImpNoSend: forall {c l a d i t}, deqR c l a d i t ->
+                                            forall {m p}, ~ mark mch c p a t m.
+  Axiom deqImpNoRecv: forall {c l a d i t}, deqR c l a d i t ->
+                                            forall {m p}, ~ recv mch p c a t m. 
 End LatestValueAxioms.
 
 Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
@@ -362,12 +368,12 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
 
 
 
-      assert (pHigh: forall tx, ts <= tx < S t -> slt In (dir Parent c a tx)) by admit.
-      assert (cLow: forall tx, ts <= tx < S t -> slt (state c a tx) Mo) by admit.
+      assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)) by admit.
+      assert (cLow: forall tx, ts < tx < S t -> slt (state c a tx) Mo) by admit.
 
 
 
-      assert (others: forall tx, ts <= tx < S t ->
+      assert (others: forall tx, ts < tx < S t ->
                                  forall c', c' <> c -> parent c' Parent ->
                                             sle (dir Parent c' a tx)
                                                 match dir Parent c a tx with
@@ -378,13 +384,13 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
           (intros tx _; apply (compatible a tx c_child)).
       assert (c'DirLow:
                 forall tx,
-                  ts <= tx < S t -> 
+                  ts < tx < S t -> 
                   forall c', c' <> c -> parent c' Parent -> slt (dir Parent c' a tx) Mo).
       intros tx cond c' c'_ne_c c'_child.
       specialize (others tx cond c' c'_ne_c c'_child).
       specialize (pHigh tx cond).
       unfold slt in *; destruct (dir Parent c a tx); destruct (dir Parent c' a tx); auto.
-      assert (c'Low: forall tx, ts <= tx < S t -> forall c',
+      assert (c'Low: forall tx, ts < tx < S t -> forall c',
                                                    c' <> c ->
                                                    parent c' Parent ->
                                                    slt (state c' a tx) Mo).
@@ -392,7 +398,7 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       specialize (c'DirLow tx cond c' c'_ne_c c'_child).
       pose proof (conservative c'_child a tx) as sig.
       unfold slt in *; destruct (dir Parent c' a tx); destruct (state c' a tx); auto.
-      assert (allLow: forall tx, ts <= tx < S t -> forall c0,
+      assert (allLow: forall tx, ts < tx < S t -> forall c0,
                                            parent c0 Parent -> slt (state c0 a tx) Mo).
       intros tx cond c0 c0_child.
       assert (cache: {c0 = c} + {c0 <> c}) by (
@@ -401,7 +407,7 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       destruct cache as [eq|notEq].
       rewrite eq in *; apply (cLow tx cond).
       apply (c'Low tx cond c0 notEq c0_child).
-      assert (noSt: forall ti, ts <= ti < S t ->
+      assert (noSt: forall ti, ts < ti < S t ->
                                forall ci li ii, ~ deqR ci li a St ii ti).
       unfold not; intros ti cond ci li ii deqSt.
       pose proof (deqLeaf deqSt) as leafCi.
@@ -429,8 +435,43 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       pose proof (SIHt ts le c (conj stCond cond2)) as useful.
       destruct (data c a ts).
       intros ti cond1.
-      assert (cond3: 0 <= ti < ts \/ ts <= ti < S t) by omega.
-      generalize noSt cond3 useful; clear; firstorder.
+
+
+
+
+      assert (cond3: 0 <= ti < ts \/ ts < ti < S t \/ ti = ts) by omega.
+      destruct cond3 as [e1|[e2|e3]].
+      generalize noSt e1 useful; clear; firstorder.
+      generalize noSt e2 useful; clear; firstorder.
+      unfold not; rewrite e3 in *; intros ci li ii deqSt.
+      assert (eqOrNot: c = ci \/ c <> ci) by (decide equality ; decide equality ).
+      destruct eqOrNot as [eq|notEq].
+      rewrite eq in *.
+      apply (deqImpNoSend deqSt sendm).
+      pose proof (processDeq deqSt) as stte.
+      simpl in stte.
+      pose proof (deqLeaf deqSt) as leafCi.
+      assert (c'_child: parent ci Parent) by (unfold parent; unfold leaf in *; destruct ci;
+                                              auto).
+      pose proof (conservative c'_child a ts) as cons.
+      rewrite stte in cons.
+      assert (dirM: dir Parent ci a ts = Mo) by (unfold sle in cons;
+                                                 destruct (dir Parent ci a ts); firstorder).
+      pose proof (compatible a ts c'_child) as [_ otherCaches].
+      rewrite dirM in otherCaches.
+      specialize (otherCaches c notEq c_child).
+      assert (dirIn: dir Parent c a ts = In) by (unfold sle in *; destruct (dir Parent c a ts);
+                                                 firstorder).
+      pose proof (conservative c_child a ts) as cons2.
+      rewrite dirIn in cons2.
+      assert (cIn: state c a ts = In) by (unfold sle in cons2; destruct (state c a ts) ;
+                                                               firstorder).
+      rewrite cIn in stCond.
+      unfold sle in stCond; firstorder.
+
+
+
+
       destruct useful as [cb [ib [tb [tbTs [deqTb rest]]]]].
       exists cb; exists ib; exists tb.
       assert (tsLeSt: ts <= S t) by omega.
@@ -439,8 +480,39 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       assumption.
       constructor. assumption.
       intros ti cond1.
-      assert (cond3: tb < ti < ts \/ ts <= ti < S t) by omega.
-      generalize rest cond3 noSt; clear; firstorder.
+      assert (cond3: tb < ti < ts \/ ts < ti < S t \/ ti = ts) by omega.
+      destruct cond3 as [e1|[e2|e3]].
+      generalize rest e1 noSt; clear; firstorder.
+      generalize rest e2 noSt; clear; firstorder.
+
+      unfold not; rewrite e3 in *; intros ci li ii deqSt.
+      assert (eqOrNot: c = ci \/ c <> ci) by (decide equality ; decide equality ).
+      destruct eqOrNot as [eq|notEq].
+      rewrite eq in *.
+      apply (deqImpNoSend deqSt sendm).
+      pose proof (processDeq deqSt) as stte.
+      simpl in stte.
+      pose proof (deqLeaf deqSt) as leafCi.
+      assert (c'_child: parent ci Parent) by (unfold parent; unfold leaf in *; destruct ci;
+                                              auto).
+      pose proof (conservative c'_child a ts) as cons.
+      rewrite stte in cons.
+      assert (dirM: dir Parent ci a ts = Mo) by (unfold sle in cons;
+                                                 destruct (dir Parent ci a ts); firstorder).
+      pose proof (compatible a ts c'_child) as [_ otherCaches].
+      rewrite dirM in otherCaches.
+      specialize (otherCaches c notEq c_child).
+      assert (dirIn: dir Parent c a ts = In) by (unfold sle in *; destruct (dir Parent c a ts);
+                                                 firstorder).
+      pose proof (conservative c_child a ts) as cons2.
+      rewrite dirIn in cons2.
+      assert (cIn: state c a ts = In) by (unfold sle in cons2; destruct (state c a ts) ;
+                                                               firstorder).
+      rewrite cIn in stCond.
+      unfold sle in stCond; firstorder.
+
+
+
       assert (contra: forall c, parent c Parent -> ~ ~ sle (dir Parent c a t) Sh) by
           firstorder.
       assert (contra2: forall c, parent c Parent -> sle (dir Parent c a t) Sh) by
@@ -545,13 +617,13 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       remember (Child n) as c.
 
 
-      assert (pHigh: forall tx, ts <= tx < S t -> slt In (dir Parent c a tx)) by admit.
-      assert (cLow: forall tx, ts <= tx < S t -> slt (state c a tx) Mo) by admit.
+      assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)) by admit.
+      assert (cLow: forall tx, ts < tx < S t -> slt (state c a tx) Mo) by admit.
 
 
 
 
-      assert (others: forall tx, ts <= tx < S t ->
+      assert (others: forall tx, ts < tx < S t ->
                                  forall c', c' <> c -> parent c' Parent ->
                                             sle (dir Parent c' a tx)
                                                 match dir Parent c a tx with
@@ -562,13 +634,13 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
           (intros tx _; apply (compatible a tx c_child)).
       assert (c'DirLow:
                 forall tx,
-                  ts <= tx < S t -> 
+                  ts < tx < S t -> 
                   forall c', c' <> c -> parent c' Parent -> slt (dir Parent c' a tx) Mo).
       intros tx cond c' c'_ne_c c'_child.
       specialize (others tx cond c' c'_ne_c c'_child).
       specialize (pHigh tx cond).
       unfold slt in *; destruct (dir Parent c a tx); destruct (dir Parent c' a tx); auto.
-      assert (c'Low: forall tx, ts <= tx < S t -> forall c',
+      assert (c'Low: forall tx, ts < tx < S t -> forall c',
                                                    c' <> c ->
                                                    parent c' Parent ->
                                                    slt (state c' a tx) Mo).
@@ -576,7 +648,7 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       specialize (c'DirLow tx cond c' c'_ne_c c'_child).
       pose proof (conservative c'_child a tx) as sig.
       unfold slt in *; destruct (dir Parent c' a tx); destruct (state c' a tx); auto.
-      assert (allLow: forall tx, ts <= tx < S t -> forall c0,
+      assert (allLow: forall tx, ts < tx < S t -> forall c0,
                                            parent c0 Parent -> slt (state c0 a tx) Mo).
       intros tx cond c0 c0_child.
       assert (cache: {c0 = c} + {c0 <> c}) by (
@@ -585,7 +657,7 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       destruct cache as [eq|notEq].
       rewrite eq in *; apply (cLow tx cond).
       apply (c'Low tx cond c0 notEq c0_child).
-      assert (noSt: forall ti, ts <= ti < S t ->
+      assert (noSt: forall ti, ts < ti < S t ->
                                forall ci li ii, ~ deqR ci li a St ii ti).
       unfold not; intros ti cond ci li ii deqSt.
       pose proof (deqLeaf deqSt) as leafCi.
@@ -625,8 +697,41 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       pose proof (SIHt ts le Parent (conj stCond cond2)) as useful.
       destruct (data Parent a ts).
       intros ti condx.
-      assert (cond3: 0 <= ti < ts \/ ts <= ti < S t) by omega.
-      generalize noSt cond3 useful; clear; firstorder.
+      assert (cond3: 0 <= ti < ts \/ ts < ti < S t \/ ti = ts) by omega.
+      destruct cond3 as [e1|[e2|e3]].
+      generalize noSt e1 useful; clear; firstorder.
+      generalize noSt e2 useful; clear; firstorder.
+      rewrite e3 in *.
+      pose proof (sendCCond c_child sendm) as [_ use].
+      pose proof (pSendUpgrade c_child sendm) as upg.
+      pose proof (sendmChange (dt c_child) sendm) as upg2.
+      rewrite <- fromM in upg; rewrite upg2 in upg.
+      assert (othersNot: forall c', c' <> c -> parent c' Parent ->
+                                    dir Parent c' a ts <> Mo).
+      intros c' c'_ne c'_child.
+      specialize (use c' c'_ne c'_child).
+      destruct (dir Parent c' a ts); destruct (to m); unfold slt in *; unfold sle in *; auto;
+      discriminate.
+      assert (allNot: forall c', parent c' Parent ->
+                                 dir Parent c' a ts <> Mo).
+      intros c'.
+      assert (eqOrNot: {c' = c} + {c' <> c}) by (decide equality; decide equality).
+      destruct eqOrNot as [eq|not].
+      rewrite eq in *; rewrite <- fromM; intros; discriminate.
+      generalize othersNot not; clear; firstorder.
+      assert (allNot': forall c', parent c' Parent -> state c' a ts <> Mo).
+      intros c' parentc'. specialize (allNot c' parentc').
+      pose proof (conservative parentc' a ts) as slee.
+      unfold sle in *; destruct (state c' a ts); destruct (dir Parent c' a ts);
+      auto; discriminate.
+      unfold not; intros.
+      pose proof (deqLeaf H0) as leafc.
+      pose proof (processDeq H0) as procc.
+      simpl in *.
+      assert (parent ci Parent) by (unfold parent; destruct ci; auto).
+      generalize allNot' procc H1; clear; firstorder.
+
+
       destruct useful as [cb [ib [tb [tbTs [deqTb rest2]]]]].
       exists cb; exists ib; exists tb.
       assert (tsLeSt: ts <= S t) by omega.
@@ -635,8 +740,39 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       assumption.
       constructor. assumption.
       intros ti condx.
-      assert (cond3: tb < ti < ts \/ ts <= ti < S t) by omega.
-      generalize rest2 cond3 noSt; clear; firstorder.
+      assert (cond3: tb < ti < ts \/ ts < ti < S t \/ ti = ts) by omega.
+      destruct cond3 as [e1|[e2|e3]].
+      generalize noSt e1 rest2; clear; firstorder.
+      generalize noSt e2 rest2; clear; firstorder.
+      rewrite e3 in *.
+      pose proof (sendCCond c_child sendm) as [_ use].
+      pose proof (pSendUpgrade c_child sendm) as upg.
+      pose proof (sendmChange (dt c_child) sendm) as upg2.
+      rewrite <- fromM in upg; rewrite upg2 in upg.
+      assert (othersNot: forall c', c' <> c -> parent c' Parent ->
+                                    dir Parent c' a ts <> Mo).
+      intros c' c'_ne c'_child.
+      specialize (use c' c'_ne c'_child).
+      destruct (dir Parent c' a ts); destruct (to m); unfold slt in *; unfold sle in *; auto;
+      discriminate.
+      assert (allNot: forall c', parent c' Parent ->
+                                 dir Parent c' a ts <> Mo).
+      intros c'.
+      assert (eqOrNot: {c' = c} + {c' <> c}) by (decide equality; decide equality).
+      destruct eqOrNot as [eq|not].
+      rewrite eq in *; rewrite <- fromM; intros; discriminate.
+      generalize othersNot not; clear; firstorder.
+      assert (allNot': forall c', parent c' Parent -> state c' a ts <> Mo).
+      intros c' parentc'. specialize (allNot c' parentc').
+      pose proof (conservative parentc' a ts) as slee.
+      unfold sle in *; destruct (state c' a ts); destruct (dir Parent c' a ts);
+      auto; discriminate.
+      unfold not; intros.
+      pose proof (deqLeaf H0) as leafc.
+      pose proof (processDeq H0) as procc.
+      simpl in *.
+      assert (parent ci Parent) by (unfold parent; destruct ci; auto).
+      generalize allNot' procc H1; clear; firstorder.
     Qed.
   End ForAddr.
 End LatestValueTheorems.

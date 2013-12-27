@@ -1921,5 +1921,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       rewrite toM in dirs.
       assumption.
     Qed.
+
+    Theorem pSendSameState: forall {m sm rm},
+                              mark mch p c sm m -> recv mch p c rm m ->
+                              
   End Pair.
 End mkBehaviorTheorems.
