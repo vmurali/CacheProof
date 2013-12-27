@@ -25,8 +25,8 @@ Module Type L1BaseInputAxioms (d: DataTypes) (li: L1InputTypes d).
     forall {q1 q2}, procQ q1 = procQ q2 -> index q1 = index q2 -> q1 = q2.
 End L1BaseInputAxioms.
 
-Module Type StoreAtomicity (dt: DataTypes) (l1B: L1InputTypes dt) (l1In: L1BaseInputAxioms dt l1B).
-  Import dt l1B l1In.
+Module Type StoreAtomicity (dt: DataTypes) (l1B: L1InputTypes dt).
+  Import dt l1B.
 
   Parameter respHasReq:
     forall {r}, exists q, labelR r = labelQ q.
