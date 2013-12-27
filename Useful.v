@@ -1,5 +1,3 @@
-Axiom cheat : forall t, t.
-
 Require Import Arith Omega.
 
 Section classical.
