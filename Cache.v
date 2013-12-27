@@ -1940,7 +1940,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
 
     Theorem pSendCSameState: forall {m sm rm a},
                               mark mch p c a sm m -> recv mch p c a rm m ->
-                              forall t, sm <= t <= rm ->
+                              forall {t}, sm <= t <= rm ->
                                         state c a t = state c a sm.
     Proof.
       intros m sm rm a markm recvm t [sm_le_t t_le_rm].
@@ -1996,7 +1996,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
 
     Theorem pSendPSameState: forall {m sm rm a},
                               mark mch p c a sm m -> recv mch p c a rm m ->
-                              forall t, sm < t <= rm ->
+                              forall {t}, sm < t <= rm ->
                                         dir p c a t = to m.
     Proof.
       intros m sm rm a markm recvm t [sm_lt_t t_le_rm].
@@ -2039,7 +2039,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
 
     Theorem cSendCSmallerState: forall {m sm rm a},
                                mark mch c p a sm m -> recv mch c p a rm m ->
-                               forall t, sm < t <= rm ->
+                               forall {t}, sm < t <= rm ->
                                          sle (state c a t) (to m).
     Proof.
       intros m sm rm a markm recvm t [sm_lt_t t_le_rm].
@@ -2070,7 +2070,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
 
     Theorem cSendPGreaterState: forall {m sm rm a},
                                 mark mch c p a sm m -> recv mch c p a rm m ->
-                                forall t, sm <= t <= rm ->
+                                forall {t}, sm <= t <= rm ->
                                           sle (from m) (dir p c a t).
     Proof.
       intros m sm rm a markm recvm t [sm_le_t t_le_rm].

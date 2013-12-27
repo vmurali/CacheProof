@@ -367,9 +367,22 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       pose proof (recvImpMark recvm) as [ts [ts_le_t sendm]].
 
 
+      pose proof (sendmFrom (st c_child) sendm) as fromX.
+      pose proof (sendmChange (st c_child) sendm) as toM.
+      pose proof (cSendDowngrade c_child sendm) as dgd.
+      assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)).
+      intros tx cond; assert (cond2: ts <= tx <= t) by omega;
+      pose proof (cSendPGreaterState c_child sendm recvm cond2) as sth.
+      rewrite fromX in sth.
+      unfold slt in *; unfold sle in *; destruct (state c a (S ts));
+      destruct (state c a ts); destruct (dir Parent c a tx); auto.
 
-      assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)) by admit.
-      assert (cLow: forall tx, ts < tx < S t -> slt (state c a tx) Mo) by admit.
+      assert (cLow: forall tx, ts < tx < S t -> slt (state c a tx) Mo).
+      intros tx cond; assert (cond2: ts < tx <= t) by omega;
+      pose proof (cSendCSmallerState c_child sendm recvm cond2) as sth.
+      rewrite <- toM in sth.
+      unfold slt in *; unfold sle in *; destruct (state c a (S ts));
+      destruct (state c a tx); auto.
 
 
 
@@ -615,6 +628,11 @@ Module LatestValueTheorems (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
       pose proof (recvImpMark recvm) as [ts [ts_le_t sendm]].
 
       remember (Child n) as c.
+
+
+      pose proof @pSendCSameState as mui1.
+      pose proof @pSendPSameState as mui2.
+
 
 
       assert (pHigh: forall tx, ts < tx < S t -> slt In (dir Parent c a tx)) by admit.
