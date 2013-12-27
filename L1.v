@@ -43,8 +43,8 @@ Module Type L1InputAxioms (dt: DataTypes) (l1: L1Axioms dt).
     l1 = l2 /\ a1 = a2 /\ d1 = d2 /\ t1 = t2.
 End L1InputAxioms.
 
-Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1).
-  Import dt l1 l1In.
+Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt).
+  Import dt l1.
   Parameter latestValue:
   forall {c a t},
     leaf c ->
@@ -61,9 +61,8 @@ Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt
     state c a t = Mo -> forall {co}, leaf co -> c <> co -> state co a t = In.
 End L1Theorems.
 
-Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1)
-       (l1T: L1Theorems dt l1 l1In).
-  Import dt l1 l1In l1T.
+Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
+  Import dt l1.
   Parameter enqHasDeq:
     forall {c1 l1 st1 t1}, enqLd c1 l1 st1 t1 + enqSt c1 l1 t1 ->
                        exists c2 l2 a2 d2 i2 t2, deqR c2 l2 a2 d2 i2 t2 /\ l1 = l2.
@@ -120,8 +119,7 @@ Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxi
       end.
 End L1StoreAtomicity.
 
-Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1)
-       (l1T: L1Theorems dt l1 l1In) : L1StoreAtomicity dt l1 l1In l1T.
+Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1) (l1T: L1Theorems dt l1): L1StoreAtomicity dt l1.
   Import dt l1 l1In l1T.
 
   Theorem enqHasDeq:
