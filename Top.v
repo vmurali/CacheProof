@@ -3,17 +3,15 @@ Require Import DataTypes L1 StoreAtomicity TwoLevel Cache Channel Compatible.
 Module mkTop (dt: DataTypes) (l1: L1Axioms dt) (ch: ChannelPerAddr dt)
        (ba: BehaviorAxioms dt ch) (comp: CompatBehavior dt ch)
        (lv: LatestValueAxioms dt ch l1).
-  Import dt l1 ch ba comp lv.
-  Module li := mkL1InputTypes dt l1.
-  Import li.
-  Module mkStoreAtomicity
+  Module test := mkL1InputAxioms dt l1.
+  Module li := test.li.
+  Import dt l1 ch ba comp lv test li.
+  Module mkStoreAtomicity (lb: L1BaseInputAxioms dt li)
   : StoreAtomicity dt li.
-    Module test := mkL1InputAxioms dt l1.
-    Import test.
+    Module liA := mkRealL1InputAxioms lb.
     Module l1T := LatestValueTheorems dt ch ba l1 comp lv.
-    Import l1T.
-    Module l1S := mkL1StoreAtomicity dt l1 test l1T.
-    Import l1S.
+    Module l1S := mkL1StoreAtomicity dt l1 liA l1T.
+    Import l1T l1S liA.
 
     Theorem respProc:
       forall {r q}, labelR r = labelQ q -> procR r = procQ q.

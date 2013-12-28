@@ -447,7 +447,8 @@ End mkL1InputTypes.
 
 Module mkL1InputAxioms (dt: DataTypes) (l1A: L1Axioms dt).
   Module li := mkL1InputTypes dt l1A.
-  Declare Module lb: L1BaseInputAxioms dt li.
+  Export li.
+  Module mkRealL1InputAxioms (lb: L1BaseInputAxioms dt li): L1InputAxioms dt l1A.
     Import lb li dt l1A.
     Theorem uniqDeqLabels:
       forall {c1 l1 a1 d1 i1 t1 c2 l2 a2 d2 i2 t2},
@@ -487,4 +488,5 @@ Module mkL1InputAxioms (dt: DataTypes) (l1A: L1Axioms dt).
       simpl in *.
       firstorder.
     Qed.
+  End mkRealL1InputAxioms.
 End mkL1InputAxioms.
