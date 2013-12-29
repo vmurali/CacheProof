@@ -111,10 +111,10 @@ End classical.
 
 
 Section Induction.
-  Variable classical: forall P, P \/ ~ P.
-  Context {P: nat -> Prop}.
+  Context {P: nat -> Type}.
   Hypothesis case_0: P 0.
   Hypothesis case_n: forall {t}, (forall ti, ti <= t -> P ti) -> P (S t).
+
   Theorem ind t: P t.
   Proof.
     assert (q0: forall ti, ti <= 0 -> P ti) by 
@@ -122,8 +122,8 @@ Section Induction.
     assert (qIHt: forall t, (forall ti, ti <= t -> P ti) -> (forall ti, ti <= S t -> P ti)).
     intros t0 lt_t0.
     specialize (case_n t0 lt_t0).
-    intros ti ti_lt_S_t0.
-    assert (options: ti <= t0 \/ ti = S t0) by omega.
+    intros ti ti_le_S_t0.
+    pose proof (le_lt_eq_dec ti (S t0) ti_le_S_t0) as options.
     destruct options as  [hyp|new].
     firstorder.
     rewrite new.
