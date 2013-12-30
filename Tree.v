@@ -5,26 +5,26 @@ Require Import Omega.
 Inductive Tree : Set :=
   | C : nat -> list Tree -> Tree.
 
-Definition isParent p c :=
+Definition parent c p :=
   match p with
     | C n ls => In c ls
   end.
 
 
-Definition isLeaf c := match c with
-                         | C _ ls => match ls with
-                                       | nil => True
-                                       | _ => False
-                                     end
-                       end.
+Definition leaf c := match c with
+                       | C _ ls => match ls with
+                                     | nil => True
+                                     | _ => False
+                                   end
+                     end.
 
-Definition isAncest := clos_refl_trans Tree isParent.
+Definition descendent := clos_refl_trans Tree parent.
 
 Section Tree_ind.
   Variable P : Tree -> Prop.
 
   Hypothesis Ccase :
-    forall n ls, (forall c, isParent (C n ls) c -> P c) -> P (C n ls).
+    forall n ls, (forall c, parent c (C n ls) -> P c) -> P (C n ls).
 
   Theorem indCase {t} (Pt: P t) {rest} (Prest: forall c, In c rest -> P c):
     forall c, In c (t::rest) -> P c.
@@ -58,19 +58,16 @@ Fixpoint noDouble {A} (ls: list A) :=
     | x :: xs => noFind x xs /\ noDouble xs
   end.
 
-Parameter hier: Tree.
 Definition Cache := Tree.
+Parameter hier: Tree.
 
-Definition defined := isAncest.
-Definition parent c p := isParent p c.
-Definition ancestor c p := isAncest p c.
-Definition leaf := isLeaf.
+Definition defined c := descendent c hier.
 
 Parameter good1: forall {c1 c2: Cache},
                    match c1, c2 with
                      | C n1 _, C n2 _ => n1 = n2
                    end ->
-                   forall {x}, ancestor c1 x -> ancestor c2 x.
+                   forall {x}, descendent c1 x -> descendent c2 x.
 
 Parameter good2: match hier with
                    | C _ ls => noDouble ls
@@ -83,10 +80,10 @@ Definition state t := match t with
 
 Axiom comp1: forall {c p}, parent c p -> state c <= state p.
 
-Theorem leAncest: forall c a, ancestor c a -> state c <= state a.
+Theorem leAncest: forall c a, descendent c a -> state c <= state a.
 Proof.
   intros c a ancest.
-  unfold ancestor in *.
+  unfold descendent in *.
   induction ancest.
   apply (comp1 H).
   omega.
