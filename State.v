@@ -90,4 +90,10 @@ Module MsiState.
     unfold sle; unfold slt.
     destruct x; destruct y; auto.
   Qed.
+
+  Theorem sle_sle_sle: forall {x y z}, sle x y -> sle y z -> sle x z.
+  Proof.
+    intros x y z x_le_y y_le_z.
+    unfold sle in *; destruct x; destruct y; destruct z; auto.
+  Qed.
 End MsiState.    

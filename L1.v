@@ -9,6 +9,7 @@ Module Type L1Axioms (dt: DataTypes).
   Parameter enqSt: Cache -> Label -> Time -> Prop.
 
   Axiom deqLeaf: forall {c l a d i t}, deqR c l a d i t -> leaf c.
+  Axiom deqDef: forall {c l a d i t}, deqR c l a d i t -> defined c.
   Axiom uniqDeqProc: forall {c l1 a1 d1 i1 t l2 a2 d2 i2},
                        deqR c l1 a1 d1 i1 t -> deqR c l2 a2 d2 i2 t ->
                        l1 = l2.
@@ -47,18 +48,21 @@ Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt).
   Import dt l1.
   Parameter latestValue:
   forall {c a t},
+    defined c ->
     leaf c ->
     sle Sh (state c a t) ->
     match data c a t with
-      | Initial => forall {ti}, 0 <= ti < t -> forall {ci li ii}, ~ deqR ci li a St ii ti
+      | Initial => forall {ti}, 0 <= ti < t -> forall {ci li ii}, defined ci ->
+                                                                  ~ deqR ci li a St ii ti
       | Store lb =>
-        exists cb ib tb, tb < t /\ deqR cb lb a St ib tb /\
-                         forall {ti}, tb < ti < t -> forall {ci li ii}, ~ deqR ci li a St ii ti
+        exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
+                         forall {ti}, tb < ti < t -> forall {ci li ii}, defined ci ->
+                                                                        ~ deqR ci li a St ii ti
     end.
 
   Parameter uniqM:
-  forall {c a t}, leaf c ->
-    state c a t = Mo -> forall {co}, leaf co -> c <> co -> state co a t = In.
+  forall {c a t}, defined c -> leaf c ->
+    state c a t = Mo -> forall {co}, defined co -> leaf co -> c <> co -> state co a t = In.
 End L1Theorems.
 
 Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
@@ -226,7 +230,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (processDeq H0) as stM.
     rewrite H5 in stM.
     pose proof (deqLeaf H1) as leaf2.
-    pose proof uniqM leaf1 stM leaf2 nEq.
+    pose proof uniqM (deqDef H0) leaf1 stM (deqDef H1) leaf2 nEq.
     pose proof (processDeq H1) as someC2.
     rewrite H4 in *.
     rewrite tEq in *.
@@ -256,7 +260,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (processDeq H0) as stM.
     rewrite H5 in stM.
     pose proof (deqLeaf H1) as leaf2.
-    pose proof uniqM leaf1 stM leaf2 nEq.
+    pose proof uniqM (deqDef H0) leaf1 stM (deqDef H1) leaf2 nEq.
     pose proof (processDeq H1) as someC2.
     rewrite H4 in *.
     rewrite tEq in *.
@@ -361,7 +365,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (enqLdImpDeq ld) as [a [i [deq dt]]].
     pose proof (processDeq deq) as sth.
     simpl in *.
-    pose proof (latestValue (deqLeaf deq) sth) as lv.
+    pose proof (latestValue (deqDef deq) (deqLeaf deq) sth) as lv.
     rewrite dt in *.
     pose proof (uniqDeqLabels deq H2 H0) as [_ [aEq _]].
     rewrite aEq in *. clear aEq.
@@ -374,12 +378,12 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (enqLdImpDeq ld2) as [a2 [i2 [deq2 _]]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (lv qt' H5 qc' ql' qi' H3).
+    apply (lv qt' H5 qc' ql' qi' (deqDef H3) H3).
     pose proof (enqStImpDeq st2) as [a2 [i2 deq2]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (lv qt' H5 qc' ql' qi' H3).
-    destruct lv as [cb [ib [tb [tbLtRt [deqb noDeq]]]]].
+    apply (lv qt' H5 qc' ql' qi' (deqDef H3) H3).
+    destruct lv as [cb [ib [tb [cbDef [tbLtRt [deqb noDeq]]]]]].
     pose proof (deqImpEnq deqb) as hope.
     simpl in *.
     exists cb.
@@ -410,11 +414,11 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (enqLdImpDeq ld2) as [a2 [i2 [deq2 _]]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (noDeq qt' H5 qc' ql' qi' H3).
+    apply (noDeq qt' H5 qc' ql' qi' (deqDef H3) H3).
     pose proof (enqStImpDeq st2) as [a2 [i2 deq2]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (noDeq qt' H5 qc' ql' qi' H3).
+    apply (noDeq qt' H5 qc' ql' qi' (deqDef H3) H3).
     pose proof (enqStImpDeq st) as [a2 [i2 deq2]].
     pose proof (uniqDeqLabels deq2 H2 H0) as [cEq [aEq [dEq [iEq tEq]]]].
     rewrite H1 in dEq.

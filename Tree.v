@@ -1,4 +1,4 @@
-Require Import List Coq.Arith.EqNat Coq.Relations.Relation_Operators.
+Require Import List Coq.Arith.EqNat Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties.
 
 Require Import Omega.
 
@@ -46,10 +46,52 @@ Section Tree_ind.
     end.
 End Tree_ind.
 
-Parameter getSt: Tree -> nat.
-Definition state (c: Cache) := match c with
-                                 | exist v _ => getSt v
-                               end.
+Fixpoint noFind {A} (t: A) ls :=
+  match ls with
+    | nil => True
+    | x :: xs => x <> t /\ noFind t xs
+  end.
+
+Fixpoint noDouble {A} (ls: list A) :=
+  match ls with
+    | nil => True
+    | x :: xs => noFind x xs /\ noDouble xs
+  end.
+
+Parameter hier: Tree.
+Definition Cache := Tree.
+
+Definition defined := isAncest.
+Definition parent c p := isParent p c.
+Definition ancestor c p := isAncest p c.
+Definition leaf := isLeaf.
+
+Parameter good1: forall {c1 c2: Cache},
+                   match c1, c2 with
+                     | C n1 _, C n2 _ => n1 = n2
+                   end ->
+                   forall {x}, ancestor c1 x -> ancestor c2 x.
+
+Parameter good2: match hier with
+                   | C _ ls => noDouble ls
+                 end.
+
+Parameter getSt: nat -> nat.
+Definition state t := match t with
+                        | C n ls => getSt n
+                      end.
+
+Axiom comp1: forall {c p}, parent c p -> state c <= state p.
+
+Theorem leAncest: forall c a, ancestor c a -> state c <= state a.
+Proof.
+  intros c a ancest.
+  unfold ancestor in *.
+  induction ancest.
+  apply (comp1 H).
+  omega.
+  omega.
+Qed.
 
 Fixpoint eq_Tree c1 c2 {struct c1} :=
   match c1, c2 with
@@ -67,57 +109,3 @@ Fixpoint eq_Tree c1 c2 {struct c1} :=
                                   end) l1 l2)
   end.
 
-Fixpoint getNodes t :=
-  match t with
-    | C n ls => fold_left (fun x t => app x (getNodes t)) ls (n :: nil)
-  end.
-
-Fixpoint noFind {A} (t: A) ls :=
-  match ls with
-    | nil => True
-    | x :: xs => x <> t /\ noFind t xs
-  end.
-
-Fixpoint noDouble {A} (ls: list A) :=
-  match ls with
-    | nil => True
-    | x :: xs => noFind x xs /\ noDouble xs
-  end.
-
-Parameter hier: Tree.
-Parameter hierGood: noDouble (getNodes hier).
-
-Definition Cache := {t | isAncest hier t}.
-
-Definition parent (c p: Cache) :=
-  match c, p with
-    | exist vc _, exist vp _ => isParent vp vc
-  end.
-
-Definition leaf (c: Cache) := match c with exist vc _ => isLeaf vc end.
-
-Definition ancestor (c p: Cache) :=
-  match c, p with
-    | exist vc _, exist vp _ => isAncest vp vc
-  end.
-
-Axiom comp1: forall c p, parent c p -> state c <= state p.
-
-Definition getCache := fun n => isAncest hier n.
-
-Theorem leAncest: forall c a, ancestor c a -> state c <= state a.
-Proof.
-  intros c a ancest.
-  destruct c as [vc j1].
-  destruct a as [va j2].
-  unfold state.
-  unfold ancestor in ancest.
-  induction ancest.
-  apply (comp1 (exist getCache y j1) (exist getCache x j2) H).
-  assert (easy: getSt x = getSt x) by reflexivity.
-  omega.
-  pose proof (rt_trans Tree isParent hier x y j2 ancest1) as ancest_y.
-  fold isAncest in *.
-  specialize (IHancest1 ancest_y j2); specialize (IHancest2 j1 ancest_y).
-  omega.
-Qed.

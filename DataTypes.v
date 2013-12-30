@@ -147,25 +147,40 @@ Module Type DataTypes.
         end
     end.
 
+  Parameter total : nat.
+  Definition defined c := match c with
+                            | Parent => True
+                            | Child n => n < total
+                          end.
+
   Definition leaf x := match x with
                          | Parent => False
                          | Child _ => True
                        end.
 
-  Theorem noChildIsParent: forall {c}, leaf c -> forall c', ~ parent c' c.
+  Theorem noChildIsParent: forall {c}, defined c -> leaf c -> forall {c'},
+                                                                defined c' -> ~ parent c' c.
   Proof.
-    intros c leafC.
+    intros c defC leafC.
     unfold leaf in leafC.
     destruct c.
     firstorder.
-    unfold not; intros c' parentc'.
+    unfold not; intros c' c'Def parentc'.
     unfold parent in parentc'.
     destruct c'; assumption.
   Qed.
 
-  Theorem noParentHasParent: forall c, ~ parent Parent c.
+  Theorem defParent: defined Parent.
   Proof.
-    unfold not; intros c parentc.
+    unfold defined.
+    firstorder.
+  Qed.
+
+  Print defParent.
+
+  Theorem noParentHasParent: forall c, defined c -> ~ parent Parent c.
+  Proof.
+    unfold not; intros c defc parentc.
     unfold parent in parentc.
     assumption.
   Qed.
