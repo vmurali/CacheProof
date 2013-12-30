@@ -123,9 +123,8 @@ End DataTypes.
 
 Module Type DataTypes.
   Include MsiState.
+  Parameter classical : forall P, P \/ ~ P.
   
-  Parameter classical: forall P, P \/ ~ P.
-
   Parameter Addr: Set.
   Inductive Desc := Ld | St.
 
