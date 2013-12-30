@@ -3,7 +3,7 @@ Require Import List Coq.Arith.EqNat Coq.Relations.Relation_Operators Coq.Relatio
 Require Import Omega.
 
 Inductive Tree : Set :=
-  | C : nat -> list Tree -> Tree.
+  | C : list nat -> list Tree -> Tree.
 
 Definition parent c p :=
   match p with
@@ -46,34 +46,26 @@ Section Tree_ind.
     end.
 End Tree_ind.
 
-Fixpoint noFind {A} (t: A) ls :=
-  match ls with
-    | nil => True
-    | x :: xs => x <> t /\ noFind t xs
-  end.
-
-Fixpoint noDouble {A} (ls: list A) :=
-  match ls with
-    | nil => True
-    | x :: xs => noFind x xs /\ noDouble xs
-  end.
-
 Definition Cache := Tree.
 Parameter hier: Tree.
 
 Definition defined c := descendent c hier.
 
-Parameter good1: forall {c1 c2: Cache},
-                   match c1, c2 with
-                     | C n1 _, C n2 _ => n1 = n2
-                   end ->
-                   forall {x}, descendent c1 x -> descendent c2 x.
-
-Parameter good2: match hier with
-                   | C _ ls => noDouble ls
+Axiom treeName1: match hier with
+                   | C x _ => x = nil
                  end.
 
-Parameter getSt: nat -> nat.
+Definition treeNthName nm ls := forall n,
+                                  n < length ls -> match nth n ls (C nil nil) with
+                                                     | C x _ => x = n :: nm
+                                                   end.
+
+Axiom treeName2: forall {p}, descendent p hier ->
+                             match p with
+                               | C x ls => treeNthName x ls
+                             end.
+
+Parameter getSt: list nat -> nat.
 Definition state t := match t with
                         | C n ls => getSt n
                       end.
@@ -89,20 +81,4 @@ Proof.
   omega.
   omega.
 Qed.
-
-Fixpoint eq_Tree c1 c2 {struct c1} :=
-  match c1, c2 with
-    | C n1 l1, C n2 l2 => andb (beq_nat n1 n2)
-                               ((fix eqList l1 l2 :=
-                                   match l1 with
-                                     | nil => match l2 with
-                                                | nil => true
-                                                | _ => false
-                                              end
-                                     | x :: xs => match l2 with
-                                                    | nil => false
-                                                    | y :: ys => andb (eq_Tree x y) (eqList xs ys)
-                                                  end
-                                  end) l1 l2)
-  end.
 
