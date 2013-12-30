@@ -1,8 +1,4 @@
-Require Import Arith Omega.
-
-Require Import Useful.
-Require Import DataTypes.
-Require Import Channel.
+Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical.
 
 Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
@@ -549,7 +545,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
             pose proof (uniqRecv2 recvr2 recv'r2);
             omega).
       pose proof (recvImpMark recvr2) as [tsr2 [tsr2_le_ts2 markr2]].
-      destruct (classical (exists tr1, tr1 < tr2 /\ recv mch p c a tr1 m1)) as [easy|hard].
+      destruct (classic (exists tr1, tr1 < tr2 /\ recv mch p c a tr1 m1)) as [easy|hard].
       assumption.
       assert (noRecvm1: forall tr1, tr1 < tr2 -> ~ recv mch p c a tr1 m1) by firstorder.
       clear hard.
@@ -725,9 +721,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
 
       assert (cross': forall to0, to0 <= S t -> sle (state c a to0) (dir p c a to0)).
       intros tm toLtT.
-      destruct (classical (exists ts, ts < tm /\ ((exists m, recv mch c p a ts m) \/
+      destruct (classic (exists ts, ts < tm /\ ((exists m, recv mch c p a ts m) \/
                                                   (exists m, mark mch p c a ts m)))) as [chnge|noChnge].
-      pose proof (maxExists' classical chnge) as lastChnge; clear chnge.
+      pose proof (maxExists' chnge) as lastChnge; clear chnge.
       destruct lastChnge as [ts [tsLtTo [recvOrSend noPrevChnge]]].
       assert (eq: dir p c a (S ts) = dir p c a tm) by (
                                                        assert (two: S ts = tm \/ S ts < tm) by omega;
@@ -736,7 +732,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                          apply (@noChange (dir p c) slt p c dt); [ intuition | generalize noPrevChnge; clear; firstorder]]).
       destruct recvOrSend as [[m mrecvm] | [m msendm]].
       pose proof (recvImpMark mrecvm) as [t' [t'LeTs msendm]].
-      destruct (classical (exists tc, t' < tc < tm /\ exists m, recv mch p c a tc m)) as [recv|noRecv].
+      destruct (classic (exists tc, t' < tc < tm /\ exists m, recv mch p c a tc m)) as [recv|noRecv].
       destruct recv as [tc [comp [m' mrecvm']]].
       pose proof (recvImpMark mrecvm') as [t'' [t''LeTc msendm']].
       assert (gOrl: t'' > ts \/ t'' <= ts) by omega.
@@ -774,7 +770,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       congruence.
       pose proof (sendmImpRecvr pDef cDef isParent msendm) as [r rrecvr].
       pose proof (recvImpMark rrecvr) as [t' [t'LeTs rsendr]].
-      destruct (classical (exists tc, tc < tm /\ recv mch p c a tc m)) as [[tc [tcLtTo mrecvm]] | notEx].
+      destruct (classic (exists tc, tc < tm /\ recv mch p c a tc m)) as [[tc [tcLtTo mrecvm]] | notEx].
       assert (eqOrNot: tm = S tc \/ tm > S tc) by omega.
       destruct eqOrNot as [toEqStc | toGtStc].
       assert (dirEqSt: state c a tm = dir p c a tm) by (
@@ -957,8 +953,8 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                                                                         unfold not; intros tp' tp'LtTn; assert (tp'LtT3: tp' < t3) by omega; firstorder);
                                                                                        apply (cross t1 tn t1LeT tnLeT m msendm m0 msendm0 one two)).
 
-      destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, recv mch c p a tn m0)) as [ext|noEx].
-      pose proof (maxExists' classical ext) as [tn [cond [[tnLtT3 [m0 mrecvm0]] notAfter]]].
+      destruct (classic (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, recv mch c p a tn m0)) as [ext|noEx].
+      pose proof (maxExists' ext) as [tn [cond [[tnLtT3 [m0 mrecvm0]] notAfter]]].
       
       pose proof (recvImpMark mrecvm0) as [tr [trLeTn msendm0]].
       assert (opts: tr = t1 \/ tr > t1 \/ tr < t1) by omega.
@@ -1029,7 +1025,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       apply (noSendmSendr st msendmc rsendr).
       assert (tcLeT1: tc <= t1) by omega.
       apply (cReqResp' tc t1 tp tpLeSt mc msendmc r rsendr rrecvr tcLeT1 norecvmc).
-      destruct (classical (exists tm, t1 <= tm < tc /\ exists m, recv mch p c a tm m)) as [ext|noExt].
+      destruct (classic (exists tm, t1 <= tm < tc /\ exists m, recv mch p c a tm m)) as [ext|noExt].
       destruct ext as [tm [[t1LeTm tmLtTc] [m recvm]]].
       pose proof (recvImpMark recvm) as [tn [tnLeTm sendm]].
       assert (opts: tn = tp \/ tn < tp \/ tn > tp) by omega.
@@ -1204,8 +1200,8 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                                                                         unfold not; intros tp' tp'LtTn; assert (tp'LtT3: tp' < t3) by omega; firstorder);
                                                                                        apply (cross t1 tn t1LeT tnLeT m msendm m0 msendm0 one two)).
 
-      destruct (classical (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, recv mch c p a tn m0)) as [ext|noEx].
-      pose proof (maxExists' classical ext) as [tn [cond [[tnLtT3 [m0 mrecvm0]] notAfter]]].
+      destruct (classic (exists tn, tn < t3 /\ t1 <= tn /\ exists m0, recv mch c p a tn m0)) as [ext|noEx].
+      pose proof (maxExists' ext) as [tn [cond [[tnLtT3 [m0 mrecvm0]] notAfter]]].
       
       pose proof (recvImpMark mrecvm0) as [tr [trLeTn msendm0]].
       assert (opts: tr = t1 \/ tr > t1 \/ tr < t1) by omega.
@@ -1303,7 +1299,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                                       (forall t4, t4 < t1 -> ~ recv mch c p a t4 m).
     Proof.
       intros a t1 t2 r sendr recvr toRGestT2.
-      destruct (classical (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m /\ sle (to m) (to r) /\ forall t4,
+      destruct (classic (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m /\ sle (to m) (to r) /\ forall t4,
                                                                                                     t4 < t1 -> ~ recv mch c p a t4 m)) as [easy|hard].
       intuition.
       pose proof (recvImpMark recvr) as [t1' [t1LeT2 send'r]].
@@ -1311,9 +1307,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       rewrite <- t1'EqT1 in *.
       clear t1'EqT1 send'r t1'.
 
-      destruct (classical (exists t, t < t1 /\ ((exists m, recv mch c p a t m) \/
+      destruct (classic (exists t, t < t1 /\ ((exists m, recv mch c p a t m) \/
                                                 (exists m, mark mch p c a t m)))) as [ex | notEx].
-      pose proof (maxExists' classical ex) as [t [tLtT1 [sendOrRecv notAfter]]].
+      pose proof (maxExists' ex) as [t [tLtT1 [sendOrRecv notAfter]]].
       assert (nothing: forall y, S t <= y < t1 -> (forall m, ~ mark mch p c a y m) /\
                                                   (forall m, ~ recv mch c p a y m)) by
           (intros y cond; assert (cond2: t < y < t1)by omega; generalize cond2 notAfter; clear; firstorder).
@@ -1336,15 +1332,15 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                             generalize notAfter tLtTsLtT1 sendm'; clear; firstorder |
                                                                                             pose proof (pReqResp pDef cDef isParent noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
                                                                                               pose proof (uniqRecv2 recvr recv'r) as t4EqT2; omega]).
-      destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
+      destruct (classic (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
         as [ ex2 | notEx2].
-      pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
+      pose proof (maxExists' ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
       assert (nothing: forall y, S ts <= y < t2 ->
                                  (forall m, ~ mark mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
           (intros y cond; assert (cond1: t' < y < t2) by omega; assert (cond2: t' <= y < t2) by omega;
            generalize notAfter2 noCRecv cond cond1 cond2; clear; firstorder).
       pose proof (noChange2 st tsLtT2 nothing) as stEq.
-      destruct (classical (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
+      destruct (classic (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
       assert (opts: tr < t \/ tr = t \/ t < tr < t1) by omega.
       destruct opts as [trLtT | [trEqT | cond]].
       assert (forall t4, t4 < tr -> ~ recv mch c p a t4 m) by (
@@ -1406,15 +1402,15 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
         pose proof (pReqResp pDef cDef isParent noTwoPResp noTwoPReqNon sendr sendm' recvm' t1LeTs) as [t4 [t4LtTm recv'r]];
           pose proof (uniqRecv2 recvr recv'r) as t4EqT2; omega].
       
-      destruct (classical (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
+      destruct (classic (exists ts, ts < t2 /\ t' < ts /\ exists m', mark mch c p a ts m'))
         as [ ex2 | notEx2].
-      pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
+      pose proof (maxExists' ex2) as [ts [tsLtT2 [[t'LtTs [m' sendm']] notAfter2]]].
       assert (nothing: forall y, S ts <= y < t2 ->
                                  (forall m, ~ mark mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
           (intros y cond; assert (cond1: t' < y < t2) by omega;
            generalize notAfter2 noCRecv cond cond1; clear; firstorder).
       pose proof (noChange2 st tsLtT2 nothing) as stEq.
-      destruct (classical (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
+      destruct (classic (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
       pose proof (recvImpMark recvm') as [ts' [ts'LeTr send'm']].
       pose proof (uniqMark2 send'm' sendm') as ts'EqTs.
       assert (trGtT: tr > t) by omega.
@@ -1460,14 +1456,14 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                                     intuition |
                                                                                     pose proof (pReqResp pDef cDef isParent noTwoPResp noTwoPReqNon sendr sendm recvm t4GeT1) as [t5 [t4LtT4 recv'r]];
                                                                                       pose proof (uniqRecv2 recvr recv'r) as t5EqT2; omega]).
-      destruct (classical (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m)) as [ex2 | notEx2].
-      pose proof (maxExists' classical ex2) as [ts [tsLtT2 [[m' sendm'] notAfter2]]].
+      destruct (classic (exists t3, t3 < t2 /\ exists m, mark mch c p a t3 m)) as [ex2 | notEx2].
+      pose proof (maxExists' ex2) as [ts [tsLtT2 [[m' sendm'] notAfter2]]].
       assert (nothing: forall y, S ts <= y < t2 ->
                                  (forall m, ~ mark mch c p a y m) /\ (forall m, ~ recv mch p c a y m)) by
           (intros y cond;
            generalize notAfter2 cNoRecv cond; clear; firstorder).
       pose proof (noChange2 st tsLtT2 nothing) as stEq.
-      destruct (classical (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
+      destruct (classic (exists tr, tr < t1 /\ recv mch c p a tr m')) as [ [tr [trLtT1 recvm']] | noRecv].
       generalize notEx trLtT1 recvm'; clear; firstorder.
       assert (opts: sle (to m') (to r) \/ slt (to r) (to m')) by
           (unfold sle; unfold slt; destruct (to r); destruct (to m'); auto).
@@ -1536,7 +1532,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       generalize notRecvr1 t2LeT2 recvr3; clear; firstorder.
       pose proof (sendrImpNoSendr dt tsLtT1 sendr3 sendr1) as exist. 
       destruct exist as [tx [cond dirLt']].
-      (*    pose proof (minExists classical exist) as [tx [[cond dirLt'] notBefore]]. *)
+      (*    pose proof (minExists classic exist) as [tx [[cond dirLt'] notBefore]]. *)
       assert (dirLt: sle (dir p c a tx) (to r3)) by
           ( unfold slt in *; unfold sle in *; destruct (to r3); destruct (dir p c a tx);
             destruct (state c a t2); auto).
@@ -1545,9 +1541,9 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       assert (dirGt: slt (dir p c a tx) (dir p c a ts)) by
           (unfold sle in *; unfold slt in *; destruct (dir p c a ts); destruct (dir p c a tx);
            destruct (to r3); auto).
-      destruct (classical (exists tn, ts <= tn < tx /\ ((exists m, mark mch p c a tn m) \/
+      destruct (classic (exists tn, ts <= tn < tx /\ ((exists m, mark mch p c a tn m) \/
                                                         (exists m, recv mch c p a tn m /\ sle (to m) (to r3))))) as [sth|notExist].
-      destruct (minExists classical sth) as [tn [[cond2 sendOrRecv] notBefore]].
+      destruct (minExists sth) as [tn [[cond2 sendOrRecv] notBefore]].
       (* destruct sth as [tn [cond2 sendOrRecv]]. *)
       destruct sendOrRecv as [[m sendm] | [m [recvm toMLeToR3]]].
       assert (opts: ts = tn \/ ts < tn) by omega.
@@ -1647,15 +1643,15 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (sendrImpNoSendr dt t1LtT2 sendr1 sendr2) as ex1.
       assert (ex2: exists t', t' <= t2 /\ t1 < t' /\ ~ slt (to r1) (dir p c a t')) by
           firstorder.
-      pose proof (maxExists classical ex2) as [t' [t'LeT2 [[t1LtT' dir1] notAfter1]]].
+      pose proof (maxExists ex2) as [t' [t'LeT2 [[t1LtT' dir1] notAfter1]]].
       pose proof (sendrImpSt dt sendr1) as dirSth.
       assert (sthMural: slt (dir p c a t') (dir p c a t1)) by
           (unfold slt in *; destruct (to r1) in *; destruct (dir p c a t1) in *;
            destruct (dir p c a t') in *; auto).
       pose proof (slt_neq' sthMural) as dirNotEq.
-      destruct (classical (exists tn, tn < t' /\ t1 <= tn /\ ((exists m, mark mch p c a tn m) \/
+      destruct (classic (exists tn, tn < t' /\ t1 <= tn /\ ((exists m, mark mch p c a tn m) \/
                                                               exists m, recv mch c p a tn m))) as [ext|easy].
-       pose proof (maxExists' classical ext) as [tn [tnLtT'[[t1LeTn sendOrRecv] notAfter]]].
+       pose proof (maxExists' ext) as [tn [tnLtT'[[t1LeTn sendOrRecv] notAfter]]].
       destruct sendOrRecv as [[m sendm] | [m recvm]].
       unfold Time in *.
       assert (opts: t1 = tn \/ t1 < tn) by omega.
@@ -1785,10 +1781,10 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
     Proof.
       intros m a tr ts recvm markm.
       pose proof (recvImpMarkBefore recvm markm) as ts_le_tr.
-      destruct (classical (exists tm', tm' < tr /\ exists mm', recv mch p c a tm' mm'
+      destruct (classic (exists tm', tm' < tr /\ exists mm', recv mch p c a tm' mm'
                                                                \/ mark mch c p a tm' mm')) as
           [ex | notEx].
-      pose proof (maxExists' classical ex) as [tm [tm_lt_tr [[mm recvm_recvm_mm] notAfter]]].
+      pose proof (maxExists' ex) as [tm [tm_lt_tr [[mm recvm_recvm_mm] notAfter]]].
       assert (none: forall y,
                       S tm <= y < tr ->
                       (forall mm', ~ mark mch c p a y mm') /\ forall mm', ~ recv mch p c a y mm') by
@@ -1797,7 +1793,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       clear none.
       destruct recvm_recvm_mm as [recvm_mm|markm_mm].
       pose proof recvImpMark recvm_mm as [tn [tn_le_tm markm_mm]].
-      destruct (classical (exists tk, tn < tk < ts /\ exists mk, recv mch c p a tk mk))
+      destruct (classic (exists tk, tn < tk < ts /\ exists mk, recv mch c p a tk mk))
         as [[tk [tn_le_tk_lt_ts [mk recvm_mk]]]|notRecv].
       pose proof recvImpMark recvm_mk as [t2 [t2_le_tk markm_mk]].
       assert (t2_lt_tr: t2 < tr) by omega.
@@ -1811,7 +1807,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                                                          unfold not; intros t3 t3_lt_t2 recvm_mm'; pose proof (uniqRecv2 recvm_mm recvm_mm');
                                                                          omega).
       pose proof (cross markm_mk markm_mm noRecv' noRecv); firstorder.
-      destruct (classical (exists tk, tn < tk < ts /\ exists mk, mark mch p c a tk mk)) as
+      destruct (classic (exists tk, tn < tk < ts /\ exists mk, mark mch p c a tk mk)) as
           [[tk [[tn_lt_tk tk_lt_ts] [mk markm_mk]]] | notSend].
       pose proof (pRespFifo tk_lt_ts markm_mk markm recvm) as [tl [tl_lt_tr recvmk]].
       pose proof (pRespFifo tn_lt_tk markm_mm markm_mk recvmk) as [t' [t'_lt_tl recv'mm]].
@@ -1843,7 +1839,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
             pose proof (uniqRecv2 recvm recv'm) as ti_eq_tr; omega).
       pose proof (cross markm_mm markm noRecv) as noRecvFalse.
       assert (ex2: exists tn, tn < ts /\ recv mch c p a tn mm) by
-          (destruct (classical (exists tn, tn < ts /\ recv mch c p a tn mm)) as [easy|easy'];
+          (destruct (classic (exists tn, tn < ts /\ recv mch c p a tn mm)) as [easy|easy'];
            [assumption |
             generalize noRecvFalse easy'; clear; firstorder]).
       destruct ex2 as [tn [tn_lt_ts recvmm]].
@@ -1950,7 +1946,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                         state c a t = state c a sm.
     Proof.
       intros m sm rm a markm recvm t [sm_le_t t_le_rm].
-      destruct (classical (exists t0 m', sm <= t0 < rm /\ (mark mch c p a t0 m'
+      destruct (classic (exists t0 m', sm <= t0 < rm /\ (mark mch c p a t0 m'
                                          \/ recv mch p c a t0 m')))
                as [[t0 [m' [[sm_le_t0 t0_lt_rm] [markm' | recvm']]]] | notEx].
 
@@ -2006,7 +2002,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                         dir p c a t = to m.
     Proof.
       intros m sm rm a markm recvm t [sm_lt_t t_le_rm].
-      destruct (classical (exists t0 m', sm < t0 < rm /\ (recv mch c p a t0 m'
+      destruct (classic (exists t0 m', sm < t0 < rm /\ (recv mch c p a t0 m'
                                          \/ mark mch p c a t0 m')))
                as [[t0 [m' [[sm_lt_t0 t0_lt_rm] [recvm' | markm']]]] | notEx].
 
@@ -2049,7 +2045,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                          sle (state c a t) (to m).
     Proof.
       intros m sm rm a markm recvm t [sm_lt_t t_le_rm].
-      destruct (classical (exists t0 m', sm < t0 < rm /\ recv mch p c a t0 m'))
+      destruct (classic (exists t0 m', sm < t0 < rm /\ recv mch p c a t0 m'))
                as [[t0 [m' [[sm_lt_t0 t0_lt_rm] recvm']]] | notEx].
 
       assert (noRecv: forall tr, tr < sm -> ~ recv mch p c a tr m').
@@ -2080,7 +2076,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
                                           sle (from m) (dir p c a t).
     Proof.
       intros m sm rm a markm recvm t [sm_le_t t_le_rm].
-      destruct (classical (exists t0 m', sm <= t0 < rm /\ mark mch p c a t0 m'))
+      destruct (classic (exists t0 m', sm <= t0 < rm /\ mark mch p c a t0 m'))
                as [[t0 [m' [[sm_le_t0 t0_lt_rm]markm']]] | notEx].
 
       assert (noRecv: forall tr, tr < sm -> ~ recv mch p c a tr m').

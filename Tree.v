@@ -1,5 +1,4 @@
-Require Import List Coq.Relations.Relation_Operators Useful.
-Require Import Coq.Relations.Operators_Properties Omega.
+Require Import List Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties Coq.Logic.Classical.
 
 Inductive Tree : Set :=
   | C : list nat -> list Tree -> Tree.
@@ -59,6 +58,8 @@ Definition state t := match t with
                         | C n ls => getSt n
                       end.
 
+(*
+Require Import Omega.
 Fixpoint eqListNat l1 l2 :=
   match l1, l2 with
     | nil, nil => true
@@ -78,8 +79,7 @@ Fixpoint eqTree t1 t2 :=
             | x :: xs, y :: ys => andb (eqTree x y) (eqListTree xs ys)
           end) l1 l2)
   end.
-
-Parameter classical: forall P, P \/ ~ P.
+*)
 
 Theorem hasFork':
   forall {c1 c2},
@@ -95,7 +95,7 @@ Proof.
   intros c1 c2 c1_no_c2 c2_no_c1.
   induction top using Tree_ind1.
   intros c1_C_n_ls c2_C_n_ls.
-  destruct (classical (exists c, parent c (C n ls) /\ descendent c1 c /\ descendent c2 c)) as
+  destruct (classic (exists c, parent c (C n ls) /\ descendent c1 c /\ descendent c2 c)) as
            [[c [c_child [c1_c c2_c]]] | noEx].
   specialize (H c c_child c1_c c2_c).
   destruct H as [fork [fork_c use]].
@@ -153,16 +153,3 @@ Axiom treeName2: forall {p}, descendent p hier ->
                              match p with
                                | C x ls => treeNthName x ls
                              end.
-
-Axiom comp1: forall {c p}, parent c p -> state c <= state p.
-
-Theorem leAncest: forall c a, descendent c a -> state c <= state a.
-Proof.
-  intros c a ancest.
-  unfold descendent in *.
-  induction ancest.
-  apply (comp1 H).
-  omega.
-  omega.
-Qed.
-

@@ -1,4 +1,4 @@
-Require Import DataTypes Channel Cache.
+Require Import DataTypes Channel Cache Coq.Logic.Classical.
 
 Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
@@ -89,7 +89,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     intros c' c'Def c'_ne_c c'Child.
     pose proof @initCompat n c' nDef c'Def c'Child a as c2.
     rewrite c2; destruct (dir n c a 0); unfold sle; auto.
-    destruct (classical (exists p m, defined p /\
+    destruct (classic (exists p m, defined p /\
                            parent n p /\
                            (mark mch n p a t m \/ recv mch p n a t m))) as [respP|noRespP].
     destruct respP as [p [m [pDef [p_parent markOrRecv]]]].
@@ -138,7 +138,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
       by (
           generalize noRespP; clear; firstorder).
     assert (st_eq: state n a (S t) = state n a t).
-    destruct (classical (exists p, defined p /\ parent n p)) as [[p [pDef p_parent]] | nop].
+    destruct (classic (exists p, defined p /\ parent n p)) as [[p [pDef p_parent]] | nop].
     specialize (noRespP' p pDef p_parent).
     assert (eqOrNot: {state n a (S t) = state n a t} + {state n a (S t) <> state n a t}) by
         decide equality.
@@ -150,12 +150,12 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     apply (@noParentSame n a t nDef noP).
     rewrite st_eq in *.
 
-    destruct (classical (exists c m, defined c /\ parent c n /\ (mark mch n c a t m \/ recv mch c n a t m))) as [ex|notEx].
+    destruct (classic (exists c m, defined c /\ parent c n /\ (mark mch n c a t m \/ recv mch c n a t m))) as [ex|notEx].
     destruct ex as [c [m [cDef [c_child resp]]]].
     assert (noneElse: forall c', defined c' -> c' <> c -> parent c' n ->
                        ~ ((exists m, mark mch n c' a t m) \/ exists m, recv mch c' n a t m)).
     intros c' c'Def c'_ne_c c'_child.
-    destruct (classical (exists m', mark mch n c' a t m' \/ recv mch c' n a t m'))
+    destruct (classic (exists m', mark mch n c' a t m' \/ recv mch c' n a t m'))
       as [ex|notEx].
     destruct ex as [m' sth].
     pose proof (oneRespC nDef cDef c'Def c_child c'_child resp sth) as sth2.
@@ -172,7 +172,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     specialize (noneElse (change (@dt n c' nDef c'Def c'_child) not)).
     firstorder.
     intros c0 c0Def c0_child.
-    destruct (classical (c0 = c)) as [c0_eq_c|c0_ne_c].
+    destruct (classic (c0 = c)) as [c0_eq_c|c0_ne_c].
     rewrite c0_eq_c in *.
     destruct resp as [markm | recvm].
     pose proof (sendmChange (@dt n c nDef cDef c_child) markm) as toM.
@@ -204,7 +204,7 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     constructor.
     generalize IHt c0Def c0_child; clear; firstorder.
     intros c' c'Def c'_ne_c0 c'_child.
-    destruct (classical (c' = c)) as [c'_eq_c | c'_ne_c].
+    destruct (classic (c' = c)) as [c'_eq_c | c'_ne_c].
     rewrite c'_eq_c in *.
     destruct resp as [markm | recvm].
     pose proof (sendCCond nDef cDef c_child markm) as [_ toMOld].

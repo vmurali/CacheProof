@@ -1,4 +1,4 @@
-Require Import DataTypes Useful Channel Cache Compatible L1.
+Require Import DataTypes Useful Channel Cache Compatible L1 Coq.Logic.Classical.
 
 Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt) (l1: L1Axioms dt).
   Import dt ch l1.
@@ -132,7 +132,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
           (intros t'; pose proof (noParentNoStChange a t' defParent noParentHasParent); rewrite <- pM in *;
           auto).
       destruct n.
-      destruct (classical (forall c, defined c -> parent c Parent -> sle (dir Parent c a t) Sh)) as
+      destruct (classic (forall c, defined c -> parent c Parent -> sle (dir Parent c a t) Sh)) as
           [prevLatest|prevNotLatest].
       assert (stM: sle Sh (state Parent a t)) by (specialize (stEq t);
                                                    rewrite stEq; unfold sle; auto).
@@ -151,7 +151,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
            assert (ci_child: parent ci Parent) by (unfold parent; unfold leaf in *;
                                                                   destruct ci; auto);
            specialize (cSmall ci ciDef ci_child); rewrite sth in cSmall; unfold sle; auto).
-      destruct (classical (data Parent a (S t) = data Parent a t)) as [e1|e2].
+      destruct (classic (data Parent a (S t) = data Parent a t)) as [e1|e2].
       rewrite e1.
       destruct (data Parent a t).
       intros ti cond.
@@ -184,7 +184,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       destruct deqSth as [l [i deqSth]].
       pose proof (deqLeaf deqSth) as H.
       unfold leaf in H; firstorder.
-      destruct (classical (exists c, defined c /\ parent c Parent /\
+      destruct (classic (exists c, defined c /\ parent c Parent /\
                                      ~ sle (dir Parent c a t) Sh))
                as [[c [cDef [c_child dirHigh]]]|notEx].
       destruct H as [_ cacheLow].
@@ -373,7 +373,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       destruct H as [H _].
       assert (noChildren: forall c, defined c -> parent c (Child n) -> False) by
          ( intros c c_parent; unfold parent in *; destruct c; auto ).
-      destruct (classical (sle Sh (state (Child n) a t))) as [easy|hard].
+      destruct (classic (sle Sh (state (Child n) a t))) as [easy|hard].
       assert (ob: t <= t) by omega.
       assert (contra: forall c, defined c -> 
                                 parent c (Child n) -> sle (dir (Child n) c a t) Sh) by
@@ -397,7 +397,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       specialize (others c' c'Def c'_ne c'_leaf).
       pose proof (processDeq deqSt) as M; simpl in *.
       rewrite M in others; unfold sle in others; auto.
-      destruct (classical (exists li ii, deqR (Child n) li a St ii t)) as
+      destruct (classic (exists li ii, deqR (Child n) li a St ii t)) as
           [[li [ii deqSt]]|notEx].
       pose proof (deqImpData nDef deqSt) as newData.
       rewrite newData in *.
@@ -417,7 +417,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       rewrite eq in *.
       firstorder.
       firstorder.
-      destruct (classical (data (Child n) a (S t) = data (Child n) a t)) as [eq|neq].
+      destruct (classic (data (Child n) a (S t) = data (Child n) a t)) as [eq|neq].
       rewrite eq.
       destruct (data (Child n) a t).
       intros ti cond.

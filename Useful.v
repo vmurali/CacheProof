@@ -1,7 +1,5 @@
-Require Import Arith Omega.
+Require Import Arith Omega Coq.Logic.Classical.
 
-Section Classical.
-Variable classical : forall P, P \/ ~ P.
 Section minExists.
   Context {P : nat -> Prop}.
   Lemma leastOrNone x :
@@ -9,12 +7,12 @@ Section minExists.
                                                 forall y, y <= x -> ~ P y.
   Proof.
     induction x.
-    destruct (classical (P 0)) as [P0 | notP0].
+    destruct (classic (P 0)) as [P0 | notP0].
     left; exists 0; constructor; [intuition | intros; omega].
     right; intros y le; assert (yEq0: y = 0) by omega; rewrite yEq0 in *; intuition.
     destruct IHx as [ex | notEx].
     left; assumption.
-    destruct (classical (P (S x))) as [PSx | notPSx].
+    destruct (classic (P (S x))) as [PSx | notPSx].
     left; exists (S x); constructor; [assumption | intros y lt; assert (y <= x) by omega; firstorder].
     right; intros; assert (opts: y <= x \/ y = S x) by omega. destruct opts; [firstorder | congruence].
   Qed.
@@ -38,7 +36,7 @@ Section minExists.
     destruct rest as [Pt notBelow].
     exists t.
     intuition.
-    destruct (classical (t <= x)).
+    destruct (classic (t <= x)).
     assumption.
     assert (x < t) by omega.
     firstorder.
@@ -99,13 +97,12 @@ Section maxExists.
     destruct rest as [tLeMax rest].
     destruct rest as [Pt noLower].
     exists t.
-    destruct (classical (x <= t)) as [xLeT | xGtT].
+    destruct (classic (x <= t)) as [xLeT | xGtT].
     firstorder.
     assert (hyp: S t <= x <= max) by omega.
     firstorder.
   Qed.
 End maxExists.
-End Classical.
 
 Section Induction.
   Context {P: nat -> Type}.

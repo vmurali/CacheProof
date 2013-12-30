@@ -1,6 +1,4 @@
-Require Import DataTypes StoreAtomicity Omega.
-
-Axiom classical: forall {P}, P \/ ~ P.
+Require Import DataTypes StoreAtomicity Omega Coq.Logic.Classical.
 
 Module Type L1Axioms (dt: DataTypes).
   Import dt.
@@ -217,8 +215,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
                               rewrite H in *;
                               assert (sth: rt2 = t1 /\ rt2 = t2) by firstorder;
                               destruct sth as [one two]; rewrite one in two; assumption).
-    assert (c1 = c2 \/ c1 <> c2) by apply classical.
-    destruct H8 as [eq | nEq].
+    destruct (classic (c1 = c2)) as [eq | nEq].
     rewrite tEq in *; rewrite eq in *.
     pose proof (uniqDeqProc H0 H1).
     pose proof (uniqDeqLabels H0 H1 H8).
@@ -245,8 +242,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
                               rewrite H in *;
                               assert (sth: rt2 = t1 /\ rt2 = t2) by firstorder;
                               destruct sth as [one two]; rewrite one in two; assumption).
-    assert (c1 = c2 \/ c1 <> c2) by apply classical.
-    destruct H8 as [eq | nEq].
+    destruct (classic (c1 = c2)) as [eq | nEq].
     rewrite tEq in *; rewrite eq in *.
     pose proof (uniqDeqProc H0 H1).
     pose proof (uniqDeqLabels H0 H1 H8).
