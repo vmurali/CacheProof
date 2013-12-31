@@ -1,4 +1,4 @@
-Require Import DataTypes L1 StoreAtomicity TwoLevel Cache Channel Compatible.
+Require Import DataTypes L1 StoreAtomicity LatestValue Cache Channel Compatible.
 
 Module mkTop (dt: DataTypes) (l1: L1Axioms dt) (ch: ChannelPerAddr dt)
        (ba: BehaviorAxioms dt ch) (comp: CompatBehavior dt ch)

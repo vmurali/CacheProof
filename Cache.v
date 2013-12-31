@@ -79,9 +79,8 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   End CommonBeh.
 
   Section Pair.
-    Axiom noParentNoStChange: forall {c} a t, defined c ->
-                                (forall {p}, defined p -> ~ parent c p) ->
-                                state c a t = state c a 0.
+    Axiom noParentSame: forall {n a t}, defined n -> (forall {p}, defined p -> ~ parent n p) ->
+                        state n a (S t) = state n a t.
     Context {p c: Cache}.
     Variable pDef: defined p.
     Variable cDef: defined c.
@@ -2099,6 +2098,74 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (recvmCond pDef cDef isParent recvm) as H.
       rewrite H in *.
       assumption.
+    Qed.
+
+    Theorem cRecvmCond: forall {m a t}, recv mch p c a t m -> from m = state c a t.
+    Proof.
+      pose @cRecvRespPrevState.
+      intros m a t recvm.
+      pose proof (recvImpMark recvm) as [ts [_ markm]].
+      pose proof (cRecvRespPrevState recvm markm) as st_eq_dir.
+      pose proof (sendmFrom dt markm) as fromM.
+      rewrite <- st_eq_dir in fromM.
+      assumption.
+    Qed.
+
+    Theorem cSendNonM: forall {m sm rm a},
+                         mark mch c p a sm m -> recv mch c p a rm m ->
+                         forall {t}, sm < t <= rm ->
+                                     slt (state c a t) Mo.
+    Proof.
+      intros m sm rm a markm recvm t cond.
+      pose proof (cSendCSmallerState markm recvm cond) as g1.
+      pose proof (cSendDowngrade markm) as g2.
+      pose proof (sendmChange st markm) as g3.
+      rewrite <- g3 in g1.
+      unfold slt in *; unfold sle in *; destruct (state c a t); destruct (state c a (S sm));
+      auto.
+    Qed.
+
+    Theorem pRecvNonI: forall {m sm rm a},
+                         mark mch c p a sm m -> recv mch c p a rm m ->
+                         forall {t}, sm <= t <= rm ->
+                                     slt In (dir p c a t).
+    Proof.
+      intros m sm rm a markm recvm t cond.
+      pose proof (cSendPGreaterState markm recvm cond) as g1.
+      pose proof (pRecvDowngrade recvm) as g2.
+      pose proof (recvmChange dt recvm) as g3.
+      pose proof (recvmCond pDef cDef isParent recvm) as g4.
+      rewrite g3 in g2.
+      rewrite g4 in g1.
+      unfold slt in *; unfold sle in *; destruct (dir p c a rm);
+      destruct (dir p c a t); destruct (to m); auto.
+    Qed.
+
+    Theorem pSendNonI: forall {m sm rm a},
+                         mark mch p c a sm m -> recv mch p c a rm m ->
+                         forall {t}, sm < t <= rm ->
+                                     slt In (dir p c a t).
+    Proof.
+      intros m sm rm a markm recvm t cond.
+      pose proof (pSendPSameState markm recvm cond) as g1.
+      pose proof (pSendUpgrade markm) as g2.
+      pose proof (sendmChange dt markm) as g3.
+      rewrite <- g1 in g3; rewrite g3 in g2.
+      unfold slt in *; destruct (dir p c a sm); destruct (dir p c a t); auto.
+    Qed.
+
+    Theorem cRecvNonM: forall {m sm rm a},
+                         mark mch p c a sm m -> recv mch p c a rm m ->
+                         forall {t}, sm <= t <= rm ->
+                                     slt (state c a t) Mo.
+    Proof.
+      intros m sm rm a markm recvm t cond.
+      pose proof (pSendCSameState markm recvm cond) as g1.
+      pose proof (cRecvUpgrade recvm) as g2.
+      assert (triv: sm <= rm <= rm) by omega.
+      pose proof (pSendCSameState markm recvm triv) as g3.
+      rewrite g3 in g2; rewrite <- g1 in g2.
+      destruct (state c a t); destruct (state c a (S rm)); unfold slt in *; auto.
     Qed.
   End Pair.
 End mkBehaviorTheorems.
