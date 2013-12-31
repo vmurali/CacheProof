@@ -34,8 +34,6 @@ Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
                                       forall {c}, defined c -> parent c n -> forall mc,
                                         ~ (mark mch n c a t mc \/ recv mch c n a t mc).
   End Node.
-  Axiom oneParent: forall {n p1 p2}, defined n -> defined p1 -> defined p2 ->
-                                     parent n p1 -> parent n p2 -> p1 = p2.
   Axiom initCompat:
     forall {n c}, defined n -> defined c -> parent c n -> forall a, dir n c a 0 = In.
 End CompatBehavior.
