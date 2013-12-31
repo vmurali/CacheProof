@@ -1,4 +1,4 @@
-MODULES := Cache Channel Compatible DataTypes Hier L1 MsiState StoreAtomicity Top Tree TwoLevel Useful
+MODULES := Cache Channel Compatible DataTypes Hier L1 MsiState StoreAtomicity Tree Useful #Top TwoLevel
 VS      := $(MODULES:%=%.v)
 
 .PHONY: coq clean
