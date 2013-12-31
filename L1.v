@@ -2,10 +2,6 @@ Require Import DataTypes StoreAtomicity Omega Coq.Logic.Classical.
 
 Module Type L1Axioms (dt: DataTypes).
   Import dt.
-  Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
-  Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
-  Parameter enqSt: Cache -> Label -> Time -> Prop.
-
   Axiom deqLeaf: forall {c l a d i t}, deqR c l a d i t -> leaf c.
   Axiom deqDef: forall {c l a d i t}, deqR c l a d i t -> defined c.
   Axiom uniqDeqProc: forall {c l1 a1 d1 i1 t l2 a2 d2 i2},
@@ -29,8 +25,8 @@ Module Type L1Axioms (dt: DataTypes).
   Axiom enqStImpDeq: forall {c l t}, enqSt c l t -> exists a i, deqR c l a St i t.
 End L1Axioms.
 
-Module Type L1InputAxioms (dt: DataTypes) (l1: L1Axioms dt).
-  Import dt l1.
+Module Type L1InputAxioms (dt: DataTypes).
+  Import dt.
   Axiom uniqDeqLabels:
   forall {c1 l1 a1 d1 i1 t1 c2 l2 a2 d2 i2 t2},
     deqR c1 l1 a1 d1 i1 t1 -> deqR c2 l2 a2 d2 i2 t2 -> l1 = l2 ->
@@ -42,8 +38,8 @@ Module Type L1InputAxioms (dt: DataTypes) (l1: L1Axioms dt).
     l1 = l2 /\ a1 = a2 /\ d1 = d2 /\ t1 = t2.
 End L1InputAxioms.
 
-Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt).
-  Import dt l1.
+Module Type L1Theorems (dt: DataTypes).
+  Import dt.
   Parameter latestValue:
   forall {c a t},
     defined c ->
@@ -63,8 +59,8 @@ Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt).
     state c a t = Mo -> forall {co}, defined co -> leaf co -> c <> co -> state co a t = In.
 End L1Theorems.
 
-Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
-  Import dt l1.
+Module Type L1StoreAtomicity (dt: DataTypes).
+  Import dt.
   Parameter enqHasDeq:
     forall {c1 l1 st1 t1}, enqLd c1 l1 st1 t1 + enqSt c1 l1 t1 ->
                        exists c2 l2 a2 d2 i2 t2, deqR c2 l2 a2 d2 i2 t2 /\ l1 = l2.
@@ -121,7 +117,7 @@ Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
       end.
 End L1StoreAtomicity.
 
-Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1) (l1T: L1Theorems dt l1): L1StoreAtomicity dt l1.
+Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt) (l1T: L1Theorems dt): L1StoreAtomicity dt.
   Import dt l1 l1In l1T.
 
   Theorem enqHasDeq:
@@ -448,7 +444,7 @@ End mkL1InputTypes.
 Module mkL1InputAxioms (dt: DataTypes) (l1A: L1Axioms dt).
   Module li := mkL1InputTypes dt l1A.
   Export li.
-  Module mkRealL1InputAxioms (lb: L1BaseInputAxioms dt li): L1InputAxioms dt l1A.
+  Module mkRealL1InputAxioms (lb: L1BaseInputAxioms dt li): L1InputAxioms dt.
     Import lb li dt l1A.
     Theorem uniqDeqLabels:
       forall {c1 l1 a1 d1 i1 t1 c2 l2 a2 d2 i2 t2},

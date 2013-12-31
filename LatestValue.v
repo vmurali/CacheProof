@@ -2,8 +2,8 @@ Require Import DataTypes Useful Channel Cache Compatible L1 Coq.Logic.Classical
 Coq.Relations.Operators_Properties Coq.Relations.Relation_Operators.
 Require List.
 
-Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt) (l1: L1Axioms dt).
-  Import dt ch l1.
+Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
+  Import dt ch.
 
   Axiom toChild: forall {n a t p m}, defined n -> defined p ->
                    parent n p -> 
@@ -37,7 +37,7 @@ Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt) (l1: L1Axi
 End LatestValueAxioms.
 
 Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
-       (l1: L1Axioms dt) (comp: CompatBehavior dt ch) (lv: LatestValueAxioms dt ch l1).
+       (l1: L1Axioms dt) (comp: CompatBehavior dt ch) (lv: LatestValueAxioms dt ch).
   Module mbt := mkBehaviorTheorems dt ch c.
   Module cbt := mkCompat dt ch comp c.
   Import dt ch c l1 comp lv mbt cbt.

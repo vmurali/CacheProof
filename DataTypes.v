@@ -43,47 +43,9 @@ Module Type DataTypes <: Hier.
   Parameter data: Cache -> Addr -> Time -> StLabel.
   Parameter dataM: Mesg -> StLabel.
 
-(*
-  Theorem noChildIsParent: forall {c}, defined c -> leaf c -> forall {c'},
-                                                                defined c' -> ~ parent c' c.
-  Proof.
-    intros c defC leafC.
-    unfold leaf in leafC.
-    destruct c.
-    firstorder.
-    unfold not; intros c' c'Def parentc'.
-    unfold parent in parentc'.
-    destruct c'; assumption.
-  Qed.
-
-  Theorem defParent: defined Parent.
-  Proof.
-    unfold defined.
-    firstorder.
-  Qed.
-
-  Print defParent.
-
-  Theorem noParentHasParent: forall c, defined c -> ~ parent Parent c.
-  Proof.
-    unfold not; intros c defc parentc.
-    unfold parent in parentc.
-    assumption.
-  Qed.
-    
-  Theorem whoParent: forall n, parent (Child n) Parent.
-  Proof.
-    intros.
-    unfold parent.
-    auto.
-  Qed.
-
-  Theorem who'Parent: forall c, leaf c -> parent c Parent.
-  Proof.
-    intros c leaf_c.
-    destruct c; unfold leaf; auto.
-  Qed.
-*)
+  Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
+  Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
+  Parameter enqSt: Cache -> Label -> Time -> Prop.
 End DataTypes.
 
 

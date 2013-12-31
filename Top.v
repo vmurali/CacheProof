@@ -2,7 +2,7 @@ Require Import DataTypes L1 StoreAtomicity LatestValue Cache Channel Compatible.
 
 Module mkTop (dt: DataTypes) (l1: L1Axioms dt) (ch: ChannelPerAddr dt)
        (ba: BehaviorAxioms dt ch) (comp: CompatBehavior dt ch)
-       (lv: LatestValueAxioms dt ch l1).
+       (lv: LatestValueAxioms dt ch).
   Module test := mkL1InputAxioms dt l1.
   Module li := test.li.
   Import dt l1 ch ba comp lv test li.
