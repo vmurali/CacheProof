@@ -34,8 +34,6 @@ Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt) (l1: L1Axi
 
   Axiom deqImpNoSend: forall {c l a d i t}, defined c -> deqR c l a d i t ->
                                             forall {m p}, defined p -> ~ mark mch c p a t m.
-  Axiom deqImpNoRecv: forall {c l a d i t}, defined c -> deqR c l a d i t ->
-                                            forall {m p}, defined p -> ~ recv mch p c a t m. 
 End LatestValueAxioms.
 
 Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
