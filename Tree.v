@@ -47,39 +47,10 @@ Section Tree_ind1.
 End Tree_ind1.
 
 
-Definition Cache := Tree.
 Definition treeNthName nm ls := forall n,
                                   n < length ls -> match nth n ls (C nil nil) with
                                                      | C x _ => x = n :: nm
                                                    end.
-
-Parameter getSt: list nat -> nat.
-Definition state t := match t with
-                        | C n ls => getSt n
-                      end.
-
-(*
-Require Import Omega.
-Fixpoint eqListNat l1 l2 :=
-  match l1, l2 with
-    | nil, nil => true
-    | nil, y :: ys => false
-    | x :: xs, nil => false
-    | x :: xs, y :: ys => andb (beq_nat x y) (eqListNat xs ys)
-  end.
-
-Fixpoint eqTree t1 t2 :=
-  match t1, t2 with
-    | C n1 l1, C n2 l2 => andb (eqListNat n1 n2)
-        ((fix eqListTree l1 l2 :=
-          match l1, l2 with
-            | nil, nil => true
-            | nil, y :: ys => false
-            | x :: xs, nil => false
-            | x :: xs, y :: ys => andb (eqTree x y) (eqListTree xs ys)
-          end) l1 l2)
-  end.
-*)
 
 Theorem hasFork':
   forall {c1 c2},
@@ -125,31 +96,3 @@ Proof.
   exists d1; firstorder.
   exists d2; firstorder.
 Qed.
-
-Parameter hier: Tree.
-
-Definition defined c := descendent c hier.
-
-Theorem hasFork:
-  forall {c1 c2},
-    defined c1 -> defined c2 ->
-    ~ descendent c1 c2 -> ~ descendent c2 c1 ->
-    exists fork, defined fork /\
-                         (exists d1, defined d1 /\ parent d1 fork /\ descendent c1 d1 /\ ~ descendent c2 d1) /\
-                         (exists d2, defined d2 /\ parent d2 fork /\ ~ descendent c1 d2 /\ descendent c2 d2).
-Proof.
-  unfold defined.
-  pose proof @hasFork'.
-  intros c1 c2 p1 p2 x1 x2.
-  specialize (H c1 c2 x1 x2 hier p1 p2).
-  firstorder.
-Qed.  
-  
-Axiom treeName1: match hier with
-                   | C x _ => x = nil
-                 end.
-
-Axiom treeName2: forall {p}, descendent p hier ->
-                             match p with
-                               | C x ls => treeNthName x ls
-                             end.

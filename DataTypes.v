@@ -1,40 +1,49 @@
-Require Import State.
+Require Import MsiState Tree Hier.
 
-Module Type DataTypes.
-  Include MsiState.
-  
+Export Tree MsiState.
+
+Module Type DataTypes <: Hier.
+
+  Parameter hier: Tree.
+  Axiom treeName1: match hier with
+                     | C x _ => x = nil
+                   end.
+
+  Axiom treeName2: forall {p}, descendent p hier ->
+                               match p with
+                                 | C x ls => treeNthName x ls
+                               end.
+
+  Definition Time := nat.
   Parameter Addr: Set.
+  Parameter getSt: list nat -> Addr -> Time -> State.
+
   Inductive Desc := Ld | St.
 
   Definition Index := nat.
 
-  Inductive Cache': Set :=
-    | Parent : Cache'
-    | Child : nat -> Cache'.
+  Definition Cache := Tree.
+  Definition defined c := descendent c hier.
 
-  Definition Cache := Cache'. 
+  Definition state c := match c with
+                          | C n ls => getSt n
+                        end.
 
-  Definition parent c p := 
-    match c with
-      | Parent => False
-      | Child _ => 
-        match p with
-          | Parent => True
-          | Child _ => False
-        end
-    end.
+  Parameter dir: Cache -> Cache -> Addr -> Time -> State.
 
-  Parameter total : nat.
-  Definition defined c := match c with
-                            | Parent => True
-                            | Child n => n < total
-                          end.
+  Parameter Mesg: Set.
+  Parameter from: Mesg -> State.
+  Parameter to: Mesg -> State.
+  Parameter addr: Mesg -> Addr.
 
-  Definition leaf x := match x with
-                         | Parent => False
-                         | Child _ => True
-                       end.
+  Inductive ChannelType := mch | rch.
 
+  Parameter Label : Set.
+  Inductive StLabel := Initial | Store : Label -> StLabel.
+  Parameter data: Cache -> Addr -> Time -> StLabel.
+  Parameter dataM: Mesg -> StLabel.
+
+(*
   Theorem noChildIsParent: forall {c}, defined c -> leaf c -> forall {c'},
                                                                 defined c' -> ~ parent c' c.
   Proof.
@@ -74,27 +83,7 @@ Module Type DataTypes.
     intros c leaf_c.
     destruct c; unfold leaf; auto.
   Qed.
-
-  Parameter descendent: Cache -> Cache -> Prop.
-
-  Definition Time := nat.
-  Parameter state: Cache -> Addr -> Time -> State.
-  Parameter dir: Cache -> Cache -> Addr -> Time -> State.
-
-  Parameter Mesg: Set.
-  Parameter from: Mesg -> State.
-  Parameter to: Mesg -> State.
-  Parameter addr: Mesg -> Addr.
-
-  Parameter ChannelType: Set.
-
-  Parameter mch rch: ChannelType.
-
-  Parameter Label : Set.
-  Inductive StLabel := Initial | Store : Label -> StLabel.
-  Parameter data: Cache -> Addr -> Time -> StLabel.
-  Parameter dataM: Mesg -> StLabel.
-
+*)
 End DataTypes.
 
 

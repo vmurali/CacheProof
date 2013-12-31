@@ -1,4 +1,4 @@
-Require Import DataTypes Channel Cache Coq.Logic.Classical.
+Require Import DataTypes Channel Cache Coq.Logic.Classical Hier Coq.Relations.Relation_Operators.
 
 Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
@@ -67,7 +67,8 @@ End CompatTheorem.
 Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt ch) (ba: BehaviorAxioms dt ch)
                 : CompatTheorem dt ch.
   Module mbt := mkBehaviorTheorems dt ch ba.
-  Import dt ch cb ba mbt.
+  Module hr := mkHierProperties dt.
+  Import dt ch cb ba mbt hr.
 
   Theorem compatible:
     forall {n}, defined n -> forall a t {c}, defined c -> parent c n ->
@@ -275,4 +276,43 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     destruct (dir n c' a t); destruct (dir n c a t); auto.
   Qed.
 
+  Theorem descSle: forall {c p}, defined c -> defined p -> descendent c p -> forall {a t},
+                                                                               sle (state c a t) (state p a t).
+  Proof.
+    intros c p defC defP c_p a t.
+    induction c_p.
+    pose proof (compat defP a t defC H) as [use _].
+    assumption.
+    assert (eq: state x a t = state x a t) by reflexivity.
+    apply (sle_eq eq).
+    pose proof (rt_trans Tree parent y z hier c_p2 defP) as defY.
+    specialize (IHc_p1 defC defY).
+    specialize (IHc_p2 defY defP).
+    apply (sle_sle_sle IHc_p1 IHc_p2).
+  Qed.
+
+  Theorem nonDescCompat: forall {c1 c2},
+                           defined c1 -> defined c2 ->
+                           ~ descendent c1 c2 -> ~ descendent c2 c1 ->
+                           forall {a t},
+                             sle (state c2 a t)
+                                 match state c1 a t with
+                                   | Mo => In
+                                   | Sh => Sh
+                                   | In => Mo
+                                 end.
+  Proof.
+    intros c1 c2 defC1 defC2 c1_no_c2 c2_no_c1.
+    pose proof (hasFork defC1 defC2 c1_no_c2 c2_no_c1) as forkFull.
+    destruct forkFull as [fork [defF [[d1 [defD1 [d1_fork [c1_d1 c2_no_d1]]]] [d2 [defD2 [d2_fork [c1_no_d2 c2_d1]]]]] ]].
+    intros a t.
+    assert (le1: sle (state c1 a t) (state d1 a t)) by (apply descSle; firstorder).
+    assert (le2: sle (state c2 a t) (state d2 a t)) by (apply descSle; firstorder).
+    assert (d1_ne_d2: d2 = d1 -> False) by (
+             intros d1_eq_d2; rewrite d1_eq_d2 in *; firstorder).
+    pose proof (compat defF a t defD1 d1_fork) as [_ useful].
+    specialize (useful d2 defD2 d1_ne_d2 d2_fork).
+    unfold sle in *; destruct (state c1 a t); destruct (state c2 a t);
+    destruct (state d1 a t); destruct (state d2 a t); auto.
+  Qed.
 End mkCompat.
