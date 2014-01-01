@@ -199,10 +199,12 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
               @CommonBehavior (state c) sgt c p (wait c) (waitS c).
     Axiom sendmImpSt: defined p -> defined c -> parent c p ->
                       forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
-    Axiom voluntary: defined p -> defined c -> parent c p ->
-      forall {a t r}, mark rch c p a t r -> forall {t' m}, t' > t -> mark mch c p a t' m ->
-        (forall {tm}, t < tm <= t' -> slt (state c a tm) (to r)) ->
-        exists r1, recv rch p c a t' r1 /\ slt (to r1) (state c a t').
+
+    Axiom volAxiom: defined p -> defined c -> parent c p ->
+                    forall {t' a m}, mark mch c p a t' m ->
+                                     wait c a t' = true ->
+                                     exists r1, recv rch p c a t' r1 /\
+                                                slt (to r1) (state c a t').
 
 (*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
 
@@ -284,6 +286,36 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
     Variable isParent: parent c p.
     Definition st := @st.st p c pDef cDef isParent.
     Definition dt := @st.dt p c pDef cDef isParent.
+
+
+    Lemma voluntary:
+      forall {a t r}, mark rch c p a t r -> forall {t' m}, t' > t -> mark mch c p a t' m ->
+        (forall {tm}, t < tm <= t' -> slt (state c a tm) (to r)) ->
+        exists r1, recv rch p c a t' r1 /\ slt (to r1) (state c a t').
+    Proof.
+      intros a t r markr t' m t'_gt_t markm great.
+      apply (@volAxiom p c pDef cDef isParent t' a m markm).
+      remember (t' - t - 1) as td.
+      assert (heq: t' = t + S td) by omega.
+      rewrite heq in *; clear Heqtd heq.
+      clear markm.
+      clear t'_gt_t.
+      destruct (classic (exists t' m, t < t' <= t + td /\ recv mch p c a t' m /\
+                                      ~ sgt (to r) (to m))) as [easy|hard].
+      destruct easy as [tm1 [m' [cond [recvm' sleSth]]]].
+      pose proof (recvmChange st recvm') as sthEq.
+      assert (H: t < S tm1 <= t + S td) by omega.
+      specialize (great (S tm1) H).
+      rewrite sthEq in great.
+      unfold sgt in sleSth.
+      firstorder.
+      assert (H: forall t', t < t' <= t + td -> forall m,
+                                                  ~ (recv mch p c a t' m /\
+                                                     ~ sgt (to r) (to m)))
+             by firstorder.
+      pose proof (nochangeWait' st markr H).
+      firstorder.
+    Qed.
 
 
       Lemma whenChildHighRecvm: forall {a t},
@@ -1185,7 +1217,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
             unfold sle in *; unfold sgt in*; unfold slt in *; destruct (state c a t');
             destruct (state c a t1); destruct (to r); auto).
       clear stcLet1 gtRel.
-      pose proof (voluntary pDef cDef isParent rsendr t1LtTc msendmc stcLet2) as [r1 [recvr1 sTcGtToR1]].
+      pose proof (voluntary rsendr t1LtTc msendmc stcLet2) as [r1 [recvr1 sTcGtToR1]].
       pose proof (recvImpMark recvr1) as [t2 [t2LeT1 sendr1]].
       assert (t2LeTp: t2 = tp \/ t2 > tp \/ t2 < tp) by omega.
       destruct t2LeTp as [t2EqTp | [t2GtTp | t2LtTp]].
