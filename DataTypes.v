@@ -43,6 +43,11 @@ Module Type DataTypes.
   Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
   Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
   Parameter enqSt: Cache -> Label -> Time -> Prop.
+
+  Parameter wait: Cache -> Addr -> Time -> bool.
+  Parameter waitS: Cache -> Addr -> Time -> State.
+  Parameter dwait: Cache -> Cache -> Addr -> Time -> bool.
+  Parameter dwaitS: Cache -> Cache -> Addr -> Time -> State.
 End DataTypes.
 
 
