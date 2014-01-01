@@ -45,14 +45,14 @@ Module Type L1Theorems (dt: DataTypes).
     defined c ->
     leaf c ->
     sle Sh (state c a t) ->
-    match data c a t with
-      | Initial => forall {ti}, 0 <= ti < t -> forall {ci li ii}, defined ci ->
-                                                                  ~ deqR ci li a St ii ti
-      | Store lb =>
+    (data c a t = Initial /\
+     forall {ti}, 0 <= ti < t -> forall {ci li ii}, defined ci ->
+                                                    ~ deqR ci li a St ii ti) \/
+    (exists lb, data c a t = Store lb /\
         exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
                          forall {ti}, tb < ti < t -> forall {ci li ii}, defined ci ->
                                                                         ~ deqR ci li a St ii ti
-    end.
+                                                                          ).
 
   Parameter uniqM:
   forall {c a t}, defined c -> leaf c ->
@@ -99,12 +99,11 @@ Module Type L1StoreAtomicity (dt: DataTypes).
       enqLd rc rl rs rt + enqSt rc rl rt ->
       rl = ql -> qd = Ld ->
       deqR qc ql qa qd qi qt ->
-      match rs with
-        | Initial => forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
-                       enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
-                       deqR qc' ql' qa' qd' qi' qt' ->
-                       rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)
-        | Store m =>
+        (rs = Initial /\ forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
+                           enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
+                           deqR qc' ql' qa' qd' qi' qt' ->
+                           rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)) \/
+        (exists m, rs = Store m /\
           exists rmc rml rms rmt qmc qml qma qmd qmi qmt
             (enqm: enqLd rmc rml rms rmt + enqSt rmc rml rmt),
             deqR qmc qml qma qmd qmi qmt /\
@@ -113,8 +112,7 @@ Module Type L1StoreAtomicity (dt: DataTypes).
             forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
               enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' -> deqR qc' ql' qa' qd' qi' qt' ->
               rl' = ql' -> rmt < rt' < rt ->
-              ~ (qa = qa' /\ qd' = St)
-      end.
+              ~ (qa = qa' /\ qd' = St)).
 End L1StoreAtomicity.
 
 Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt) (l1T: L1Theorems dt): L1StoreAtomicity dt.
@@ -335,12 +333,12 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
       enqLd rc rl rs rt + enqSt rc rl rt ->
       rl = ql -> qd = Ld ->
       deqR qc ql qa qd qi qt ->
-      match rs with
-        | Initial => forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
-                       enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
-                       deqR qc' ql' qa' qd' qi' qt' ->
-                       rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)
-        | Store m =>
+      (rs = Initial /\
+       forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
+         enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
+         deqR qc' ql' qa' qd' qi' qt' ->
+         rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)) \/
+      (exists m, rs = Store m /\
           exists rmc rml rms rmt qmc qml qma qmd qmi qmt
             (enqm: enqLd rmc rml rms rmt + enqSt rmc rml rmt),
             deqR qmc qml qma qmd qmi qmt /\
@@ -349,8 +347,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
             forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
               enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' -> deqR qc' ql' qa' qd' qi' qt' ->
               rl' = ql' -> rmt < rt' < rt ->
-              ~ (qa = qa' /\ qd' = St)
-      end.
+              ~ (qa = qa' /\ qd' = St)).
   Proof.
     intros.
     destruct H as [ld|st].
@@ -361,7 +358,9 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     rewrite dt in *.
     pose proof (uniqDeqLabels deq H2 H0) as [_ [aEq _]].
     rewrite aEq in *. clear aEq.
-    destruct rs.
+    destruct lv as [[init lv1]| [rest lv2]].
+    left.
+    constructor. assumption.
     intros.
     unfold not; intros [aEq dIsSt].
     rewrite dIsSt in H3.
@@ -370,27 +369,29 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (enqLdImpDeq ld2) as [a2 [i2 [deq2 _]]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (lv qt' H5 qc' ql' qi' (deqDef H3) H3).
+    apply (lv1 qt' H5 qc' ql' qi' (deqDef H3) H3).
     pose proof (enqStImpDeq st2) as [a2 [i2 deq2]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (lv qt' H5 qc' ql' qi' (deqDef H3) H3).
-    destruct lv as [cb [ib [tb [cbDef [tbLtRt [deqb noDeq]]]]]].
+    apply (lv1 qt' H5 qc' ql' qi' (deqDef H3) H3).
+    destruct lv2 as [rsEqRest [cb [ib [tb [cbDef [tbLtRt [deqb noDeq]]]]]]].
     pose proof (deqImpEnq deqb) as hope.
     simpl in *.
+    right.
+    exists rest.
+    constructor. assumption.
     exists cb.
-    exists l.
+    exists rest.
     exists Initial.
     exists tb.
     exists cb.
-    exists l.
+    exists rest.
     exists qa.
     exists St.
     exists ib.
     exists tb.
     exists (inr hope).
-    constructor.
-    assumption.
+    constructor. assumption.
     constructor. auto.
     constructor. auto.
     constructor. assumption.

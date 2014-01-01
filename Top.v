@@ -57,30 +57,39 @@ Module mkTop (dt: DataTypes) (l1: L1Axioms dt) (ch: ChannelPerAddr dt)
     Theorem storeAtomicity:
       forall {r q},
         labelR r = labelQ q -> desc q = Ld ->
-        match stl r with
-          | Initial => forall {r' q'},
-                         labelR r' = labelQ q' -> 0 <= timeR r' < timeR r
-                         -> ~ (loc q = loc q' /\ desc q' = St)
-          | Store m => exists rm qm, labelR rm = m /\ labelQ qm = m /\
+        (stl r = Initial /\
+         forall {r' q'},
+           labelR r' = labelQ q' -> 0 <= timeR r' < timeR r
+           -> ~ (loc q = loc q' /\ desc q' = St)) \/
+        (exists m, stl r = Store m /\
+                   exists rm qm, labelR rm = m /\ labelQ qm = m /\
                                      timeR rm < timeR r /\ loc qm = loc q /\ desc qm = St /\
                                      forall {r' q'},
                                        labelR r' = labelQ q' -> timeR rm < timeR r' < timeR r ->
-                                       ~ (loc q = loc q' /\ desc q' = St)
-        end.
+                                       ~ (loc q = loc q' /\ desc q' = St)).
     Proof.
       intros.
       destruct r; destruct q.
       simpl in *.
       pose proof (storeAtomicity' defR0 H H0 defQ0).
-      destruct stl0.
+      pose proof H1 as [[initi condInit] | [resti condRest]].
+      left.
+      constructor. assumption.
       intros.
       destruct r'; destruct q'.
       simpl in *.
-      specialize (H1 procR1 labelR1 stl0 timeR1 procQ1 labelQ1 loc1 desc1 index1 timeQ1
-                     defR1 defQ1 H2 H3).
+      specialize (condInit procR1 labelR1 stl1 timeR1 procQ1 labelQ1 loc1 desc1 index1 timeQ1                     defR1 defQ1 H2 H3).
       assumption.
-      destruct H1 as [rmc [rml [rms [rmt [qmc [qml [qma [qmd [qmi [qmt [enqM [deqM rest]]]]]]]
-                     ]]]]].
+      right.
+      exists resti.
+      destruct condRest as [cRest [rmc
+                                     [rml [rms
+                                               [rmt [qmc [qml [qma
+                                                                   [qmd [qmi
+                                                                           [qmt [enqM 
+                                                                                   [deqM rest]
+                           ]]]]]]]]]]]].
+      constructor. assumption.
       exists (Build_RespSet rmc rml rms rmt enqM).
       exists (Build_ReqSet qmc qml qma qmd qmi qmt deqM).
       simpl in *.
@@ -93,7 +102,7 @@ Module mkTop (dt: DataTypes) (l1: L1Axioms dt) (ch: ChannelPerAddr dt)
       intros.
       destruct r'; destruct q'.
       simpl in *.
-      pose proof (last procR1 labelR1 stl0 timeR1 procQ1 labelQ1 loc1 desc1 index1 timeQ1 defR1 defQ1 H1 H2).
+      pose proof (last procR1 labelR1 stl1 timeR1 procQ1 labelQ1 loc1 desc1 index1 timeQ1 defR1 defQ1 H2 H3).
       assumption.
     Qed.
 

@@ -199,17 +199,17 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     forall {a t n}, defined n ->
                     sle Sh (state n a t) ->
                     (forall {c}, defined c -> parent c n -> sle (dir n c a t) Sh) ->
-                    match data n a t with
-                      | Initial => forall {ti}, 0 <= ti < t ->
-                                                forall {ci li ii}, defined ci ->
-                                                                   ~ deqR ci li a St ii ti
-                      | Store lb =>
-                        exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
+                    (data n a t = Initial /\
+                     forall {ti}, 0 <= ti < t ->
+                                  forall {ci li ii}, defined ci ->
+                                                     ~ deqR ci li a St ii ti) \/
+                      (exists lb,
+                         data n a t = Store lb /\
+                         exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
                                          forall {ti}, tb < ti < t ->
                                                       forall {ci li ii},
                                                         defined ci ->
-                                                        ~ deqR ci li a St ii ti
-                    end.
+                                                        ~ deqR ci li a St ii ti).
     Proof.
       intros a.
       pose (fun t =>
@@ -217,21 +217,20 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
                 defined n ->
                 sle Sh (state n a t) ->
                 (forall c, defined c -> parent c n -> sle (dir n c a t) Sh) ->
-                match data n a t with
-                  | Initial =>
+                (data n a t = Initial /\
                     forall ti : nat,
                       0 <= ti < t ->
                       forall (ci : Cache) (li : Label) (ii : Index),
-                        defined ci -> ~ deqR ci li a St ii ti
-                  | Store lb =>
+                        defined ci -> ~ deqR ci li a St ii ti) \/
+                (exists lb, data n a t = Store lb /\
                     exists (cb : Cache) (ib : Index) (tb : nat),
                       defined cb /\ tb < t /\
                       deqR cb lb a St ib tb /\
                       (forall ti : nat,
                          tb < ti < t ->
                          forall (ci : Cache) (li : Label) (ii : Index),
-                           defined ci -> ~ deqR ci li a St ii ti)
-                end) as P.
+                           defined ci -> ~ deqR ci li a St ii ti))
+           ) as P.
       pose proof (initLatest a) as [hierInit hierM].
       apply (@ind P).
       unfold P in *; clear P.
@@ -239,6 +238,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       destruct (classic (n = hier)) as [eq|notEq].
       rewrite eq.
       rewrite hierInit.
+      constructor. constructor. reflexivity.
       intros ti [_ bad].
       assert (f: False) by omega.
       firstorder.
@@ -306,6 +306,9 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       rewrite st.
       assert (triv: t < S t) by omega.
       assert (triv2: forall ti, t < ti < S t -> False) by (intros ti cond; omega).
+      right.
+      exists l.
+      constructor. reflexivity.
       generalize defN triv deqSt triv2; clear; firstorder.
       assert (good: forall c l i, defined c -> ~ deqR c l a St i t).
       intros c l i defC.
@@ -316,17 +319,22 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
       destruct (classic (data n a (S t) = data n a t)) as [dataEq| dataNeq].
       rewrite dataEq.
-      destruct (data n a t).
 
+      destruct SIHt as [[initi condInit]|[resti condResti]].
+      left.
+      constructor. assumption.
       intros ti cond.
       assert (cases: 0 <= ti < t \/ ti = t) by omega.
       destruct cases as [ind|rew].
-      specialize (SIHt ti ind).
+      specialize (condInit ti ind).
       assumption.
       rewrite rew.
       assumption.
 
-      destruct SIHt as [cb [ib [tb [defCb [tb_lt_t [deqSt rest]]]]]].
+      destruct condResti as [stEq [cb [ib [tb [defCb [tb_lt_t [deqSt rest]]]]]]].
+      right.
+      exists resti.
+      constructor. assumption.
       exists cb; exists ib; exists tb; constructor.
       assumption.
       constructor.
@@ -357,7 +365,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       pose proof (slt_slei_false mNotIn condDir') as f.
       firstorder.
 
-      firstorder.
+      specialize (noNStore bad); firstorder.
 
       destruct (classic (state n a t = In \/ exists c, defined c /\ parent c n /\
                                                        slt Sh (dir n c a t)))
@@ -446,13 +454,21 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       destruct (dir p c' a ts); auto.
 
       specialize (SIHt ts ts_le_t p defP p1 p2).
-      destruct (data p a ts).
+      destruct (SIHt) as [[initi condInit] | [resti condRest]].
+      left.
+      constructor. assumption. 
+
       intros ti cond; assert (H: 0 <= ti < ts \/ ts <= ti <= t ) by omega; 
       destruct H as [ind|tough].
 
-      apply (SIHt ti ind).
+      apply (condInit ti ind).
       apply (goodT ti tough).
-      destruct SIHt as [cb [ib [tb [defCb [tb_lt_ts [deqSt rest]]]]]].
+
+
+      right.
+      destruct condRest as [stResti [cb [ib [tb [defCb [tb_lt_ts [deqSt rest]]]]]]].
+      exists resti.
+      constructor. assumption.
       exists cb; exists ib; exists tb.
       constructor. assumption. constructor.
       assert (tb < S t) by omega. assumption.
@@ -544,13 +560,20 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
       specialize (SIHt ts ts_le_t c defC p1 p2).
 
-      destruct (data c a ts).
+
+      destruct SIHt as [[initi condInit] | [resti condRest]].
+      left.
+      constructor. assumption.
       intros ti cond; assert (H: 0 <= ti < ts \/ ts <= ti <= t ) by omega; 
       destruct H as [ind|tough].
 
-      apply (SIHt ti ind).
+      apply (condInit ti ind).
       apply (goodT ti tough).
-      destruct SIHt as [cb [ib [tb [defCb [tb_lt_ts [deqSt rest]]]]]].
+
+      right.
+      destruct condRest as [dataIsEq [cb [ib [tb [defCb [tb_lt_ts [deqSt rest]]]]]]].
+      exists resti.
+      constructor. assumption.
       exists cb; exists ib; exists tb.
       constructor. assumption. constructor.
       assert (tb < S t) by omega. assumption.
@@ -580,14 +603,13 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
   forall {c a t}, defined c ->
     leaf c ->
     sle Sh (state c a t) ->
-    match data c a t with
-      | Initial => forall {ti}, 0 <= ti < t -> forall {ci li ii}, 
-                                                 defined ci -> ~ deqR ci li a St ii ti
-      | Store lb =>
+    (data c a t = Initial /\
+     forall {ti}, 0 <= ti < t -> forall {ci li ii}, 
+                                                 defined ci -> ~ deqR ci li a St ii ti) \/
+    (exists lb, data c a t = Store lb /\
         exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
                          forall {ti}, tb < ti < t -> forall {ci li ii},
-                                                       defined ci -> ~ deqR ci li a St ii ti
-    end.
+                                                       defined ci -> ~ deqR ci li a St ii ti).
   Proof.
     intros c a t cDef leafC more.
     assert (cond: forall {c'}, defined c' -> parent c' c -> sle (dir c c' a t) Sh).
