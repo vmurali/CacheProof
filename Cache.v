@@ -226,11 +226,8 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
       Axiom recvmCond: defined p -> defined c -> parent c p ->
                        forall {m}, recv mch c p a t m -> from m = dir p c a t.
 
-      Axiom sendrImpNoSendm: defined p -> defined c -> parent c p ->
-        forall {t1 t2 r1 m2},
-          t1 < t2 -> mark rch p c a t1 r1 ->
-          mark mch p c a t2 m2 ->
-          exists t', t1 < t' < t2 /\ exists m, recv mch c p a t' m /\ sle (to m) (to r1).
+      Axiom sendmNoWait: defined p -> defined c -> parent c p ->
+                         forall {t2 m2}, mark mch p c a t2 m2 -> dwait p c a t2 = false.
 
       (*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
     End ForT.
@@ -316,6 +313,37 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (nochangeWait' st markr H).
       firstorder.
     Qed.
+
+      Lemma sendrImpNoSendm: forall {a},
+        forall {t1 t2 r1 m2},
+          t1 < t2 -> mark rch p c a t1 r1 ->
+          mark mch p c a t2 m2 ->
+          exists t', t1 < t' < t2 /\ exists m, recv mch c p a t' m /\ sle (to m) (to r1).
+      Proof.
+        intros a t1 t2 r1 m2 t1_lt_t2 markr1 markm2.
+        pose proof (sendmNoWait pDef cDef isParent markm2) as waitFalse.
+        destruct (classic (exists t', t1 < t' < t2 /\ exists m, recv mch c p a t' m /\
+                          sle (to m) (to r1))) as [easy|hard].
+        assumption.
+        assert (forall t', t1 < t' < t2 -> forall m, ~ (recv mch c p a t' m /\
+                                                        sle (to m) (to r1)))
+               by firstorder.
+        pose proof @nochangeWait'.
+        remember (t2 - t1 - 1) as td.
+        assert (newEq: t1 + S td = t2) by omega; clear Heqtd.
+        rewrite <- newEq in *; clear newEq.
+        assert (forall t', t1 < t' <= t1 + td -> forall m, ~ (recv mch c p a t' m /\
+                                                              ~ slt (to r1) (to m))).
+        unfold not; intros t' cond m3 [recvm3 sme].
+        assert (y: t1 < t' < t1 + S td) by omega.
+        assert (z: sle (to m3) (to r1)) by (unfold sle in *; unfold slt in *;
+                                           destruct (to r1); destruct (to m3); auto).
+        specialize (H t' y m3 (conj recvm3 z)).
+        firstorder.
+        pose proof (nochangeWait' dt markr1 H1) as [useful _].
+        rewrite waitFalse in useful.
+        discriminate.
+      Qed.
 
 
       Lemma whenChildHighRecvm: forall {a t},
@@ -1226,7 +1254,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       assert (tpLeT2: tp <= t2) by omega.
       pose proof (pRespReq pDef cDef isParent noTwoPResp noTwoPReqNon msendmp sendr1 recvr1 tpLeT2) as [t4 [t4LtTp recvmp]].
       generalize norecvmp recvmp t4LtTp; clear; firstorder.
-      pose proof (sendrImpNoSendm pDef cDef isParent t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
+      pose proof (sendrImpNoSendm t2LtTp sendr1 msendmp) as [t' [[t2LtT' t'LtTp] [m [recvm toMGeToR1]]]].
       pose proof (recvImpMark recvm) as [t'' [t''LeT' sendm]].
       pose proof (sendmChange st sendm) as stEqToM.
       assert (stTcGtStST'': slt (state c a (S t'')) (state c a tc)) by
@@ -1692,7 +1720,7 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       destruct opts as [tsEqTn | tsLtTn].
       rewrite tsEqTn in *.
       apply (noSendmSendr dt sendm sendr3).
-      pose proof (sendrImpNoSendm pDef cDef isParent tsLtTn sendr3 sendm) as [t' [cond3 [m' [recvm' toM'LeToR3]]]].
+      pose proof (sendrImpNoSendm tsLtTn sendr3 sendm) as [t' [cond3 [m' [recvm' toM'LeToR3]]]].
       assert (cond4: ts <= t' < tx) by omega.
       assert (cond5: t' < tn) by omega.
       generalize notBefore recvm' toM'LeToR3 cond4 cond5; clear; firstorder.
