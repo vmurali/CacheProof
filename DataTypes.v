@@ -1,8 +1,8 @@
-Require Import MsiState Tree Hier.
+Require Import MsiState Tree.
 
 Export Tree MsiState.
 
-Module Type DataTypes <: Hier.
+Module Type DataTypes.
 
   Parameter hier: Tree.
   Axiom treeName1: match hier with
@@ -16,7 +16,6 @@ Module Type DataTypes <: Hier.
 
   Definition Time := nat.
   Parameter Addr: Set.
-  Parameter getSt: list nat -> Addr -> Time -> State.
 
   Inductive Desc := Ld | St.
 
@@ -25,9 +24,7 @@ Module Type DataTypes <: Hier.
   Definition Cache := Tree.
   Definition defined c := descendent c hier.
 
-  Definition state c := match c with
-                          | C n ls => getSt n
-                        end.
+  Parameter state: Cache -> Addr -> Time -> State.
 
   Parameter dir: Cache -> Cache -> Addr -> Time -> State.
 

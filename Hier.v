@@ -1,22 +1,7 @@
-Require Import List Tree Coq.Relations.Relation_Operators Omega.
+Require Import DataTypes List Tree Coq.Relations.Relation_Operators Omega.
 
-Module Type Hier.
-  Parameter hier: Tree.
-  Axiom treeName1: match hier with
-                     | C x _ => x = nil
-                   end.
-
-  Axiom treeName2: forall {p}, descendent p hier ->
-                               match p with
-                                 | C x ls => treeNthName x ls
-                               end.
-End Hier.
-
-Module mkHierProperties (h: Hier).
-  Import h.
-
-  Definition Cache := Tree.
-  Definition defined c := descendent c hier.
+Module mkHierProperties (dt: DataTypes).
+  Import dt.
 
   Theorem hasFork:
     forall {c1 c2},
