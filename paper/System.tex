@@ -8,12 +8,12 @@ root of the communicates with the main memory, and the leaf caches communicate
 with the processor (Figure \ref{hier}).
 
 Each cache has a \emph{coherence state} associated with each address. The
-coherence state can be one of the three values: \Mo (Modified), \Sh (Shared) or
-\In (Invalid). \Mo state denotes that the subtree rooted at the cache in \Mo
-state for that address can modify the data, \ie both read and write the data
-corresponding to the address. \Sh state denotes that the subtree rooted at the
-cache in \Sh state for that address can only read the data corresponding to
-that address and \In state denotes that the subtree rooted at the cache in \In
+coherence state can be one of the three values: \Mo{} (Modified), \Sh{} (Shared) or
+\In{} (Invalid). \Mo{} state denotes that the subtree rooted at the cache in \Mo{}
+state for that address can modify the data, \ie{} both read and write the data
+corresponding to the address. \Sh{} state denotes that the subtree rooted at the
+cache in \Sh{} state for that address can only read the data corresponding to
+that address and \In{} state denotes that the subtree rooted at the cache in \In{}
 state can neither read nor write the data corresponding to the address. The
 meanings of the state is clear, but one must verify the actual cache coherence
 protocol for violations of these invariants, which is what the proof in this
@@ -24,7 +24,11 @@ In addition, each non-leaf cache maintains a \emph{directory}, which contains a
 local version of the state of each of its children for a particular address.
 This local version may be stale, but it should not be lower than the real state
 of the child (again this property has to be proven for a cache coherence
-protocol)
+protocol).
+
+Though this paper restricts the formal discussion to the simple MSI protocol,
+extension of this proof technique as well as major portions of the proof to
+other protocols like MOSI and MOESI is straightforward.
 
 In order for a cache to change to a higher state for a given address, \ie
 \emph{upgrade}, it has to \emph{request} its parents for increasing the state.
@@ -64,22 +68,26 @@ child that uses that channel. We will also index the two channels (\cproc{} and
 
 Figure \ref{format} shows the message format transmitted in the 3 channels
 between caches. The messages transmitted between the processor and the L1 cache
-is the same as in Figure \ref{req-resp}.
+is the same as in Figure \ref{req-resp} (except for the omission of the \proc{}
+field, which is indicated by the channel's index).
 \begin{figure}
 \centering
 \begin{tabular}{|l|lp{.9\textwidth}|}
 \hline
-\multirow{2}{*}{\cpReq} & \from: & Current state of child\\
+\multirow{3}{*}{\cpReq} & \from: & Current state of child\\
 & \myto: & Desired (higher) state of child\\
+& \addr: & Address associated with the request\\
 \hline
-\multirow{3}{*}{\cpResp} & \from: & Current state of child\\
+\multirow{4}{*}{\cpResp} & \from: & Current state of child\\
 & \myto: & Downgraded state of child\\
+& \addr: & Address associated with the request\\
 & \data: & Data associated with the address, if necessary\\
 \multirow{4}{*}{\pc} & \type: & \Req{} (for requests) and \Resp{} (for responses)\\
 \hline
-& \from: & Current state of parent's directory for the child\\
+%& \from: & Current state of parent's directory for the child\\
 & \myto: & Desired (lower) directory state of a child for \Req{} and upgraded
 directory state of a child for \Resp{}\\
+& \addr: & Address associated with the request\\
 & \data: & Data associated with the address if necessary (for \Resp{} only)\\
 \hline
 \end{tabular}
@@ -87,4 +95,19 @@ directory state of a child for \Resp{}\\
 \label{format}
 \end{figure}
 
+The description of the behavior of each of the caches can be given in terms of
+``rules'' for state transitions. Each rule specifies a series of actions that
+are performed atomically, and during the execution of a rule, no other
+(conflicting) rule interferes with it. Thus, the behavior of any rule-based
+system can be understood as if the rules executed one at a time.
 
+Such a rule-based description can be automatically converted into synchronous
+hardware, for instance using Bluespec \cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
+Bluespec executes each atomic rule into a single hardware cycle, which
+simultaneously executing non-conflicting rules \ie{} rules that do not access the
+same state (the exact conditions for simultaneous scheduling are specified in
+the citations). Though the rules are logically executed atomically, their execution
+can be spread across multiple cycles (as long as other conflicting rules are
+not executed during the whole period of current rule's execution). Synchronous
+hardware generation for multi-cycle atomic rules has also been studied
+\cite{Karczmarek}.
