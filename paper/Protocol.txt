@@ -11,14 +11,14 @@ has capacity to send a message
 
 Load request at L1
 (proc2C[c].first = <label a Ld idx> /\ c.state[a] >= S) -> {
-  c2ProcResp[c].enq(<label c.data[a] t>)
+  c2Proc[c].enq(<label c.data[a] t>)
   proc2C[c].deq
 }
 
 Store request at L1
 (proc2C[c].first = <label a St idx> /\ c.state[a] = M) -> {
   c.data[a] = label
-  c2ProcResp[c].enq(<label _ t>)
+  c2Proc[c].enq(<label _ t>)
      // Not necessary -- the enq action can be defined differently for stores
   proc2C[c].deq
 }
