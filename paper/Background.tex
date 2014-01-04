@@ -159,23 +159,25 @@ special value \Initial, which is used to initialize all the addresses (initialVa
 
 \begin{defn}
 \begin{multline*}
-\textit{initialValue}:= r.\stl = \Initial \wedge \\
+\textit{initialValue}:= \forall (r \in \Request) (q \in \Response), r.\mylabel = q.\mylabel @->
+q.\desc = \Ld @-> \\(r.\stl = \Initial \wedge
 \forall (r' \in \Response) (q' \in \Request),
 r'.\mylabel = q'.\mylabel @-> \\ 0 \le r'.\mytime < r.\mytime @->
-\neg (q.\loc = q'.\loc \wedge q'.\desc = \St)
+\neg (q.\loc = q'.\loc \wedge q'.\desc = \St))
 \end{multline*}
 \end{defn}
 
 \begin{defn}
 \begin{multline*}
-\textit{lastEarlierValue} :=
-\exists m, r.\stl = \Store m \wedge \\
-\exists (r_m \in \Response) (q_m \in \Request),
+\textit{lastEarlierValue} := \forall (r \in \Request) (q \in \Response), r.\mylabel = q.\mylabel @-> \\
+q.\desc = \Ld @-> 
+(\exists m, r.\stl = \Store m \wedge \\
+\exists (r_m \in \Response) (q_m \in \Request), 
 r_m.\mylabel = m \wedge q_m.\mylabel = m \wedge \\
 r_m.\mytime < r.\mytime \wedge q_m.\loc = q.\loc \wedge q_m.\desc = \St \wedge  \\
 \forall (r' \in \Response) (q' \in \Request),
 r'.\mylabel = q'.\mylabel @-> \\ r_m.\mytime < r'.\mytime < r.\mytime ->
-\neg (q.\loc = q'.\loc \wedge q'.\desc = \St)
+\neg (q.\loc = q'.\loc \wedge q'.\desc = \St))
 \end{multline*}
 \end{defn}
 
