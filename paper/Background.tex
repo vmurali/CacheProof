@@ -144,8 +144,7 @@ violate the local ordering of the corresponding requests.
 \textit{localOrdering} :=
 \forall (r_1, r_2 \in \Response) (q_1, q_2 \in \Request), \\ r_1.\mylabel
 = q_1.\mylabel @-> r_2.\mylabel = q_2.\mylabel @-> \\ q_1.\proc = q_2.\proc @->
-q_1.\loc = q_2.\loc @-> \\ q_1.\myindex < q_2.\myindex @-> r_1.\mytime > r_2.\mytime
-  @-> \False
+q_1.\loc = q_2.\loc @-> \\ q_1.\myindex < q_2.\myindex @-> r_1.\mytime \le r_2.\mytime
 \end{multline*}
 \end{defn}
 
