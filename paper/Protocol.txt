@@ -17,19 +17,21 @@ Load request at L1
 
 Store request at L1
 (proc2C[c].first = <label a St idx> /\ c.state[a] = M) -> {
-  c.data[a] = label
+  c.data[a] <= label
   c2Proc[c].enq(<label _ t>)
      // Not necessary -- the enq action can be defined differently for stores
   proc2C[c].deq
 }
 
-wait: Addr->bool and waits: Addr -> State are new states for each cache denoting whether a cache is waiting for a response from the parent and if so, the upgrade it's waiting for.
+wait: Addr->bool and waits: Addr -> State are new states for each cache
+denoting whether a cache is waiting for a response from the parent and if so,
+the upgrade it's waiting for.
 dwait: Cache -> Addr -> bool and dwaits: Cache -> Addr -> State: Directory counterparts.
 
 Child sends request
 (c.state[a] < x /\ c.wait[a] = false) -> {
-  c.wait[a] = true
-  c.waits[a] = x
+  c.wait[a] <= true
+  c.waits[a] <= x
   c2pReq[c].enq(<c.state[a] x a>)
 }
 
@@ -44,24 +46,24 @@ Parent p receives request and sends response
      /\ p.dstate[c][a] <= y) -> {
   let d = if p.dstate[c][a] = I then p.data[a] else _ in
                          p2c[c].enq(<Resp x a d>)
-  p.dstate[c][a] = x
+  p.dstate[c][a] <= x
   c2pReq[c].deq
 }
 
 Child receives response
 (p2c[c].first = <Resp x a d>) -> {
   if(c.wait[a] = true && c.waits[a] <= x)
-    c.wait[a] = false
+    c.wait[a] <= false
   if(c.state[a] = I)
-    c.data[a] = d
-  c.state[a] = x
+    c.data[a] <= d
+  c.state[a] <= x
   p2c[c].deq
 }
 
 Parent sends request
 (p.dstate[c][a] > x /\ p.wait[c][a] = false) -> {
-  p.dwait[c][a] = true
-  p.dwaits[c][a] = x
+  p.dwait[c][a] <= true
+  p.dwaits[c][a] <= x
   p2c[c].enq(<Req x a _>)
 }
 
@@ -70,16 +72,17 @@ Child receives request and sends response
   /\ forall i, parent c i -> c.dstate[i][a] <= x) -> {
   let d = if c.state[a] = M then c.data[a] else _ in
                         c2pResp[c].enq(<c.state[a] x a d>)
+  c.state[a] <= x
   p2c[c].deq
 }
 
 Parent receives response
 (c2pResp[c].first = <y x a d> /\ p.dstate[c][a] = y) -> {
   if(p.dwait[c][a] = true && p.dwaits[c][a] >= x)
-    p.dwait[c][a] = false
+    p.dwait[c][a] <= false
   if(p.dstate[c][a] = M)
-    p.data[a] = d
-  p.dstate[c][a] = x
+    p.data[a] <= d
+  p.dstate[c][a] <= x
   c2pResp[c].deq
 }
 
@@ -87,7 +90,7 @@ Child sends voluntary response
 (c.state[a] > x /\ c.wait[a] = false) -> {
   let d = if c.state[a] = M then c.data[a] else _ in
                         c2pResp[c].enq(<c.state[a] x a d>)
-  c.state[a] = x
+  c.state[a] <= x
 }
 
 Child receives request and drops
