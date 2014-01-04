@@ -52,7 +52,7 @@ Child receives response
 (p2c[c].first = <Resp x a d>) -> {
   if(c.wait[a] = true && c.waits[a] <= x)
     c.wait[a] = false
-  if(y = I)
+  if(c.state[a] = I)
     c.data[a] = d
   c.state[a] = x
   p2c[c].deq
@@ -62,7 +62,7 @@ Parent sends request
 (p.dstate[c][a] > x /\ p.wait[c][a] = false) -> {
   p.dwait[c][a] = true
   p.dwaits[c][a] = x
-  p2c[c].enq(<Req x a>)
+  p2c[c].enq(<Req x a _>)
 }
 
 Child receives request and sends response
@@ -91,6 +91,6 @@ Child sends voluntary response
 }
 
 Child receives request and drops
-(p2c[c].first = <Req x a> /\ c.state[a] <= x) -> {
+(p2c[c].first = <Req x a _> /\ c.state[a] <= x) -> {
   p2c[c].deq
 }
