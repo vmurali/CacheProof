@@ -1,4 +1,4 @@
-Require Import DataTypes Channel Cache Coq.Logic.Classical Hier Coq.Relations.Relation_Operators.
+Require Import DataTypes Channel Cache Coq.Logic.Classical Hier Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties.
 
 Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
@@ -33,11 +33,7 @@ Module Type CompatBehavior (dt: DataTypes) (ch: ChannelPerAddr dt).
                                       (mark mch n p a t m \/ recv mch p n a t m) ->
                                       forall {c}, defined c -> parent c n -> forall mc,
                                         ~ (mark mch n c a t mc \/ recv mch c n a t mc).
-    Axiom noParentSame: defined n -> (forall {p}, defined p -> ~ parent n p) ->
-                        state n a (S t) = state n a t.
   End Node.
-  Axiom oneParent: forall {n p1 p2}, defined n -> defined p1 -> defined p2 ->
-                                     parent n p1 -> parent n p2 -> p1 = p2.
   Axiom initCompat:
     forall {n c}, defined n -> defined c -> parent c n -> forall a, dir n c a 0 = In.
 End CompatBehavior.
@@ -62,6 +58,27 @@ Module Type CompatTheorem (dt: DataTypes) (ch: ChannelPerAddr dt).
                                                                      | Sh => Sh
                                                                      | In => Mo
                                                                    end.
+  Parameter descSle: forall {c p}, defined c ->
+                                   defined p -> descendent c p ->
+                                   forall {a t},
+                                     sle (state c a t) (state p a t).
+
+  Parameter nonDescCompat: forall {c1 c2},
+                           defined c1 -> defined c2 ->
+                           ~ descendent c1 c2 -> ~ descendent c2 c1 ->
+                           forall {a t},
+                             sle (state c2 a t)
+                                 match state c1 a t with
+                                   | Mo => In
+                                   | Sh => Sh
+                                   | In => Mo
+                                 end.
+
+  Parameter allDirLower: forall {p}, defined p ->
+                                     forall {co a t s},
+                                       (forall c, defined c -> parent c p
+                                                  -> sle (dir p c a t) s) ->
+                                       co <> p -> descendent co p -> sle (state co a t) s.
 End CompatTheorem.
 
 Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt ch) (ba: BehaviorAxioms dt ch)
@@ -314,5 +331,27 @@ Module mkCompat (dt: DataTypes) (ch: ChannelPerAddr dt) (cb: CompatBehavior dt c
     specialize (useful d2 defD2 d1_ne_d2 d2_fork).
     unfold sle in *; destruct (state c1 a t); destruct (state c2 a t);
     destruct (state d1 a t); destruct (state d2 a t); auto.
+  Qed.
+
+  Theorem allDirLower: forall {p},
+                         defined p ->
+                         forall {co a t s},
+                           (forall c, defined c -> parent c p -> sle (dir p c a t) s) ->
+                           co <> p -> descendent co p -> sle (state co a t) s.
+  Proof.
+    intros p defP co a t s noDir co_ne_p co_p.
+    pose proof (clos_rt_rtn1 Tree parent co p co_p) as trans.
+    destruct trans.
+    assert (co = co) by reflexivity; firstorder.
+    pose proof (clos_rtn1_rt Tree parent co y trans) as co_y.
+    clear trans; fold descendent in *.
+    pose proof (rt_step Tree parent y z H) as y_z.
+    pose proof (rt_trans Tree parent y z hier y_z defP) as y_hier.
+    specialize (noDir y y_hier H).
+    pose proof (rt_trans Tree parent co y hier co_y y_hier) as co_hier.
+    pose proof (@descSle co y co_hier y_hier co_y a t) as useful.
+    pose proof (conservative defP y_hier H a t) as final.
+    pose proof (sle_sle_sle useful final) as f2.
+    apply (sle_sle_sle f2 noDir).
   Qed.
 End mkCompat.

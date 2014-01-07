@@ -2,10 +2,6 @@ Require Import DataTypes StoreAtomicity Omega Coq.Logic.Classical.
 
 Module Type L1Axioms (dt: DataTypes).
   Import dt.
-  Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
-  Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
-  Parameter enqSt: Cache -> Label -> Time -> Prop.
-
   Axiom deqLeaf: forall {c l a d i t}, deqR c l a d i t -> leaf c.
   Axiom deqDef: forall {c l a d i t}, deqR c l a d i t -> defined c.
   Axiom uniqDeqProc: forall {c l1 a1 d1 i1 t l2 a2 d2 i2},
@@ -29,8 +25,8 @@ Module Type L1Axioms (dt: DataTypes).
   Axiom enqStImpDeq: forall {c l t}, enqSt c l t -> exists a i, deqR c l a St i t.
 End L1Axioms.
 
-Module Type L1InputAxioms (dt: DataTypes) (l1: L1Axioms dt).
-  Import dt l1.
+Module Type L1InputAxioms (dt: DataTypes).
+  Import dt.
   Axiom uniqDeqLabels:
   forall {c1 l1 a1 d1 i1 t1 c2 l2 a2 d2 i2 t2},
     deqR c1 l1 a1 d1 i1 t1 -> deqR c2 l2 a2 d2 i2 t2 -> l1 = l2 ->
@@ -42,29 +38,29 @@ Module Type L1InputAxioms (dt: DataTypes) (l1: L1Axioms dt).
     l1 = l2 /\ a1 = a2 /\ d1 = d2 /\ t1 = t2.
 End L1InputAxioms.
 
-Module Type L1Theorems (dt: DataTypes) (l1: L1Axioms dt).
-  Import dt l1.
+Module Type L1Theorems (dt: DataTypes).
+  Import dt.
   Parameter latestValue:
   forall {c a t},
     defined c ->
     leaf c ->
     sle Sh (state c a t) ->
-    match data c a t with
-      | Initial => forall {ti}, 0 <= ti < t -> forall {ci li ii}, defined ci ->
-                                                                  ~ deqR ci li a St ii ti
-      | Store lb =>
+    (data c a t = Initial /\
+     forall {ti}, 0 <= ti < t -> forall {ci li ii}, defined ci ->
+                                                    ~ deqR ci li a St ii ti) \/
+    (exists lb, data c a t = Store lb /\
         exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
                          forall {ti}, tb < ti < t -> forall {ci li ii}, defined ci ->
                                                                         ~ deqR ci li a St ii ti
-    end.
+                                                                          ).
 
   Parameter uniqM:
   forall {c a t}, defined c -> leaf c ->
     state c a t = Mo -> forall {co}, defined co -> leaf co -> c <> co -> state co a t = In.
 End L1Theorems.
 
-Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
-  Import dt l1.
+Module Type L1StoreAtomicity (dt: DataTypes).
+  Import dt.
   Parameter enqHasDeq:
     forall {c1 l1 st1 t1}, enqLd c1 l1 st1 t1 + enqSt c1 l1 t1 ->
                        exists c2 l2 a2 d2 i2 t2, deqR c2 l2 a2 d2 i2 t2 /\ l1 = l2.
@@ -103,12 +99,11 @@ Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
       enqLd rc rl rs rt + enqSt rc rl rt ->
       rl = ql -> qd = Ld ->
       deqR qc ql qa qd qi qt ->
-      match rs with
-        | Initial => forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
-                       enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
-                       deqR qc' ql' qa' qd' qi' qt' ->
-                       rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)
-        | Store m =>
+        (rs = Initial /\ forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
+                           enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
+                           deqR qc' ql' qa' qd' qi' qt' ->
+                           rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)) \/
+        (exists m, rs = Store m /\
           exists rmc rml rms rmt qmc qml qma qmd qmi qmt
             (enqm: enqLd rmc rml rms rmt + enqSt rmc rml rmt),
             deqR qmc qml qma qmd qmi qmt /\
@@ -117,11 +112,10 @@ Module Type L1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt).
             forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
               enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' -> deqR qc' ql' qa' qd' qi' qt' ->
               rl' = ql' -> rmt < rt' < rt ->
-              ~ (qa = qa' /\ qd' = St)
-      end.
+              ~ (qa = qa' /\ qd' = St)).
 End L1StoreAtomicity.
 
-Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt l1) (l1T: L1Theorems dt l1): L1StoreAtomicity dt l1.
+Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms dt) (l1T: L1Theorems dt): L1StoreAtomicity dt.
   Import dt l1 l1In l1T.
 
   Theorem enqHasDeq:
@@ -339,12 +333,12 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
       enqLd rc rl rs rt + enqSt rc rl rt ->
       rl = ql -> qd = Ld ->
       deqR qc ql qa qd qi qt ->
-      match rs with
-        | Initial => forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
-                       enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
-                       deqR qc' ql' qa' qd' qi' qt' ->
-                       rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)
-        | Store m =>
+      (rs = Initial /\
+       forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
+         enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' ->
+         deqR qc' ql' qa' qd' qi' qt' ->
+         rl' = ql' -> 0 <= rt' < rt -> ~ (qa = qa' /\ qd' = St)) \/
+      (exists m, rs = Store m /\
           exists rmc rml rms rmt qmc qml qma qmd qmi qmt
             (enqm: enqLd rmc rml rms rmt + enqSt rmc rml rmt),
             deqR qmc qml qma qmd qmi qmt /\
@@ -353,8 +347,7 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
             forall {rc' rl' rs' rt' qc' ql' qa' qd' qi' qt'},
               enqLd rc' rl' rs' rt' + enqSt rc' rl' rt' -> deqR qc' ql' qa' qd' qi' qt' ->
               rl' = ql' -> rmt < rt' < rt ->
-              ~ (qa = qa' /\ qd' = St)
-      end.
+              ~ (qa = qa' /\ qd' = St)).
   Proof.
     intros.
     destruct H as [ld|st].
@@ -365,7 +358,9 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     rewrite dt in *.
     pose proof (uniqDeqLabels deq H2 H0) as [_ [aEq _]].
     rewrite aEq in *. clear aEq.
-    destruct rs.
+    destruct lv as [[init lv1]| [rest lv2]].
+    left.
+    constructor. assumption.
     intros.
     unfold not; intros [aEq dIsSt].
     rewrite dIsSt in H3.
@@ -374,27 +369,29 @@ Module mkL1StoreAtomicity (dt: DataTypes) (l1: L1Axioms dt) (l1In: L1InputAxioms
     pose proof (enqLdImpDeq ld2) as [a2 [i2 [deq2 _]]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (lv qt' H5 qc' ql' qi' (deqDef H3) H3).
+    apply (lv1 qt' H5 qc' ql' qi' (deqDef H3) H3).
     pose proof (enqStImpDeq st2) as [a2 [i2 deq2]].
     pose proof (uniqDeqLabels deq2 H3 H4) as [_ [_ [_ [_ tEq]]]].
     rewrite tEq in *. clear tEq.
-    apply (lv qt' H5 qc' ql' qi' (deqDef H3) H3).
-    destruct lv as [cb [ib [tb [cbDef [tbLtRt [deqb noDeq]]]]]].
+    apply (lv1 qt' H5 qc' ql' qi' (deqDef H3) H3).
+    destruct lv2 as [rsEqRest [cb [ib [tb [cbDef [tbLtRt [deqb noDeq]]]]]]].
     pose proof (deqImpEnq deqb) as hope.
     simpl in *.
+    right.
+    exists rest.
+    constructor. assumption.
     exists cb.
-    exists l.
+    exists rest.
     exists Initial.
     exists tb.
     exists cb.
-    exists l.
+    exists rest.
     exists qa.
     exists St.
     exists ib.
     exists tb.
     exists (inr hope).
-    constructor.
-    assumption.
+    constructor. assumption.
     constructor. auto.
     constructor. auto.
     constructor. assumption.
@@ -448,7 +445,7 @@ End mkL1InputTypes.
 Module mkL1InputAxioms (dt: DataTypes) (l1A: L1Axioms dt).
   Module li := mkL1InputTypes dt l1A.
   Export li.
-  Module mkRealL1InputAxioms (lb: L1BaseInputAxioms dt li): L1InputAxioms dt l1A.
+  Module mkRealL1InputAxioms (lb: L1BaseInputAxioms dt li): L1InputAxioms dt.
     Import lb li dt l1A.
     Theorem uniqDeqLabels:
       forall {c1 l1 a1 d1 i1 t1 c2 l2 a2 d2 i2 t2},

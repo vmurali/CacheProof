@@ -53,15 +53,15 @@ Module Type StoreAtomicity (dt: DataTypes) (l1B: L1InputTypes dt).
   Parameter storeAtomicity:
     forall {r q},
       labelR r = labelQ q -> desc q = Ld ->
-      match stl r with
-        | Initial => forall {r' q'},
-                       labelR r' = labelQ q' -> 0 <= timeR r' < timeR r
-                       -> ~ (loc q = loc q' /\ desc q' = St)
-        | Store m => exists rm qm, labelR rm = m /\ labelQ qm = m /\
-                                   timeR rm < timeR r /\ loc qm = loc q /\ desc qm = St /\
-                                   forall {r' q'},
-                                     labelR r' = labelQ q' -> timeR rm < timeR r' < timeR r ->
-                                     ~ (loc q = loc q' /\ desc q' = St)
-      end.
+      (stl r = Initial /\
+       forall {r' q'},
+         labelR r' = labelQ q' -> 0 <= timeR r' < timeR r
+         -> ~ (loc q = loc q' /\ desc q' = St)) \/
+      (exists m, stl r = Store m /\
+                 exists rm qm, labelR rm = m /\ labelQ qm = m /\
+                               timeR rm < timeR r /\ loc qm = loc q /\ desc qm = St /\
+                               forall {r' q'},
+                                 labelR r' = labelQ q' -> timeR rm < timeR r' < timeR r ->
+                                 ~ (loc q = loc q' /\ desc q' = St)).
 End StoreAtomicity.
 

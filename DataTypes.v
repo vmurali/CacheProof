@@ -1,8 +1,8 @@
-Require Import MsiState Tree Hier.
+Require Import MsiState Tree.
 
 Export Tree MsiState.
 
-Module Type DataTypes <: Hier.
+Module Type DataTypes.
 
   Parameter hier: Tree.
   Axiom treeName1: match hier with
@@ -16,7 +16,6 @@ Module Type DataTypes <: Hier.
 
   Definition Time := nat.
   Parameter Addr: Set.
-  Parameter getSt: list nat -> Addr -> Time -> State.
 
   Inductive Desc := Ld | St.
 
@@ -25,9 +24,7 @@ Module Type DataTypes <: Hier.
   Definition Cache := Tree.
   Definition defined c := descendent c hier.
 
-  Definition state c := match c with
-                          | C n ls => getSt n
-                        end.
+  Parameter state: Cache -> Addr -> Time -> State.
 
   Parameter dir: Cache -> Cache -> Addr -> Time -> State.
 
@@ -43,47 +40,14 @@ Module Type DataTypes <: Hier.
   Parameter data: Cache -> Addr -> Time -> StLabel.
   Parameter dataM: Mesg -> StLabel.
 
-(*
-  Theorem noChildIsParent: forall {c}, defined c -> leaf c -> forall {c'},
-                                                                defined c' -> ~ parent c' c.
-  Proof.
-    intros c defC leafC.
-    unfold leaf in leafC.
-    destruct c.
-    firstorder.
-    unfold not; intros c' c'Def parentc'.
-    unfold parent in parentc'.
-    destruct c'; assumption.
-  Qed.
+  Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
+  Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
+  Parameter enqSt: Cache -> Label -> Time -> Prop.
 
-  Theorem defParent: defined Parent.
-  Proof.
-    unfold defined.
-    firstorder.
-  Qed.
-
-  Print defParent.
-
-  Theorem noParentHasParent: forall c, defined c -> ~ parent Parent c.
-  Proof.
-    unfold not; intros c defc parentc.
-    unfold parent in parentc.
-    assumption.
-  Qed.
-    
-  Theorem whoParent: forall n, parent (Child n) Parent.
-  Proof.
-    intros.
-    unfold parent.
-    auto.
-  Qed.
-
-  Theorem who'Parent: forall c, leaf c -> parent c Parent.
-  Proof.
-    intros c leaf_c.
-    destruct c; unfold leaf; auto.
-  Qed.
-*)
+  Parameter wait: Cache -> Addr -> Time -> bool.
+  Parameter waitS: Cache -> Addr -> Time -> State.
+  Parameter dwait: Cache -> Cache -> Addr -> Time -> bool.
+  Parameter dwaitS: Cache -> Cache -> Addr -> Time -> State.
 End DataTypes.
 
 

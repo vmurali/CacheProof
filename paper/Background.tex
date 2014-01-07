@@ -1,0 +1,191 @@
+\section{Background}
+
+In order to obtain the execution semantics of a multi-threaded program on a
+multi-processor system, one has to understand the memory consistency model of the
+underlying system. This is necessary because, as opposed to a direct access to
+a single-ported memory, the processors a) have store buffers which reorders the
+sequence of memory requests from the processor, for faster access (say by bypassing
+a store-value to a subsequent load request), and b) communicate with the memory
+through several levels of caches, which cache the data for faster access. The
+memory consistency model describes the semantic behavior of such requests and
+the implementation of the system ensures that the cache hierarchy and the store
+buffers do not violate the specified semantics.
+
+Memory consistency models can be partitioned into two sub-parts
+\cite{Arvind-memory-model}: a) the store-atomicity property for each
+location/address and b) the reordering restrictions between requests to
+different locations within each processor.  The store-atomicity property per address
+can be informally explained as follows: each location behaves like an atomic
+register in which no two writes (stores) to that location can happen
+simultaneously, and any read of that location (load) returns the previously
+written value in that location. Most memory consistency models require that
+the memory subsystem obeys the store-atomicity property, which is a global
+property for the whole multi-processor system. Unlike the store-atomicity property,
+the reordering restrictions dictated by the memory consistency model pertain to
+reordering requests within the same processor, but across multiple addresses. For
+instance, it dictates whether a store request to an address $x$ can be issued
+to the memory sub-system before a load request to a different address $y$,
+which was issued by the same processor earlier (\ie load $y$ happened before store
+$x$ is program order, but the order of issue to memory sub-system is reversed).
+
+The mechanism employed by the memory sub-system to ensure store-atomicity per
+location, in the presence of caches, is known as \emph{cache coherence}. In the
+absence of caches, since there is exactly one copy of the data for each
+address, it is easy to ensure cache coherence. The problem comes in the
+presence of shared caches -- multiple copies of the same address can exist in
+different caches, and if these locations are independently written, then the
+same address can end up having different values in two different caches. Each
+location would no longer behave like an atomic register unless some sort of
+co-ordination happens between the different caches -- this co-ordination is
+summed up as the \emph{cache coherence protocol}.
+
+\subsection{Formal definition of store-atomicity}
+In this section we give the formal definition of the store-atomicity property.
+
+A request issued by a processor to the memory sub-system will contain the
+address corresponding to the request, and a type indicating whether the request
+is a load or a store. In case of a store request, it will normally contain the
+data to be stored. We augment the request message with two special fields: a
+\mylabel which uniquely identifies each request, and an \myindex which
+is a natural number denoting the position of a request amongst those emanating
+from a particular processor. We omit the data field because it can be subsumed
+by the unique label (the data and the unique label together forms another
+unique label).
+
+A response issued by the memory sub-system to the processor will contain a
+label to identify the request corresponding to the response and the processor
+to which the response is sent to. In the case of a load request, the memory
+sub-system returns \stl,  the label of the last store to that address. In
+case there has been no store to that address, a special value called Initial is
+returned. The memory sub-system also returns a natural number, \mytime
+which represents the position at which this request has been handled globally
+among all the requests issued from all the processors. Both the store label (or
+Initial) and the time are needed just for the definition of the store-atomicity
+property -- a real system will simply return the data corresponding to the load
+request's address.
+
+\begin{figure}
+\centering
+\begin{tabular}{|p{.02\textwidth}lp{.9\textwidth}|}
+\hline
+\multicolumn{3}{|c|}{\Request}\\
+\hline
+&\proc:& Processor issuing the request\\
+&\mylabel:& A unique label to identify the request\\
+&\loc:& Address associated with the request\\
+&\desc:& Request type (\Ld{} or \St)\\
+&\myindex:& A unique natural number indicating the local order of requests\\
+\hline
+\hline
+\multicolumn{3}{|c|}{\Response}\\
+\hline
+&\proc:& Processor which receives the response\\
+&\mylabel:& Label identifying the request corresponding to this response\\
+&\stl:& The label of the last store to that address (or the special value,
+       Initial) in case of a load response\\
+&\mytime:& A natural number indicating the global order of (processing the) requests\\
+\hline
+\end{tabular}
+\caption{Data types for request and response}
+\label{req-resp}
+\end{figure}
+
+The uniqueness of request labels (globally) and request indices (per processor) can be defined as follows:
+\begin{defn}
+\begin{multline*}
+\textit{uniqReqLabels} := \forall q_1, q_2\in\Request, q_1.\mylabel = q_2.\mylabel @-> q_1 = q_2\\
+\end{multline*}
+\end{defn}
+\begin{defn}
+\begin{multline*}
+\textit{uniqIndices} := \forall q_1, q_2\in\Request,
+     q_1.\proc = q_2.\proc @-> q_1.\myindex = q_2.\myindex \\ @-> q_1 = q_2
+\end{multline*}
+\end{defn}
+
+The responses should obey the following sanity conditions:
+\begin{defn} (Each response corresponds to a request.)
+\begin{equation*}
+\textit{respHasReq} := \forall r\in\Response, \exists q\in\Request, r.\mylabel = q.\mylabel
+\end{equation*}
+\end{defn}
+
+\begin{defn} (A response comes back to the same processor that sent the corresponding request.)
+\begin{multline*}
+\textit{respProc} := \forall (r\in\Response) (q\in\Request), r.\mylabel = q.\mylabel \\ @-> r.\proc = q.\proc
+\end{multline*}
+\newline
+\end{defn}
+
+\begin{defn} (The labels in the responses are unique. Since \stl{} field is irrelecant for
+store requests, they are checked only for load requests.)
+\begin{multline*}
+\textit{uniqRespLabels} := \forall (r_1, r_2 \in \Response), r_1.\mylabel = r_2.\mylabel @-> \\
+\hspace{1cm} r_1.\proc = r_2.\proc \wedge r_1.\mytime = r_2.\mytime \wedge \hfill \\
+\forall (q \in \Response), q.\mylabel = r_1.\mylabel @->
+q.\desc = \Ld @-> r_1.\stl = r_2.\stl
+\end{multline*}
+\end{defn}
+
+\begin{defn} (No response can share the same time as another store response.)
+\begin{multline*}
+\textit{uniqStRespTimes} := 
+\forall (r_1, r_2 \in Response), r_1.\mytime = r_2.\mytime @-> \\
+\forall (q_1, q_2 \in Request), r_1.\mylabel = q_1.\mylabel @->
+r_2.\mylabel = q_2.\mylabel -> \\
+q_1.\loc = q_2.\loc @-> q_1.\desc = \St @-> \\ r_1.\mylabel = r_2.\mylabel
+\end{multline*}
+\end{defn}
+
+In addition, the global ordering of responses to the same processor should not
+violate the local ordering of the corresponding requests.
+\begin{defn}
+\begin{multline*}
+\textit{localOrdering} :=
+\forall (r_1, r_2 \in \Response) (q_1, q_2 \in \Request), \\ r_1.\mylabel
+= q_1.\mylabel @-> r_2.\mylabel = q_2.\mylabel @-> \\ q_1.\proc = q_2.\proc @->
+q_1.\loc = q_2.\loc @-> \\ q_1.\myindex < q_2.\myindex @-> r_1.\mytime \le r_2.\mytime
+\end{multline*}
+\end{defn}
+
+This brings us to the main condition for store atomicity which states that the
+store label returned in a load response corresponds to the \emph{last earlier}
+store request that has been processed in the system for that address (lastEarlierValue). The
+\emph{last} and \emph{earlier} are defined according to the field \mytime{}
+returned in the responses. In case no store has happened earlier for a
+particular address when a load is processed, then the load response returns a
+special value \Initial, which is used to initialize all the addresses (initialValue).
+
+\begin{defn}
+\begin{multline*}
+\textit{initialValue}:= \forall (r \in \Request) (q \in \Response), r.\mylabel = q.\mylabel @->
+q.\desc = \Ld @-> \\(r.\stl = \Initial \wedge
+\forall (r' \in \Response) (q' \in \Request),
+r'.\mylabel = q'.\mylabel @-> \\ 0 \le r'.\mytime < r.\mytime @->
+\neg (q.\loc = q'.\loc \wedge q'.\desc = \St))
+\end{multline*}
+\end{defn}
+
+\begin{defn}
+\begin{multline*}
+\textit{lastEarlierValue} := \forall (r \in \Request) (q \in \Response), r.\mylabel = q.\mylabel @-> \\
+q.\desc = \Ld @-> 
+(\exists m, r.\stl = \Store m \wedge \\
+\exists (r_m \in \Response) (q_m \in \Request), 
+r_m.\mylabel = m \wedge q_m.\mylabel = m \wedge \\
+r_m.\mytime < r.\mytime \wedge q_m.\loc = q.\loc \wedge q_m.\desc = \St \wedge  \\
+\forall (r' \in \Response) (q' \in \Request),
+r'.\mylabel = q'.\mylabel @-> \\ r_m.\mytime < r'.\mytime < r.\mytime ->
+\neg (q.\loc = q'.\loc \wedge q'.\desc = \St))
+\end{multline*}
+\end{defn}
+
+Using the above definitions, we can define the store-atomicity theorem as follows:
+\begin{thm}
+\begin{multline*}
+storeAtomicity := \textit{uniqReqLabels} @-> \textit{uniqIndices} @-> \\
+\textit{respHasReq} \wedge \textit{respProc} \wedge \textit{uniqRespLabels} \wedge
+\textit{uniqStRespTimes} \wedge \textit{localOrdering}\\ \wedge 
+(\textit{initialValue} \vee \textit{lastEarlierValue})
+\end{multline*}
+\end{thm}

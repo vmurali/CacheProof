@@ -51,11 +51,6 @@ Proof.
   repeat decide equality.
 Qed.
 
-Definition treeNthName nm ls := forall n,
-                                  n < length ls -> match nth n ls (C nil nil) with
-                                                     | C x _ => x = n :: nm
-                                                   end.
-
 Theorem hasFork':
   forall {c1 c2},
     ~ descendent c1 c2 -> ~ descendent c2 c1 ->
@@ -100,3 +95,24 @@ Proof.
   exists d1; firstorder.
   exists d2; firstorder.
 Qed.
+
+Theorem noLeafsDesc {c1 c2}: leaf c1 -> leaf c2 -> c1 <> c2 -> ~ descendent c1 c2.
+Proof.
+  unfold not; intros leaf_c1 leaf_c2 c1_ne_c2 c1_c2.
+  pose proof (clos_rt_rtn1 Tree parent c1 c2 c1_c2) as trans.
+  destruct trans as [easy|hard].
+  auto.
+  unfold parent in H. unfold leaf in leaf_c2.
+  destruct z.
+  destruct l0.
+  unfold In in H.
+  assumption.
+  assumption.
+Qed.
+
+Definition treeNthName nm ls := forall n,
+                                  n < length ls -> match nth n ls (C nil nil) with
+                                                     | C x _ => x = n :: nm
+                                                   end.
+
+
