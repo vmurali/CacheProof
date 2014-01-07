@@ -46,6 +46,10 @@ Section Tree_ind1.
     end.
 End Tree_ind1.
 
+Fixpoint decTree (t1 t2: Tree): {t1 = t2} + {t1 <> t2}.
+Proof.
+  repeat decide equality.
+Qed.
 
 Definition treeNthName nm ls := forall n,
                                   n < length ls -> match nth n ls (C nil nil) with
