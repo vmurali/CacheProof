@@ -1,35 +1,18 @@
 Inductive State := In | Sh | Mo.
 
-Definition slt x y := match x with
-                        | In => match y with
-                                  | In => False
-                                  | Sh => True
-                                  | Mo => True
-                                end
-                        | Sh => match y with
-                                  | In => False
-                                  | Sh => False
-                                  | Mo => True
-                                end
-                        | Mo => False
+Definition slt x y := match x, y with
+                        | In, In => False
+                        | Sh, Mo => True
+                        | Sh, _ => False
+                        | Mo, _ => False
+                        | _, _ => True
                       end.
 Definition sgt x y := slt y x.
-Definition sle x y := match x with
-                        | In => match y with
-                                  | In => True
-                                  | Sh => True
-                                  | Mo => True
-                                end
-                        | Sh => match y with
-                                  | In => False
-                                  | Sh => True
-                                  | Mo => True
-                                end
-                        | Mo => match y with
-                                  | In => False
-                                  | Sh => False
-                                  | Mo => True
-                                end
+Definition sle x y := match x, y with
+                        | Sh, In => False
+                        | Mo, In => False
+                        | Mo, Sh => False
+                        | _, _ => True
                       end.
 
 Theorem sle_eq: forall {x y}, x = y -> sle x y.
@@ -94,4 +77,16 @@ Theorem sle_sle_sle: forall {x y z}, sle x y -> sle y z -> sle x z.
 Proof.
   intros x y z x_le_y y_le_z.
   unfold sle in *; destruct x; destruct y; destruct z; auto.
+Qed.
+
+Definition decSle x y := match x, y with
+                           | Sh, In => false
+                           | Mo, In => false
+                           | Mo, Sh => false
+                           | _, _ => true
+                         end.
+
+Definition decSle_sle : forall {x y}, decSle x y = true -> sle x y.
+Proof.
+  unfold decSle; unfold sle; intros x y; destruct x; destruct y; auto; discriminate.
 Qed.

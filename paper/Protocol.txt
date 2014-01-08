@@ -42,7 +42,7 @@ Parent p receives request and sends response
      /\ (x = S ->
           forall i, parent p i -> i <> c -> p.dstate[i][a] <= S)
      /\ (p.state[a] >= x)
-     /\ p.wait[c][a] = false
+     /\ p.dwait[c][a] = false
      /\ p.dstate[c][a] <= y) -> {
   let d = if p.dstate[c][a] = I then p.data[a] else _ in
                          p2c[c].enq(<Resp x a d>)
@@ -52,7 +52,7 @@ Parent p receives request and sends response
 
 Child receives response
 (p2c[c].first = <Resp x a d>) -> {
-  if(c.wait[a] = true && c.waits[a] <= x)
+  if(c.waits[a] <= x)
     c.wait[a] <= false
   if(c.state[a] = I)
     c.data[a] <= d
@@ -78,7 +78,7 @@ Child receives request and sends response
 
 Parent receives response
 (c2pResp[c].first = <y x a d> /\ p.dstate[c][a] = y) -> {
-  if(p.dwait[c][a] = true && p.dwaits[c][a] >= x)
+  if(p.dwaits[c][a] >= x)
     p.dwait[c][a] <= false
   if(p.dstate[c][a] = M)
     p.data[a] <= d
@@ -87,7 +87,8 @@ Parent receives response
 }
 
 Child sends voluntary response
-(c.state[a] > x /\ c.wait[a] = false) -> {
+(c.state[a] > x /\ c.wait[a] = false /\
+	forall i, parent c i -> c.dstate[i] <= x) -> {
   let d = if c.state[a] = M then c.data[a] else _ in
                         c2pResp[c].enq(<c.state[a] x a d>)
   c.state[a] <= x
