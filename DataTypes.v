@@ -1,4 +1,4 @@
-Require Import MsiState Tree.
+Require Import MsiState Tree Coq.Lists.Streams.
 
 Export Tree.
 
@@ -34,13 +34,14 @@ Module Type DataTypes.
   Parameter Label : Set.
   Inductive StLabel := Initial | Store : Label -> StLabel.
 
-  Record BaseReq :=
-    { lbl: Label;
-      lct: Addr;
-      dsc: Desc;
-      idx: Index
-    }.
-
+  Definition MLabel := Time.
+  Record Mesg := {
+                from: State;
+                to: State;
+                addr: Addr;
+                dataM: StLabel;
+                msgId: MLabel
+              }.
 
 
   Parameter state: Cache -> Addr -> Time -> State.
@@ -53,12 +54,6 @@ Module Type DataTypes.
   Parameter dwait: Cache -> Cache -> Addr -> Time -> bool.
   Parameter dwaitS: Cache -> Cache -> Addr -> Time -> State.
 
-  Parameter Mesg: Set.
-  Parameter from: Mesg -> State.
-  Parameter to: Mesg -> State.
-  Parameter addr: Mesg -> Addr.
-  Parameter dataM: Mesg -> StLabel.
-
   Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
   Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
   Parameter enqSt: Cache -> Label -> Time -> Prop.
@@ -68,7 +63,6 @@ Module Type DataTypes.
   Parameter recv: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter proc: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter deq: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-
 
 End DataTypes.
 

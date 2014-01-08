@@ -1,5 +1,4 @@
-Require Import DataTypes.
-Require Import Omega.
+Require Import DataTypes Omega.
 
 Module Type Channel (dt: DataTypes).
   Import dt.
