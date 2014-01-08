@@ -1,4 +1,4 @@
-Require Import DataTypes StoreAtomicity Omega Coq.Logic.Classical.
+Require Import DataTypes StoreAtomicity Omega Coq.Logic.Classical MsiState.
 
 Module Type L1Axioms (dt: DataTypes).
   Import dt.

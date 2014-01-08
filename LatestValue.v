@@ -1,16 +1,16 @@
 Require Import DataTypes Useful Channel Cache Compatible L1 Coq.Logic.Classical
-Coq.Relations.Operators_Properties Coq.Relations.Relation_Operators.
-Require List.
+Coq.Relations.Operators_Properties Coq.Relations.Relation_Operators List MsiState.
+(*Require List.*)
 
 Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
 
   Axiom toChild: forall {n a t p m}, defined n -> defined p ->
                    parent n p -> 
-                   mark mch p n a t m -> from m = In -> dataM m = data p a t.
+                   mark mch p n a t m -> from m = MsiState.In -> dataM m = data p a t.
   Axiom fromParent: forall {n a t p m}, defined n -> defined p ->
                       parent n p -> 
-                      recv mch p n a t m -> from m = In -> data n a (S t) = dataM m.
+                      recv mch p n a t m -> from m = MsiState.In -> data n a (S t) = dataM m.
   Axiom toParent: forall {n a t c m}, defined n -> defined c ->
                      parent c n ->
                      mark mch c n a t m -> slt Sh (from m) -> dataM m = data c a t.
@@ -26,7 +26,7 @@ Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Axiom changeData:
     forall {n a t}, defined n ->
       data n a (S t) <> data n a t ->
-      (exists m, (exists p, defined p /\ parent n p /\ recv mch p n a t m /\ from m = In) \/
+      (exists m, (exists p, defined p /\ parent n p /\ recv mch p n a t m /\ from m = MsiState.In) \/
                  (exists c, defined c /\ parent c n /\ recv mch c n a t m /\
                             slt Sh (from m))) \/
       exists l i, deqR n l a St i t.
@@ -46,7 +46,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
   Theorem uniqM:
     forall {c a t}, defined c ->
       leaf c ->
-      state c a t = Mo -> forall {co}, defined co -> leaf co -> c <> co -> state co a t = In.
+      state c a t = Mo -> forall {co}, defined co -> leaf co -> c <> co -> state co a t = MsiState.In.
   Proof.
     intros c a t defC leaf_c cM co defCo leaf_co c_ne_co.
     pose proof (noLeafsDesc leaf_c leaf_co c_ne_co) as desc1.
@@ -69,7 +69,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
   Qed.
 
   Theorem leafGood: forall {p n a t}, defined p -> defined n -> parent n p ->
-                                      slt In (dir p n a t) -> slt (state n a t) Mo ->
+                                      slt MsiState.In (dir p n a t) -> slt (state n a t) Mo ->
                                       forall {c l i}, 
                                         defined c -> ~ deqR c l a St i t.
   Proof.
@@ -367,7 +367,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
       specialize (noNStore bad); firstorder.
 
-      destruct (classic (state n a t = In \/ exists c, defined c /\ parent c n /\
+      destruct (classic (state n a t = MsiState.In \/ exists c, defined c /\ parent c n /\
                                                        slt Sh (dir n c a t)))
                as [hard | easy].
       clear prevNotLatest.
@@ -510,9 +510,9 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       pose proof (recvImpMark recvm) as [ts [ts_le_t markm]].
       pose proof (@pRecvNonI n c defN defC c_n m ts t a markm recvm) as pHigh.
       pose proof (@cSendNonM n c defN defC c_n m ts t a markm recvm) as cLow.
-      assert (pHigh1: forall t0, ts < t0 <= t -> slt In (dir n c a t0)) by
+      assert (pHigh1: forall t0, ts < t0 <= t -> slt MsiState.In (dir n c a t0)) by
           ( intros t0 cond; assert (H: ts <= t0 <= t) by omega; apply (pHigh t0 H)).
-      assert (pHigh2: slt In (dir n c a ts)) by (assert (H: ts <= ts <= t) by omega;
+      assert (pHigh2: slt MsiState.In (dir n c a ts)) by (assert (H: ts <= ts <= t) by omega;
                                                 apply (pHigh ts H)).
 
       assert (noDeq1: forall t0, ts < t0 <= t ->
@@ -592,7 +592,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       assert (ex': forall c, defined c -> parent c n -> sle (dir n c a t) Sh) by
           ( intros c defC c_n; unfold sle in *; specialize (ex c defC c_n);
             unfold slt in *; destruct (dir n c a t); auto).
-      assert (ex2: state n a t <> In) by firstorder.
+      assert (ex2: state n a t <> MsiState.In) by firstorder.
       assert (ex2': sle Sh (state n a t)) by (destruct (state n a t); unfold sle in *;
                                                                       auto).
       firstorder.

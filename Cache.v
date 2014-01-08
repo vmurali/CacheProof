@@ -1,4 +1,4 @@
-Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical.
+Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical MsiState.
 
 Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.

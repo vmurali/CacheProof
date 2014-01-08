@@ -4,12 +4,6 @@ Require Import Omega.
 Module Type Channel (dt: DataTypes).
   Import dt.
 
-  Parameter mark: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter send: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter recv: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter proc: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-  Parameter deq: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-
   Section local.
     Context {s: ChannelType}.
     Context {p c : Cache}.
@@ -133,11 +127,11 @@ End ChannelPerAddr.
 
 Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
   Import dt.
-  Definition mark ch p c a t m := ch.mark ch p c t m /\ addr m = a.
-  Definition send ch p c a t m := ch.send ch p c t m /\ addr m = a.
-  Definition recv ch p c a t m := ch.recv ch p c t m /\ addr m = a.
-  Definition proc ch p c a t m := ch.proc ch p c t m /\ addr m = a.
-  Definition deq ch p c a t m := ch.deq ch p c t m /\ addr m = a.
+  Definition mark ch p c a t m := dt.mark ch p c t m /\ addr m = a.
+  Definition send ch p c a t m := dt.send ch p c t m /\ addr m = a.
+  Definition recv ch p c a t m := dt.recv ch p c t m /\ addr m = a.
+  Definition proc ch p c a t m := dt.proc ch p c t m /\ addr m = a.
+  Definition deq ch p c a t m := dt.deq ch p c t m /\ addr m = a.
 
   Set Implicit Arguments.
   Section local.

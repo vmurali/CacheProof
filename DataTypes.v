@@ -1,10 +1,12 @@
 Require Import MsiState Tree.
 
-Export Tree MsiState.
+Export Tree.
+
 
 Module Type DataTypes.
 
   Parameter hier: Tree.
+
   Axiom treeName1: match hier with
                      | C x _ => x = nil
                    end.
@@ -15,6 +17,7 @@ Module Type DataTypes.
                                end.
 
   Definition Time := nat.
+
   Parameter Addr: Set.
   Parameter zero: Addr.
   Axiom decAddr: forall a1 a2:Addr, {a1 = a2} + {a1 <> a2}.
@@ -26,30 +29,47 @@ Module Type DataTypes.
   Definition Cache := Tree.
   Definition defined c := descendent c hier.
 
-  Parameter state: Cache -> Addr -> Time -> State.
+  Inductive ChannelType := mch | rch.
 
+  Parameter Label : Set.
+  Inductive StLabel := Initial | Store : Label -> StLabel.
+
+  Record BaseReq :=
+    { lbl: Label;
+      lct: Addr;
+      dsc: Desc;
+      idx: Index
+    }.
+
+
+
+  Parameter state: Cache -> Addr -> Time -> State.
   Parameter dir: Cache -> Cache -> Addr -> Time -> State.
+
+  Parameter data: Cache -> Addr -> Time -> StLabel.
+
+  Parameter wait: Cache -> Addr -> Time -> bool.
+  Parameter waitS: Cache -> Addr -> Time -> State.
+  Parameter dwait: Cache -> Cache -> Addr -> Time -> bool.
+  Parameter dwaitS: Cache -> Cache -> Addr -> Time -> State.
 
   Parameter Mesg: Set.
   Parameter from: Mesg -> State.
   Parameter to: Mesg -> State.
   Parameter addr: Mesg -> Addr.
-
-  Inductive ChannelType := mch | rch.
-
-  Parameter Label : Set.
-  Inductive StLabel := Initial | Store : Label -> StLabel.
-  Parameter data: Cache -> Addr -> Time -> StLabel.
   Parameter dataM: Mesg -> StLabel.
 
   Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
   Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
   Parameter enqSt: Cache -> Label -> Time -> Prop.
 
-  Parameter wait: Cache -> Addr -> Time -> bool.
-  Parameter waitS: Cache -> Addr -> Time -> State.
-  Parameter dwait: Cache -> Cache -> Addr -> Time -> bool.
-  Parameter dwaitS: Cache -> Cache -> Addr -> Time -> State.
+  Parameter mark: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter send: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter recv: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter proc: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+  Parameter deq: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
+
+
 End DataTypes.
 
 
