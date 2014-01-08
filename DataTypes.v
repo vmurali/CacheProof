@@ -2,48 +2,48 @@ Require Import MsiState Tree Coq.Lists.Streams.
 
 Export Tree.
 
+Parameter hier: Tree.
+
+Axiom treeName1: match hier with
+                   | C x _ => x = nil
+                 end.
+
+Axiom treeName2: forall {p}, descendent p hier ->
+                             match p with
+                               | C x ls => treeNthName x ls
+                             end.
+
+Parameter Addr: Set.
+Parameter zero: Addr.
+Axiom decAddr: forall a1 a2:Addr, {a1 = a2} + {a1 <> a2}.
+
+Definition defined c := descendent c hier.
+
+Definition Time := nat.
+
+Inductive Desc := Ld | St.
+
+Definition Index := nat.
+
+Definition Cache := Tree.
+
+Inductive ChannelType := mch | rch.
+
+Parameter Label : Set.
+Inductive StLabel := Initial | Store : Label -> StLabel.
+
+Definition MLabel := Time.
+Record Mesg := {
+              from: State;
+              to: State;
+              addr: Addr;
+              dataM: StLabel;
+              msgId: MLabel
+            }.
+
+
 
 Module Type DataTypes.
-
-  Parameter hier: Tree.
-
-  Axiom treeName1: match hier with
-                     | C x _ => x = nil
-                   end.
-
-  Axiom treeName2: forall {p}, descendent p hier ->
-                               match p with
-                                 | C x ls => treeNthName x ls
-                               end.
-
-  Definition Time := nat.
-
-  Parameter Addr: Set.
-  Parameter zero: Addr.
-  Axiom decAddr: forall a1 a2:Addr, {a1 = a2} + {a1 <> a2}.
-
-  Inductive Desc := Ld | St.
-
-  Definition Index := nat.
-
-  Definition Cache := Tree.
-  Definition defined c := descendent c hier.
-
-  Inductive ChannelType := mch | rch.
-
-  Parameter Label : Set.
-  Inductive StLabel := Initial | Store : Label -> StLabel.
-
-  Definition MLabel := Time.
-  Record Mesg := {
-                from: State;
-                to: State;
-                addr: Addr;
-                dataM: StLabel;
-                msgId: MLabel
-              }.
-
-
   Parameter state: Cache -> Addr -> Time -> State.
   Parameter dir: Cache -> Cache -> Addr -> Time -> State.
 
@@ -63,7 +63,6 @@ Module Type DataTypes.
   Parameter recv: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter proc: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter deq: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
-
 End DataTypes.
 
 
