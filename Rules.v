@@ -356,7 +356,8 @@ Definition tlStr {A} (l l': Stream A) := l' = Streams.tl l.
 
 Definition subStr := clos_refl_trans (Stream BaseReq) tlStr.
 
-Axiom reqsGood: forall {l1 l2}, subStr l1 l2 -> l1 <> l2 -> idx (Streams.hd l1) < idx (Streams.hd l2).
+Axiom reqsGood: forall {l1 l2}, subStr l1 l2 -> l1 <> l2 ->
+                                idx (Streams.hd l1) < idx (Streams.hd l2).
 
 Definition initGlobalState :=
   {| dt := fun t w => Initial;
@@ -382,7 +383,7 @@ Definition Behavior := {sys: (Time -> GlobalState)|
 Parameter oneBeh: Behavior.
 
 
-Module Rules: DataTypes.
+Module mkDataTypes <: DataTypes.
 
   Definition state c a t := match oneBeh with
                               | exist sys _ => st (sys t) c a
@@ -432,7 +433,7 @@ Module Rules: DataTypes.
   Definition deqR c l a d i t
     := match oneBeh with
          | exist sys _ =>
-             match (resp (sys t) c) with
+             match (resp (sys (S t)) c) with
                | Some r => lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
                | None => False
              end
@@ -441,7 +442,7 @@ Module Rules: DataTypes.
   Definition enqLd c l sl t :=
     match oneBeh with
       | exist sys _ =>
-          match (resp (sys t) c) with
+          match (resp (sys (S t)) c) with
             | Some r => lbl r = l /\ dt (sys t) c (lct r) = sl /\ dsc r = Ld
             | None => False
           end
@@ -450,11 +451,11 @@ Module Rules: DataTypes.
   Definition enqSt c l t :=
     match oneBeh with
       | exist sys _ =>
-          match (resp (sys t) c) with
+          match (resp (sys (S t)) c) with
             | Some r => lbl r = l /\ dsc r = St
             | None => False
           end
     end.
 
   
-End Rules.
+End mkDataTypes.

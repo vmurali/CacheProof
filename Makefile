@@ -1,4 +1,4 @@
-MODULES := Cache Channel Compatible DataTypes Hier L1 LatestValue MsiState StoreAtomicity Tree Useful Top
+MODULES := Rules Cache Channel Compatible DataTypes Hier L1 LatestValue MsiState StoreAtomicity Tree Useful Top L1Axioms
 VS      := $(MODULES:%=%.v)
 
 .PHONY: coq clean

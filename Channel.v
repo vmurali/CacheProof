@@ -86,13 +86,12 @@ Module Type Channel (dt: DataTypes).
 End Channel.
 
 Module Type ChannelPerAddr (dt: DataTypes).
-  Import dt.
 
-  Parameter mark: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter send: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter recv: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter proc: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
-  Parameter deq: ChannelType -> Cache -> Cache -> Addr -> Time -> Mesg -> Prop.
+  Definition mark ch p c a t m := dt.mark ch p c t m /\ addr m = a.
+  Definition send ch p c a t m := dt.send ch p c t m /\ addr m = a.
+  Definition recv ch p c a t m := dt.recv ch p c t m /\ addr m = a.
+  Definition proc ch p c a t m := dt.proc ch p c t m /\ addr m = a.
+  Definition deq ch p c a t m := dt.deq ch p c t m /\ addr m = a.
 
   Section local.
     Context {s: ChannelType}.
@@ -125,7 +124,6 @@ Module Type ChannelPerAddr (dt: DataTypes).
 End ChannelPerAddr.
 
 Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
-  Import dt.
   Definition mark ch p c a t m := dt.mark ch p c t m /\ addr m = a.
   Definition send ch p c a t m := dt.send ch p c t m /\ addr m = a.
   Definition recv ch p c a t m := dt.recv ch p c t m /\ addr m = a.
