@@ -1,4 +1,4 @@
-Require Import List Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties Coq.Logic.Classical.
+Require Import List Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties Coq.Logic.Classical Omega.
 
 Inductive Tree : Set :=
   | C : list nat -> list Tree -> Tree.
@@ -109,6 +109,100 @@ Proof.
   assumption.
   assumption.
 Qed.
+
+Fixpoint ht t := match t with
+                   | C _ ls => (fix f ls :=
+                                  match ls with
+                                    | nil => 0
+                                    | x :: xs => S (max (ht x) (f xs))
+                                  end) ls
+                 end.
+
+Theorem maxProp: forall x y, S (max x y) > x.
+Proof.
+  intros x.
+  induction x.
+  intros y; omega.
+  intros y.
+  unfold max.
+  fold max.
+  destruct y.
+  omega.
+  specialize (IHx y).
+  omega.
+Qed.
+
+Theorem maxProp2: forall x y, max x y >= y.
+Proof.
+  intros x.
+  induction x.
+  intros y; unfold max.
+  omega.
+  intros y.
+  unfold max.
+  fold max.
+  destruct y.
+  omega.
+  specialize (IHx y).
+  omega.
+Qed.
+
+Theorem parentHt: forall {p c}, parent c p -> ht p > ht c.
+Proof.
+  intros p c c_p.
+  unfold parent in *.
+  destruct p.
+  induction l0.
+  unfold In in *.
+  firstorder.
+  unfold In in c_p.
+  destruct c_p as [eq| neq].
+  rewrite eq.
+  unfold ht.
+  fold ht.
+  apply (maxProp (ht c) ((fix f (ls : list Tree) : nat :=
+            match ls with
+            | nil => 0
+            | x :: xs => S (max (ht x) (f xs))
+            end) l0)).
+  unfold ht.
+  fold ht.
+  specialize (IHl0 neq); clear neq.
+  pose proof (maxProp2 (ht a) ((fix f (ls : list Tree) : nat :=
+            match ls with
+            | nil => 0
+            | x :: xs => S (max (ht x) (f xs))
+            end) l0)) as use.
+  assert (use2: S (max (ht a)
+          ((fix f (ls : list Tree) : nat :=
+              match ls with
+              | nil => 0
+              | x :: xs => S (max (ht x) (f xs))
+              end) l0)) >= S ((fix f (ls : list Tree) : nat :=
+           match ls with
+           | nil => 0
+           | x :: xs => S (max (ht x) (f xs))
+           end) l0)) by omega.
+  unfold ht in IHl0; fold ht in IHl0.
+  omega.
+Qed.
+
+Theorem noCycle: forall {p c}, parent c p -> parent p c -> False.
+Proof.
+  intros p c c_p p_c.
+  pose proof (parentHt c_p) as a1.
+  pose proof (parentHt p_c) as a2.
+  omega.
+Qed.
+
+Theorem noParentChild: forall {p c}, c = p -> parent c p -> False.
+Proof.
+  intros p c p_eq_c c_p.
+  rewrite p_eq_c in *.
+  pose proof (parentHt c_p).
+  omega.
+Qed.
+  
 
 Definition treeNthName nm ls := forall n,
                                   n < length ls -> match nth n ls (C nil nil) with

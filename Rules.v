@@ -107,7 +107,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Prop :=
                                                               sle toR (st s p a) ->
                                (forall i, defined i -> i <> c -> parent i p ->
                                           sle (dirSt s p i a)
-                                              match dirSt s p c a with
+                                              match toR with
                                                 | Mo => In
                                                 | Sh => Sh
                                                 | In => Mo
