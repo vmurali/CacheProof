@@ -29,6 +29,11 @@ Definition Cache := Tree.
 
 Inductive ChannelType := mch | rch.
 
+Theorem decCh: forall (x y: ChannelType), {x = y} + {x <> y}.
+Proof.
+  intros. decide equality.
+Qed.
+
 Parameter Label : Set.
 Inductive StLabel := Initial | Store : Label -> StLabel.
 
