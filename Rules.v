@@ -31,7 +31,7 @@ Record GlobalState :=
 
 Definition dmy := Build_BaseMesg In In zero Initial.
 
-Inductive Transition (s: GlobalState) : GlobalState -> Prop :=
+Inductive Transition (s: GlobalState) : GlobalState -> Set :=
 | LoadReq: forall {c}, defined c -> leaf c -> dsc (Streams.hd (req s c)) = Ld ->
                        sle Sh (st s c (lct (Streams.hd (req s c)))) -> 
                        Transition s {|
@@ -467,7 +467,7 @@ Definition initGlobalState :=
 
 Definition Behavior := { sys: (Time -> GlobalState)|
                          sys 0 = initGlobalState /\
-                         forall {t}, Transition (sys t) (sys (S t))
+                         forall {t}, exists (x:Transition (sys t) (sys (S t))), True
                        }.
 
 Parameter oneBeh: Behavior.

@@ -8,8 +8,8 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l a d i t deqr.
     unfold deqR in deqr.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans; 
+    destruct (trans t) as [transx _].
+    destruct transx; 
     (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]).
   Qed.
 
@@ -18,8 +18,8 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l a d i t deqr.
     unfold deqR in deqr.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans; 
+    destruct (trans t) as [transx _].
+    destruct transx; 
     (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]).
   Qed.
 
@@ -30,8 +30,8 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l1 a1 d1 i1 t l2 a2 d2 i2 deq1 deq2.
     unfold deqR in *.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans.
+    destruct (trans t) as [transx _].
+    destruct transx.
     simpl in *; destruct (decTree c c0); [
                                            destruct deq1 as [use1 _]; destruct deq2 as [use2 _];
                                            rewrite use1 in use2; firstorder| firstorder].
@@ -58,14 +58,14 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     unfold state.
     unfold deqR in *.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans.
+    destruct (trans t) as [transx _].
+    destruct transx.
+    simpl in *. destruct (decTree c c0) as [eq|notEq];
+                [rewrite <- eq in *; destruct deqr as [_ [use1 [use2 _]]]; rewrite use1 in *;
+                 rewrite use2 in *; rewrite e; assumption | firstorder].
     simpl in *; destruct (decTree c c0) as [eq|notEq];
                 [rewrite <- eq in *; destruct deqr as [_ [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite H1; assumption | firstorder].
-    simpl in *; destruct (decTree c c0) as [eq|notEq];
-                [rewrite <- eq in *; destruct deqr as [_ [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite H1; assumption | firstorder].
+                 rewrite use2 in *; rewrite e; assumption | firstorder].
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -86,14 +86,14 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     unfold state.
     unfold deqR in *; unfold enqLd; unfold enqSt; unfold data.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans.
+    destruct (trans t) as [transx _].
+    destruct transx.
     simpl in *; destruct (decTree c c0) as [eq|notEq]; [
                 rewrite <- eq in *; destruct deqr as [use0 [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite use0 in *; rewrite H1; firstorder | firstorder].
+                 rewrite use2 in *; rewrite use0 in *; rewrite e; firstorder | firstorder].
     simpl in *; destruct (decTree c c0) as [eq|notEq]; [
                 rewrite <- eq in *; destruct deqr as [use0 [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite use0 in *; rewrite H1; firstorder | firstorder].
+                 rewrite use2 in *; rewrite use0 in *; rewrite e; firstorder | firstorder].
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -110,15 +110,15 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l st t enql.
     unfold enqLd in *; unfold deqR; unfold data.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans.
+    destruct (trans t) as [transx _].
+    destruct transx.
     simpl in *; destruct (decTree c c0) as [eq|notEq]; [
       rewrite <- eq in *;
       exists (lct (Streams.hd (req (fn t) c))); exists (idx (Streams.hd (req (fn t) c)));
       destruct enql as [use0 [use1 use2]]; rewrite use1 in *; rewrite use2 in *;
       rewrite use0 in *; auto | firstorder].
     simpl in *; destruct (decTree c c0); [
-      rewrite H1 in *; destruct enql as [_ [_ use]]; discriminate | firstorder].
+      rewrite e in *; destruct enql as [_ [_ use]]; discriminate | firstorder].
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -134,10 +134,10 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l t enql.
     unfold enqSt in *; unfold deqR; unfold data.
     destruct oneBeh as [fn [initState trans]].
-    specialize (trans t).
-    destruct trans.
+    destruct (trans t) as [transx _].
+    destruct transx.
     simpl in *; destruct (decTree c c0); [
-      rewrite H1 in *; destruct enql as [_ use]; discriminate | firstorder].
+      rewrite e in *; destruct enql as [_ use]; discriminate | firstorder].
     simpl in *; destruct (decTree c c0) as [eq|notEq]; [
       rewrite <- eq in *;
       exists (lct (Streams.hd (req (fn t) c))); exists (idx (Streams.hd (req (fn t) c)));
@@ -170,8 +170,8 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     assert (H: t1 + S td = S (t1 + td)) by omega.
     rewrite H; clear H.
     assert (step: subStr (req (fn (t1 + td)) c) (req (fn (S (t1 + td))) c)).
-    specialize (trans (t1 + td)).
-    destruct trans.
+    destruct (trans (t1 + td)) as [transx _].
+    destruct transx.
     simpl in *; destruct (decTree c c0); [
     apply (rt_step (Stream BaseReq) tlStr (req (fn (t1 + td)) c) (tl (req (fn (t1 + td)) c)));
       unfold tlStr; reflexivity|
@@ -201,15 +201,16 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l a d i t deqr.
     unfold deqR in *.
     destruct oneBeh as [fn [initState trans]].
-    destruct (trans t).
+    destruct (trans t) as [transx _].
+    destruct transx.
     simpl in *;
       destruct (decTree c c0); [
-        rewrite <- e in *;
+        rewrite <- e0 in *;
         firstorder|
         firstorder].
     simpl in *;
       destruct (decTree c c0); [
-        rewrite <- e in *;
+        rewrite <- e1 in *;
         firstorder|
         firstorder].
     simpl in *; firstorder.

@@ -18,27 +18,28 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       unfold mark in *.
       unfold mkDataTypes.mark in *.
       destruct oneBeh as [fn [init trans]].
-      destruct (trans t).
+      destruct (trans t) as [transx _].
+      destruct transx.
 
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n p) as [easy | hard]; [
       firstorder|
-      pose proof (listNeq hard l); firstorder].
+      pose proof (listNeq hard l0); firstorder].
 
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n p) as [easy | hard]; [
       firstorder|
-      pose proof (listNeq hard l); firstorder].
+      pose proof (listNeq hard l0); firstorder].
 
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n p) as [easy | hard]; [
-      firstorder|
+      firstorder |
       pose proof (listNeq hard l); firstorder].
 
       simpl in *.
@@ -46,7 +47,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- neq in *.
       destruct (decTree p c0) as [peq|pneq].
       rewrite <- peq in *.
-      pose proof (noCycle H1 n_p) as f.
+      pose proof (noCycle p1 n_p) as f.
       firstorder.
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
@@ -64,7 +65,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- neq in *.
       destruct (decTree p c0) as [peq|pneq].
       rewrite <- peq in *.
-      pose proof (noCycle H1 n_p) as f.
+      pose proof (noCycle p1 n_p) as f.
       firstorder.
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
@@ -82,7 +83,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- neq in *.
       destruct (decTree p c0) as [peq|pneq].
       rewrite <- peq in *.
-      pose proof (noCycle H1 n_p) as f.
+      pose proof (noCycle p1 n_p) as f.
       firstorder.
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
@@ -103,7 +104,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       simpl in *.
       destruct markm as [[_ [_ [_ [use1 [use2 _]]]]] use3].
       rewrite use1; rewrite <- use3; rewrite use2.
-      apply (H4 c defc c_n).
+      apply (s0 c defc c_n).
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n p) as [easy | hard]; [
@@ -124,7 +125,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       remember (ch (fn t) mch n p) as sth.
       assert (gd: length sth = length (tl (removelast sth))) by (f_equal; assumption).
       pose proof (listCond1 (removelast sth) use1) as gd2.
-      pose proof (listCond2 sth H2) as gd3.
+      pose proof (listCond2 sth n0) as gd3.
       omega.
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
@@ -145,7 +146,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       simpl in *.
       destruct markm as [[_ [_ [_ [use1 [use2 _]]]]] use3].
       rewrite use1; rewrite <- use3; rewrite use2.
-      apply (H3 c defc c_n).
+      apply (s0 c defc c_n).
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n p) as [easy | hard]; [
@@ -162,7 +163,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- neq in *.
       destruct (decTree p c0) as [peq|pneq].
       rewrite <- peq in *.
-      pose proof (noCycle H1 n_p) as f.
+      pose proof (noCycle p1 n_p) as f.
       firstorder.
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
@@ -176,7 +177,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       pose proof (listNeq hard l); firstorder].
       
     Qed.
-      
+ 
     Theorem sendCCond: forall {c}, defined n -> defined c ->
                                    parent c n ->
                                    forall {m},
@@ -199,21 +200,22 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       unfold mark in *.
       unfold mkDataTypes.mark in *.
       destruct oneBeh as [fn [init trans]].
-      destruct (trans t).
+      destruct (trans t) as [transx _].
+      destruct transx.
 
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n c) as [easy | hard]; [
       firstorder|
-      pose proof (listNeq hard l); firstorder].
+      pose proof (listNeq hard l0); firstorder].
 
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
       unfold List.tl in use2;
       destruct (ch (fn t) mch n c) as [easy | hard]; [
       firstorder|
-      pose proof (listNeq hard l); firstorder].
+      pose proof (listNeq hard l0); firstorder].
       
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
@@ -254,7 +256,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       remember (ch (fn t) mch n c) as sth.
       assert (gd: length sth = length (tl (removelast sth))) by (f_equal; assumption).
       pose proof (listCond1 (removelast sth) use1) as gd2.
-      pose proof (listCond2 sth H2) as gd3.
+      pose proof (listCond2 sth n0) as gd3.
       assert False by omega.
       firstorder.
       simpl in *;
@@ -301,7 +303,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       destruct (decTree c p) as [ceq|cneq].
       rewrite <- ceq in *.
       simpl in *.
-      pose proof (noCycle H1 c_n) as f.
+      pose proof (noCycle p0 c_n) as f.
       firstorder.
       destruct markm as [[use1 [use2 _]] _].
       unfold List.tl in use2;
@@ -325,7 +327,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       remember (ch (fn t) mch n c) as sth.
       assert (gd: length sth = length (tl (removelast sth))) by (f_equal; assumption).
       pose proof (listCond1 (removelast sth) use1) as gd2.
-      pose proof (listCond2 sth H2) as gd3.
+      pose proof (listCond2 sth n0) as gd3.
       assert False by omega; firstorder.
       simpl in *;
       destruct markm as [[use1 [use2 _]] _];
@@ -346,7 +348,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       destruct (decTree c p) as [ceq|cneq].
       rewrite <- ceq in *.
       simpl in *.
-      pose proof (noCycle H1 c_n) as f.
+      pose proof (noCycle p0 c_n) as f.
       firstorder.
       destruct markm as [[use1 [use2 _]] _].
       unfold List.tl in use2;
@@ -380,7 +382,8 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       unfold mkDataTypes.mark in *.
       unfold recv in *; unfold mkDataTypes.recv in *.
       destruct oneBeh as [fn [init trans]].
-      destruct (trans t).
+      destruct (trans t) as [transx _].
+      destruct transx.
 
       simpl in *.
       destruct sthm1 as [markm | markm].
@@ -388,13 +391,13 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       unfold List.tl in use2.
       destruct (ch (fn t) mch n c1) as [easy | hard].
       firstorder.
-      pose proof (listNeq hard l); firstorder.
+      pose proof (listNeq hard l0); firstorder.
       destruct markm as [[use1 [use2 _]] _].
       unfold List.tl in use2.
       destruct (ch (fn t) mch c1 n) as [easy | hard].
       firstorder.
-      pose proof (listCond2 (hard::l) use1) as j1.
-      assert (j2: length (hard::l) = length (removelast (hard::l))) by
+      pose proof (listCond2 (hard::l0) use1) as j1.
+      assert (j2: length (hard::l0) = length (removelast (hard::l0))) by
           (f_equal; assumption).
       rewrite j2 in j1; omega.
 
@@ -404,13 +407,13 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       unfold List.tl in use2.
       destruct (ch (fn t) mch n c1) as [easy | hard].
       firstorder.
-      pose proof (listNeq hard l); firstorder.
+      pose proof (listNeq hard l0); firstorder.
       destruct markm as [[use1 [use2 _]] _].
       unfold List.tl in use2.
       destruct (ch (fn t) mch c1 n) as [easy | hard].
       firstorder.
-      pose proof (listCond2 (hard::l) use1) as j1.
-      assert (j2: length (hard::l) = length (removelast (hard::l))) by
+      pose proof (listCond2 (hard::l0) use1) as j1.
+      assert (j2: length (hard::l0) = length (removelast (hard::l0))) by
           (f_equal; assumption).
       rewrite j2 in j1; omega.
 
@@ -511,7 +514,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- c1eq in *.
       destruct (decTree n c) as [neq'|nneq'].
       rewrite <- neq' in *.
-      pose proof (noCycle H1 c1_n) as f.
+      pose proof (noCycle p0 c1_n) as f.
       firstorder.
 
       destruct recvm as [[use1 [use2 _]] _].
@@ -552,12 +555,12 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       remember (ch (fn t) mch n c1) as sth.
       assert (gd: length sth = length (tl (removelast sth))) by (f_equal; assumption).
       pose proof (listCond1 (removelast sth) use1) as gd2.
-      pose proof (listCond2 sth H2) as gd3.
+      pose proof (listCond2 sth n0) as gd3.
       assert False by omega.
       firstorder.
 
       destruct (decTree c1 n) as [c1Eq|c1Neq].
-      pose proof (noParentChild c1Eq H1) as f; firstorder.
+      pose proof (noParentChild c1Eq p0) as f; firstorder.
       destruct recvm as [[use1 [use2 _]] _].
       remember (ch (fn t) mch c1 n) as sth.
       assert (gd: length sth = length (removelast sth)) by (f_equal; assumption).
@@ -594,7 +597,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- c1Eq in *.
       destruct (decTree n c) as [nEq | nNeq].
       rewrite <- nEq in *.
-      pose proof (noCycle H1 c1_n) as f; firstorder.
+      pose proof (noCycle p0 c1_n) as f; firstorder.
       destruct recvm as [[use1 [use2 _]] _].
       remember (ch (fn t) mch c1 n) as sth.
       assert (gd: length sth = length (removelast sth)) by (f_equal; assumption).
@@ -638,7 +641,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- c1eq in *.
       destruct (decTree n c1) as [nEq|nNeq].
       destruct (decTree c1 n) as [c1Eq|c1Neq].
-      pose proof (noParentChild c1Eq H1); firstorder.
+      pose proof (noParentChild c1Eq p0); firstorder.
       assert (c1 = n) by auto; firstorder.
 
       clear sthm2.
@@ -667,7 +670,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
 
       destruct (decTree n c) as [nEq|nNeq].
       assert (X: c = n) by auto.
-      pose proof (noParentChild X H1); firstorder.
+      pose proof (noParentChild X p0); firstorder.
       destruct sthm1 as [markm | recvm].
       destruct markm as [[use1 [use2 _]] _].
       remember (ch (fn t) mch n c1) as sth.
@@ -686,7 +689,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- nEq in *.
       destruct (decTree c1 p) as [c1Eq | c1Neq].
       rewrite <- c1Eq in *.
-      pose proof (noCycle H1 c1_n) as f; firstorder.
+      pose proof (noCycle p0 c1_n) as f; firstorder.
       clear sthm2.
       destruct sthm1 as [markm | recvm].
       destruct markm as [[use1 [use2 _]] _].
@@ -734,12 +737,12 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       remember (ch (fn t) mch n c1) as sth.
       assert (gd: length sth = length (tl (removelast sth))) by (f_equal; assumption).
       pose proof (listCond1 (removelast sth) use1) as gd1.
-      pose proof (listCond2 sth H2) as gd2.
+      pose proof (listCond2 sth n0) as gd2.
       assert False by omega.
       firstorder.
       destruct (decTree c1 n) as [c1Eq | c1Neq].
       destruct (decTree n c1) as [nEq | nNeq].
-      pose proof (noParentChild nEq H1) as f; firstorder.
+      pose proof (noParentChild nEq p0) as f; firstorder.
       assert (n = c1) by auto; firstorder.
       destruct recvm as [[use1 [use2 _]] _].
       remember (ch (fn t) mch c1 n) as sth.
@@ -824,7 +827,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       rewrite <- nEq in *.
       destruct (decTree c1 p) as [c1Eq | c1Neq].
       rewrite <- c1Eq in *.
-      pose proof (noCycle H1 c1_n); firstorder.
+      pose proof (noCycle p0 c1_n); firstorder.
       destruct sthm1 as [markm | recvm].
       destruct markm as [[use1 [use2 _]] _].
       remember (ch (fn t) mch n c1) as sth.
