@@ -1,4 +1,4 @@
-Require Import Coq.Logic.Classical Rules DataTypes MsiState L1 Omega Coq.Relations.Relation_Operators Coq.Lists.Streams.
+Require Import Coq.Logic.Classical Rules DataTypes MsiState L1 Omega Coq.Relations.Relation_Operators Coq.Lists.Streams DataTypes.
 
 Module mkL1Axioms : L1Axioms mkDataTypes.
   Import mkDataTypes.
@@ -7,20 +7,17 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
   Proof.
     intros c l a d i t deqr.
     unfold deqR in deqr.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx; 
-    (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]).
+    destruct (trans oneBeh t);
+    (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]);
+    assert (c = c0) by auto; firstorder.
   Qed.
 
   Theorem deqDef: forall {c l a d i t}, deqR c l a d i t -> defined c.
   Proof.
     intros c l a d i t deqr.
     unfold deqR in deqr.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx; 
-    (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]).
+    destruct (trans oneBeh t);
+    (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]); assert (c = c0) by auto; firstorder.
   Qed.
 
   Theorem uniqDeqProc: forall {c l1 a1 d1 i1 t l2 a2 d2 i2},
@@ -29,15 +26,11 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
   Proof.
     intros c l1 a1 d1 i1 t l2 a2 d2 i2 deq1 deq2.
     unfold deqR in *.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx.
-    simpl in *; destruct (decTree c c0); [
-                                           destruct deq1 as [use1 _]; destruct deq2 as [use2 _];
-                                           rewrite use1 in use2; firstorder| firstorder].
-    simpl in *; destruct (decTree c c0); [
-                                           destruct deq1 as [use1 _]; destruct deq2 as [use2 _];
-                                           rewrite use1 in use2; firstorder| firstorder].
+    destruct (trans oneBeh t).
+    simpl in *; destruct deq1 as [_ [use1 _]]; destruct deq2 as [_ [use2 _]];
+                                           rewrite use1 in use2; firstorder.
+    simpl in *; destruct deq1 as [_ [use1 _]]; destruct deq2 as [_ [use2 _]];
+                                           rewrite use1 in use2; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -57,15 +50,12 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l a d i t deqr.
     unfold state.
     unfold deqR in *.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx.
-    simpl in *. destruct (decTree c c0) as [eq|notEq];
-                [rewrite <- eq in *; destruct deqr as [_ [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite e; assumption | firstorder].
-    simpl in *; destruct (decTree c c0) as [eq|notEq];
-                [rewrite <- eq in *; destruct deqr as [_ [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite e; assumption | firstorder].
+    destruct (trans oneBeh t).
+
+    destruct deqr as [eq [_ [use1 [use2 _]]]];
+      rewrite <- eq in *; rewrite use1 in *; rewrite use2 in *; rewrite e; assumption.
+    destruct deqr as [eq [_ [use1 [use2 _]]]];
+      rewrite <- eq in *; rewrite use1 in *; rewrite use2 in *; rewrite e; assumption.
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -85,15 +75,13 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intros c l a d i t deqr.
     unfold state.
     unfold deqR in *; unfold enqLd; unfold enqSt; unfold data.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx.
-    simpl in *; destruct (decTree c c0) as [eq|notEq]; [
-                rewrite <- eq in *; destruct deqr as [use0 [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite use0 in *; rewrite e; firstorder | firstorder].
-    simpl in *; destruct (decTree c c0) as [eq|notEq]; [
-                rewrite <- eq in *; destruct deqr as [use0 [use1 [use2 _]]]; rewrite use1 in *;
-                 rewrite use2 in *; rewrite use0 in *; rewrite e; firstorder | firstorder].
+    destruct (trans oneBeh t).
+    destruct deqr as [eq [use0 [use1 [use2 _]]]]; rewrite <- eq in *; rewrite use1 in *;
+                 rewrite use2 in *; rewrite use0 in *; rewrite e;
+                 constructor; firstorder.
+    destruct deqr as [eq [use0 [use1 [use2 _]]]]; rewrite <- eq in *; rewrite use1 in *;
+                 rewrite use2 in *; rewrite use0 in *; rewrite e;
+                 constructor; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -109,16 +97,14 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
   Proof.
     intros c l st t enql.
     unfold enqLd in *; unfold deqR; unfold data.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx.
-    simpl in *; destruct (decTree c c0) as [eq|notEq]; [
+    destruct (trans oneBeh t).
+    simpl in *; destruct enql as [eq [use0 [use1 use2]]];
+      exists (lct (Streams.hd (req (sys oneBeh t) c)));
+      exists (idx (Streams.hd (req (sys oneBeh t) c)));
       rewrite <- eq in *;
-      exists (lct (Streams.hd (req (fn t) c))); exists (idx (Streams.hd (req (fn t) c)));
-      destruct enql as [use0 [use1 use2]]; rewrite use1 in *; rewrite use2 in *;
-      rewrite use0 in *; auto | firstorder].
-    simpl in *; destruct (decTree c c0); [
-      rewrite e in *; destruct enql as [_ [_ use]]; discriminate | firstorder].
+      rewrite use1 in *; rewrite use2 in *;
+      rewrite use0 in *; constructor; firstorder.
+    simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -133,16 +119,12 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
   Proof.
     intros c l t enql.
     unfold enqSt in *; unfold deqR; unfold data.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx.
-    simpl in *; destruct (decTree c c0); [
-      rewrite e in *; destruct enql as [_ use]; discriminate | firstorder].
-    simpl in *; destruct (decTree c c0) as [eq|notEq]; [
-      rewrite <- eq in *;
-      exists (lct (Streams.hd (req (fn t) c))); exists (idx (Streams.hd (req (fn t) c)));
-      destruct enql as [use1 use2]; rewrite use1 in *; rewrite use2 in *;
-      auto | firstorder].
+    destruct (trans oneBeh t).
+    simpl in *; firstorder.
+    destruct enql as [ef [use1 use2]];
+      exists (lct (hd (req (sys oneBeh t) c0)));
+      exists (idx (hd (req (sys oneBeh t) c0)));
+      rewrite ef in *; rewrite use1; rewrite use2; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -153,74 +135,59 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl in *; firstorder.
   Qed.
 
-  Theorem futureSub: forall {t1 t2} c, t1 <= t2 -> match oneBeh with
-                                                     | exist sys _ => subStr (req (sys t1) c)
-                                                                             (req (sys t2) c)
-                                                   end.
+  Theorem futureSub: forall {t1 t2} c, t1 <= t2 ->
+                                       subStr (req (sys oneBeh t1) c)
+                                              (req (sys oneBeh t2) c).
   Proof.
     intros t1 t2 c t1_le_t2.
     remember (t2 - t1) as td.
     assert (eq: t2 = t1 + td) by omega.
     rewrite eq in *; clear eq Heqtd t1_le_t2.
-    destruct oneBeh as [fn [initState trans]].
     induction td.
     assert (H: t1 + 0 = t1) by omega.
     rewrite H.
-    apply (rt_refl (Stream BaseReq) tlStr (req (fn t1) c)).
+    apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh t1) c)).
     assert (H: t1 + S td = S (t1 + td)) by omega.
     rewrite H; clear H.
-    assert (step: subStr (req (fn (t1 + td)) c) (req (fn (S (t1 + td))) c)).
-    destruct (trans (t1 + td)) as [transx _].
-    destruct transx.
+    assert (step: subStr (req (sys oneBeh (t1 + td)) c) (req (sys oneBeh (S (t1 + td))) c)).
+    destruct (trans oneBeh (t1 + td)).
     simpl in *; destruct (decTree c c0); [
-    apply (rt_step (Stream BaseReq) tlStr (req (fn (t1 + td)) c) (tl (req (fn (t1 + td)) c)));
+    apply (rt_step (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c) (tl (req (sys oneBeh (t1 + td)) c)));
       unfold tlStr; reflexivity|
-    apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c))].
+    apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c))].
     simpl in *; destruct (decTree c c0); [
-    apply (rt_step (Stream BaseReq) tlStr (req (fn (t1 + td)) c) (tl (req (fn (t1 + td)) c)));
+    apply (rt_step (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c) (tl (req (sys oneBeh (t1 + td)) c)));
       unfold tlStr; reflexivity|
-    apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c))].
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (fn (t1 + td)) c)).
-    apply (rt_trans (Stream BaseReq) tlStr (req (fn t1) c) (req (fn (t1 + td)) c)
-                    (req (fn (S (t1 + td))) c)); assumption.
+    apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c))].
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    simpl in *; apply (rt_refl (Stream BaseReq) tlStr (req (sys oneBeh (t1 + td)) c)).
+    apply (rt_trans (Stream BaseReq) tlStr (req (sys oneBeh t1) c) (req (sys oneBeh (t1 + td)) c)
+                    (req (sys oneBeh (S (t1 + td))) c)); assumption.
   Qed.
 
   Theorem deqHd: forall {c l a d i t},
                    deqR c l a d i t ->
-                   idx (Streams.hd (req (match oneBeh with
-                                           | exist sys _ => sys
-                                         end t) c)) = i.
+                   idx (Streams.hd (req (sys oneBeh t) c)) = i.
   Proof.
     intros c l a d i t deqr.
     unfold deqR in *.
-    destruct oneBeh as [fn [initState trans]].
-    destruct (trans t) as [transx _].
-    destruct transx.
-    simpl in *;
-      destruct (decTree c c0); [
-        rewrite <- e0 in *;
-        firstorder|
-        firstorder].
-    simpl in *;
-      destruct (decTree c c0); [
-        rewrite <- e1 in *;
-        firstorder|
-        firstorder].
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
+    destruct (trans oneBeh t).
+    destruct deqr as [eq rest]; rewrite <- eq; firstorder.
+    destruct deqr as [eq rest]; rewrite <- eq; firstorder.
+    firstorder.
+    firstorder.
+    firstorder.
+    firstorder.
+    firstorder.
+    firstorder.
+    firstorder.
+    firstorder.
   Qed.
 
   Theorem deqOrder: forall {c l1 a1 d1 i1 t1 l2 a2 d2 i2 t2},
@@ -233,12 +200,11 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     pose proof (deqHd deq1) as deqr1.
     pose proof (deqHd deq2) as deqr2.
     unfold deqR in *; clear deq1 deq2.
-    destruct oneBeh as [fn [initState trans]].
-    assert (notEq: req (fn t2) c <> req (fn t1) c).
+    assert (notEq: req (sys oneBeh t2) c <> req (sys oneBeh t1) c).
     unfold not; intros contra.
-    assert (Hd: Streams.hd (req (fn t2) c) = Streams.hd (req (fn t1) c)) by (f_equal; assumption).
+    assert (Hd: Streams.hd (req (sys oneBeh t2) c) = Streams.hd (req (sys oneBeh t1) c)) by (f_equal; assumption).
     assert (H2: i2 <> i1) by omega.
-    assert (H3: idx (hd (req (fn t2) c)) = idx (hd (req (fn t1) c))) by (f_equal; assumption).
+    assert (H3: idx (hd (req (sys oneBeh t2) c)) = idx (hd (req (sys oneBeh t1) c))) by (f_equal; assumption).
     rewrite deqr1 in H3; rewrite deqr2 in H3.
     firstorder.
     pose proof (reqsGood sth notEq) as contra.

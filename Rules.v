@@ -23,10 +23,7 @@ Record GlobalState :=
     wtS: Cache -> Addr -> State;
     dirWt: Cache -> Cache -> Addr -> bool;
     dirWtS: Cache -> Cache -> Addr -> State;
-    req: Cache -> Stream BaseReq;
-    resp: Cache -> option BaseReq;
-    labelCh: ChannelType -> Cache -> Cache -> list nat;
-    label: nat
+    req: Cache -> Stream BaseReq
   }.
 
 Definition dmy := Build_BaseMesg In In zero Initial.
@@ -46,18 +43,18 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                     req := fun t => match decTree t c with
                                                       | left _ => Streams.tl (req s t)
                                                       | right _ => req s t
-                                                    end;
-                                    resp := fun t => match decTree t c with
-                                                       | left _ => Some (Streams.hd (req s c))
-                                                       | right _ => None
-                                                     end;
-                                    labelCh := labelCh s;
-                                    label := label s
+                                                    end
                                   |}
 | StoreReq: forall {c}, defined c -> leaf c -> dsc (Streams.hd (req s c)) = St ->
                         (st s c (lct (Streams.hd (req s c))) = Mo) ->
                         Transition s {|
-                                     dt := dt s;
+                                     dt := fun t w => match decTree t c with
+                                                      | left _ => match decAddr w (lct (Streams.hd (req s t))) with
+                                                                    | left _ => Store (lbl (Streams.hd (req s t)))
+                                                                    | right _ => dt s t w
+                                                                  end
+                                                      | right _ => dt s t w
+                                                      end;
                                      ch := ch s;
                                      st := st s;
                                      dirSt := dirSt s;
@@ -68,13 +65,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                      req := fun t => match decTree t c with
                                                        | left _ => Streams.tl (req s t)
                                                        | right _ => req s t
-                                                     end;
-                                     resp := fun t => match decTree t c with
-                                                        | left _ => Some (Streams.hd (req s c))
-                                                        | right _ => None
-                                                      end;
-                                     labelCh := labelCh s;
-                                     label := label s
+                                                     end
                                    |}
 | ChildSendReq: forall {p c}, defined p -> defined c -> parent c p ->
                               forall {x a}, slt (st s c a) x -> wt s c a = false ->
@@ -102,17 +93,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                                            end;
                                                          dirWt := dirWt s;
                                                          dirWtS := dirWtS s;
-                                                         req := req s;
-                                                         resp := fun t => None;
-                                                         labelCh :=
-                                                           fun t w z =>
-                                                             match t, decTree w c,
-                                                                   decTree z p with
-                                                               | rch, left _, left _ =>
-                                                                 label s :: labelCh s t w z
-                                                               | _, _, _ => labelCh s t w z
-                                                             end;
-                                                         label := S (label s)
+                                                         req := req s
                                                        |}
 | ParentRecvReq: forall {p c}, defined p -> defined c -> parent c p ->
                                ch s rch c p <> nil -> let r := last (ch s rch c p) dmy in
@@ -155,22 +136,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                wtS := wtS s;
                                                dirWt := dirWt s;
                                                dirWtS := dirWtS s;
-                                               req := req s;
-                                               resp := fun t => None;
-                                               labelCh :=
-                                                 fun t w z =>
-                                                   match t, decTree w c,
-                                                         decTree z p with
-                                                     | rch, left _, left _ =>
-                                                       removelast (labelCh s t w z)
-                                                     | _, _, _ =>
-                                                       match t, decTree w p, decTree z c with
-                                                         | mch, left _, left _ =>
-                                                           label s :: (labelCh s t w z)
-                                                         | _, _, _ => labelCh s t w z
-                                                       end
-                                                   end;
-                                               label := S (label s)
+                                               req := req s
                                             |}
 | ChildRecvResp: forall {p c}, defined p -> defined c -> parent c p ->
                                ch s mch p c <> nil ->
@@ -179,14 +145,16 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                    let toM := toB m in
                                      let a := addrB m in
                                        let d := dataBM m in
-                                         Transition s {| dt := fun t w => match decTree t c, decAddr w a with
-                                                                            | left _, left _ =>
-                                                                                match st s t w with
-                                                                                  | In => d
-                                                                                  | _ => dt s t w
-                                                                                end
-                                                                            | _, _ => dt s t w
-                                                                          end;
+                                         Transition s {| dt := fun t w =>
+                                                                 match decTree t c,
+                                                                       decAddr w a with
+                                                                   | left _, left _ =>
+                                                                     match fromB m with
+                                                                       | In => d
+                                                                       | _ => dt s t w
+                                                                     end
+                                                                   | _, _ => dt s t w
+                                                                 end;
                                                          ch := fun t w z =>
                                                                  match t, decTree w p,
                                                                        decTree z c with
@@ -209,17 +177,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                          wtS := wtS s;
                                                          dirWt := dirWt s;
                                                          dirWtS := dirWtS s;
-                                                         req := req s;
-                                                         resp := fun t => None;
-                                                         labelCh :=
-                                                           fun t w z =>
-                                                             match t, decTree w p,
-                                                                   decTree z c with
-                                                               | mch, left _, left _ =>
-                                                                 removelast (labelCh s t w z)
-                                                               | _, _, _ => labelCh s t w z
-                                                             end;
-                                                         label := label s
+                                                         req := req s
                                                       |}
 | ParentSendReq: forall {p c}, defined p -> defined c -> parent c p ->
                                forall {x a}, slt (dirSt s p c a) x -> dirWt s p c a = false ->
@@ -251,17 +209,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                                                    | left _, left _, left _ => x
                                                                                    | _, _, _ => dirWtS s t w z
                                                                                  end;
-                                                          req := req s;
-                                                          resp := fun t => None;
-                                                          labelCh :=
-                                                            fun t w z =>
-                                                              match t, decTree w p,
-                                                                    decTree z c with
-                                                                | rch, left _, left _ =>
-                                                                  label s :: labelCh s t w z
-                                                                | _, _, _ => labelCh s t w z
-                                                              end;
-                                                          label := S (label s)
+                                                          req := req s
                                                         |}
 | ChildRecvReq: forall {p c}, defined p -> defined c -> parent c p ->
                               ch s rch p c <> nil ->
@@ -297,22 +245,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                               wtS := wtS s;
                                               dirWt := dirWt s;
                                               dirWtS := dirWtS s;
-                                              req := req s;
-                                              resp := fun t => None;
-                                              labelCh :=
-                                                fun t w z =>
-                                                  match t, decTree w p,
-                                                        decTree z c with
-                                                    | rch, left _, left _ =>
-                                                      removelast (labelCh s t w z)
-                                                    | _, _, _ =>
-                                                      match t, decTree w c, decTree z p with
-                                                        | mch, left _, left _ =>
-                                                          label s :: (labelCh s t w z)
-                                                        | _, _, _ => labelCh s t w z
-                                                      end
-                                                  end;
-                                              label := S (label s)
+                                              req := req s
                                            |}
 | ParentRecvResp: forall {p c}, defined p -> defined c -> parent c p ->
                                 ch s mch c p <> nil ->
@@ -323,7 +256,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                         let d := dataBM m in
                                           Transition s {| dt := fun t w => match decTree t p, decAddr w a with
                                                                              | left _, left _ =>
-                                                                                 match dirSt s t c w with
+                                                                                 match fromB m with
                                                                                    | Mo => d
                                                                                    | _ => dt s t w
                                                                                  end
@@ -354,17 +287,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                                                   | _, _, _ => dirWt s t w z
                                                                                 end;
                                                           dirWtS := dirWtS s;
-                                                          req := req s;
-                                                          resp := fun t => None;
-                                                          labelCh :=
-                                                            fun t w z =>
-                                                              match t, decTree w c,
-                                                                    decTree z p with
-                                                                | mch, left _, left _ =>
-                                                                  removelast (labelCh s t w z)
-                                                                | _, _, _ => labelCh s t w z
-                                                              end;
-                                                          label := label s
+                                                          req := req s
                                                        |}
 
 | ChildVolResp: forall {p c}, defined p -> defined c -> parent c p ->
@@ -391,17 +314,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                 wtS := wtS s;
                                                 dirWt := dirWt s;
                                                 dirWtS := dirWtS s;
-                                                req := req s;
-                                                resp := fun t => None;
-                                                labelCh :=
-                                                  fun t w z =>
-                                                    match t, decTree w c,
-                                                          decTree z p with
-                                                      | mch, left _, left _ =>
-                                                        label s :: labelCh s t w z
-                                                      | _, _, _ => labelCh s t w z
-                                                    end;
-                                                label := S (label s)
+                                                req := req s
                                              |}
 | ChildDropReq: forall {p c}, defined p -> defined c -> parent c p ->
                               ch s rch p c <> nil ->
@@ -425,17 +338,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                               wtS := wtS s;
                                               dirWt := dirWt s;
                                               dirWtS := dirWtS s;
-                                              req := req s;
-                                              resp := fun t => None;
-                                              labelCh :=
-                                                fun t w z =>
-                                                  match t, decTree w p,
-                                                        decTree z c with
-                                                    | rch, left _, left _ =>
-                                                      removelast (labelCh s t w z)
-                                                    | _, _, _ => labelCh s t w z
-                                                  end;
-                                              label := label s
+                                              req := req s
                                            |}.
 
 Parameter reqs: Cache -> Stream BaseReq.
@@ -459,93 +362,230 @@ Definition initGlobalState :=
      wtS := fun t w => In;
      dirWt := fun t w z => false;
      dirWtS := fun t w z => In;
-     req := reqs;
-     resp := fun t => None;
-     labelCh := fun t w z => nil;
-     label := 0
+     req := reqs
   |}.
 
-Definition Behavior := { sys: (Time -> GlobalState)|
-                         sys 0 = initGlobalState /\
-                         forall {t}, exists (x:Transition (sys t) (sys (S t))), True
-                       }.
+Record Behavior := {
+                    sys: Time -> GlobalState;
+                    init: sys 0 = initGlobalState;
+                    trans: forall t, Transition (sys t) (sys (S t))
+                  }.
 
 Parameter oneBeh: Behavior.
 
+Fixpoint labelCh t ch src dst :=
+  match t with
+    | 0 => nil
+    | S t => match (trans oneBeh) t with
+               | ChildSendReq p c _ _ _ _ _ _ _ =>
+                 match ch with
+                   | rch =>
+                     if (decTree c src)
+                     then if (decTree p dst)
+                          then t :: labelCh t ch src dst
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | mch => labelCh t ch src dst
+                 end
+               | ParentRecvReq p c _ _ _ _ _ _ _ _ =>
+                 match ch with
+                   | rch =>
+                     if (decTree p dst)
+                     then if (decTree c src)
+                          then removelast (labelCh t ch src dst)
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | mch =>
+                     if (decTree c dst)
+                     then if (decTree p src)
+                          then t :: labelCh t ch src dst
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                 end
+               | ChildRecvResp p c _ _ _ _ =>
+                 match ch with
+                   | mch =>
+                     if (decTree p src)
+                     then if (decTree c dst)
+                          then removelast (labelCh t ch src dst)
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | rch => labelCh t ch src dst
+                 end
+               | ParentSendReq p c _ _ _ _ _ _ _ =>
+                 match ch with
+                   | rch =>
+                     if (decTree p src)
+                     then if (decTree c dst)
+                          then t :: labelCh t ch src dst
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | mch => labelCh t ch src dst
+                 end
+               | ChildRecvReq p c _ _ _ _ _ _ =>
+                 match ch with
+                   | rch =>
+                     if (decTree c dst)
+                     then if (decTree p src)
+                          then removelast (labelCh t ch src dst)
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | mch =>
+                     if (decTree p dst)
+                     then if (decTree c src)
+                          then t :: labelCh t ch src dst
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                 end
+               | ParentRecvResp p c _ _ _ _ =>
+                 match ch with
+                   | mch =>
+                     if (decTree c src)
+                     then if (decTree p dst)
+                          then removelast (labelCh t ch src dst)
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | rch => labelCh t ch src dst
+                 end
+               | ChildVolResp p c _ _ _ _ _ _ _ _ =>
+                 match ch with
+                   | mch =>
+                     if (decTree c src)
+                     then if (decTree p dst)
+                          then t :: labelCh t ch src dst
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | rch => labelCh t ch src dst
+                 end
+               | ChildDropReq p c _ _ _ _ _ =>
+                 match ch with
+                   | rch =>
+                     if (decTree p src)
+                     then if (decTree c dst)
+                          then removelast (labelCh t ch src dst)
+                          else labelCh t ch src dst
+                     else labelCh t ch src dst
+                   | mch => labelCh t ch src dst
+                 end
+               | _ => labelCh t ch src dst
+             end
+  end.
 
 Module mkDataTypes <: DataTypes.
 
-  Definition state c a t := match oneBeh with
-                              | exist sys _ => st ( (sys t)) c a
-                            end.
-  Definition dir p c a t := match oneBeh with
-                              | exist sys _ => dirSt ( (sys t)) p c a
-                            end.
-  Definition wait c a t := match oneBeh with
-                             | exist sys _ => wt ( (sys t)) c a
-                           end.
-  Definition waitS c a t := match oneBeh with
-                              | exist sys _ => wtS ( (sys t)) c a
-                            end.
-  Definition dwait p c a t := match oneBeh with
-                                | exist sys _ => dirWt ( (sys t)) p c a
-                              end.
-  Definition dwaitS p c a t := match oneBeh with
-                                 | exist sys _ => dirWtS ( (sys t)) p c a
-                               end.
-  Definition data c a t := match oneBeh with
-                             | exist sys _ => dt ( (sys t)) c a
-                           end.
+  Definition state c a t := st ((sys oneBeh) t) c a.
+  Definition dir p c a t := dirSt ((sys oneBeh) t) p c a.
+  Definition wait c a t := wt ((sys oneBeh) t) c a.
+  Definition waitS c a t := wtS ((sys oneBeh) t) c a.
+  Definition dwait p c a t := dirWt ((sys oneBeh) t) p c a.
+  Definition dwaitS p c a t := dirWtS ((sys oneBeh) t) p c a.
+  Definition data c a t := dt ((sys oneBeh) t) c a.
 
-  Definition mark c src dst t m := match oneBeh with
-                                     | exist sys _ =>
-                                         ch ( (sys (S t))) c src dst <> nil /\
-                                            ch ( (sys t)) c src dst = tl (ch ( (sys (S t))) c src dst) /\
-                                                                      let m' := hd dmy (ch ( (sys (S t))) c src dst) in
-                                                                        from m = fromB m' /\ to m = toB m' /\ addr m = addrB m' /\
-                                                                                                                             dataM m = dataBM m' /\ msgId m = (label (sys t))
-                                   end.
+  
+  Definition mark chn src dst t m := match ((trans oneBeh) t) with
+                                       | ChildSendReq p c _ _ _ x a _ _ =>
+                                         c = src /\ p = dst /\ chn = rch /\
+                                         from m = (st ((sys oneBeh) t) c a) /\
+                                         to m = x /\ addr m = a /\
+                                         msgId m = t
+                                       | ParentRecvReq p c _ _ _ _ _ _ _ _ =>
+                                         p = src /\ c = dst /\ chn = mch /\
+                                         let r := last (ch ((sys oneBeh) t) rch c p) dmy in
+                                         let a := addrB r in
+                                         from m = (dirSt ((sys oneBeh) t) p c a) /\
+                                         to m = toB r /\
+                                         addr m = a /\
+                                         dataM m = dt ((sys oneBeh) t) p a /\
+                                         msgId m = t
+                                       | ParentSendReq p c _ _ _ x a _ _ =>
+                                         p = src /\ c = dst /\ chn = rch /\
+                                         from m = (dirSt ((sys oneBeh) t) p c a) /\
+                                         to m = x /\ addr m = a /\
+                                         msgId m = t
+                                       | ChildRecvReq p c _ _ _ _ _ _ =>
+                                         c = src /\ p = dst /\ chn = mch /\
+                                         let r := last (ch ((sys oneBeh) t) rch p c) dmy in
+                                         let a := addrB r in
+                                         from m = (st ((sys oneBeh) t) c a) /\
+                                         to m = toB r /\
+                                         addr m = a /\
+                                         dataM m = dt ((sys oneBeh) t) c a /\
+                                         msgId m = t
+                                       | ChildVolResp p c _ _ _ x a _ _ _ =>
+                                         c = src /\ p = dst /\ chn = mch /\
+                                         from m = (st ((sys oneBeh) t) c a) /\
+                                         to m = x /\ addr m = a /\
+                                         dataM m = dt (sys oneBeh t) c a /\
+                                         msgId m = t
+                                       | _ => False
+                                     end.
 
-  Definition recv c src dst t m := match oneBeh with
-                                     | exist sys _ =>
-                                         ch ( (sys t)) c src dst <> nil /\
-                                            ch ( (sys (S t))) c src dst = removelast (ch ( (sys t)) c src dst) /\
-                                                                                  let m' := last (ch ( (sys t)) c src dst) dmy in
-                                                                                    from m = fromB m' /\ to m = toB m' /\ addr m = addrB m' /\
-                                                                                                                                         dataM m = dataBM m' /\ msgId m = last (labelCh (sys t) c src dst) 0
-                                   end.
+  Definition recv chn src dst t m := match ((trans oneBeh) t) with
+                                       | ParentRecvReq p c _ _ _ _ _ _ _ _ =>
+                                         c = src /\ p = dst /\ chn = rch /\
+                                         let r := last (ch ((sys oneBeh) t) rch c p) dmy in
+                                         from m = fromB r /\
+                                         to m = toB r /\ addr m = addrB r /\
+                                         msgId m = last (labelCh t rch c p) 0
+                                       | ChildRecvResp p c _ _ _ _ =>
+                                         p = src /\ c = dst /\ chn = mch /\
+                                         let r := last (ch ((sys oneBeh) t) mch p c) dmy in
+                                         from m = fromB r /\
+                                         to m = toB r /\ addr m = addrB r /\
+                                         dataM m = dataBM r /\
+                                         msgId m = last (labelCh t mch p c) 0
+                                       | ChildRecvReq p c _ _ _ _ _ _ =>
+                                         p = src /\ c = dst /\ chn = rch /\
+                                         let r := last (ch ((sys oneBeh) t) rch p c) dmy in
+                                         from m = fromB r /\
+                                         to m = toB r /\ addr m = addrB r /\
+                                         msgId m = last (labelCh t rch p c) 0
+                                       | ParentRecvResp p c _ _ _ _ =>
+                                         c = src /\ p = dst /\ chn = mch /\
+                                         let r := last (ch ((sys oneBeh) t) mch c p) dmy in
+                                         from m = fromB r /\
+                                         to m = toB r /\ addr m = addrB r /\
+                                         dataM m = dataBM r /\
+                                         msgId m = last (labelCh t mch c p) 0
+                                       | ChildDropReq p c _ _ _ _ _ =>
+                                         p = src /\ c = dst /\ chn = rch /\
+                                         let r := last (ch ((sys oneBeh) t) rch p c) dmy in
+                                         from m = fromB r /\
+                                         to m = toB r /\ addr m = addrB r /\
+                                         msgId m = last (labelCh t rch p c) 0
+                                       | _ => False
+                                     end.
 
   Definition send := mark.
   Definition proc := recv.
   Definition deq := recv.
 
+  Definition deqR c l a d i t := match (trans oneBeh) t with
+                                   | LoadReq ca _ _ _ _ =>
+                                     ca = c /\ let r := Streams.hd
+                                                          (req ((sys oneBeh) t) ca) in
+                                               lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
+                                   | StoreReq ca _ _ _ _ =>
+                                     ca = c /\ let r := Streams.hd (req ((sys oneBeh) t) ca) in
+                                               lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
+                                   | _ => False
+                                 end.
 
-  Definition deqR c l a d i t
-    := match oneBeh with
-         | exist sys _ =>
-             match (resp ( (sys (S t))) c) with
-               | Some r => lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
-               | None => False
-             end
-       end.
+  Definition enqLd c l sl t := match (trans oneBeh) t with
+                                 | LoadReq ca _ _ _ _ =>
+                                   ca = c /\ let r := Streams.hd
+                                                        (req ((sys oneBeh) t) ca) in
+                                             lbl r = l /\ dt ((sys oneBeh) t) c (lct r) = sl /\
+                                             dsc r = Ld
+                                 | _ => False
+                               end.
 
-  Definition enqLd c l sl t :=
-    match oneBeh with
-      | exist sys _ =>
-          match (resp ( (sys (S t))) c) with
-            | Some r => lbl r = l /\ dt ( (sys t)) c (lct r) = sl /\ dsc r = Ld
-            | None => False
-          end
-    end.
-
-  Definition enqSt c l t :=
-    match oneBeh with
-      | exist sys _ =>
-          match (resp ( (sys (S t))) c) with
-            | Some r => lbl r = l /\ dsc r = St
-            | None => False
-          end
-    end.
-
+  Definition enqSt c l t := match (trans oneBeh) t with
+                              | StoreReq ca _ _ _ _ =>
+                                ca = c /\ let r := Streams.hd
+                                                     (req ((sys oneBeh) t) ca) in
+                                          lbl r = l /\ dsc r = St
+                              | _ => False
+                            end.
   
 End mkDataTypes.
