@@ -429,8 +429,8 @@ Inductive Transition (s: GlobalState) : GlobalState -> Prop :=
                                               resp := fun t => None;
                                               labelCh :=
                                                 fun t w z =>
-                                                  match t, decTree w c,
-                                                        decTree z p with
+                                                  match t, decTree w p,
+                                                        decTree z c with
                                                     | rch, left _, left _ =>
                                                       removelast (labelCh s t w z)
                                                     | _, _, _ => labelCh s t w z
@@ -467,7 +467,7 @@ Definition initGlobalState :=
 
 Definition Behavior := { sys: (Time -> GlobalState)|
                          sys 0 = initGlobalState /\
-                         (forall {t}, Transition (sys t) (sys (S t)))
+                         forall {t}, Transition (sys t) (sys (S t))
                        }.
 
 Parameter oneBeh: Behavior.

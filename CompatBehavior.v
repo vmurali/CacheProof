@@ -1,4 +1,4 @@
-Require Import Compatible DataTypes Rules Channel MsiState List.
+Require Import Compatible DataTypes Rules Channel MsiState List Useful.
 
 Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataTypes ch.
   Import mkDataTypes ch.
@@ -6,52 +6,6 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
     Context {n: Cache}.
     Context {a: Addr}.
     Context {t: Time}.
-
-    Theorem listNeq: forall {A} (x: A) l, x :: l <> l.
-      unfold not; intros A x l eq.
-      assert (H: length (x :: l) = length l) by (f_equal; assumption).
-      unfold length in *.
-      remember ((fix length (l : list A) : nat :=
-            match l with
-            | nil => 0
-            | _ :: l' => S (length l')
-            end) l) as y.
-      generalize H; clear.
-      intros neq.
-
-      assert (H: S y <> y) by auto.
-      firstorder.
-    Qed.
-
-    Theorem listCond1: forall {A} (l: list A), l <> nil -> length l = S (length (tl l)).
-    Proof.
-      intros A l lgd.
-      unfold tl.
-      destruct l.
-      firstorder.
-      unfold length.
-      reflexivity.
-    Qed.
-
-    Theorem listCond2: forall {A} (l: list A), l <> nil -> length l = S (length (removelast l)).
-    Proof.
-      intros A l lgd.
-      induction l.
-      firstorder.
-      destruct l.
-      unfold length.
-      reflexivity.
-      unfold length in *.
-      f_equal.
-      assert (H: removelast (a0 :: a1 :: l) = a0 :: removelast (a1 :: l)) by
-          (
-            unfold removelast;
-            reflexivity).
-      rewrite H; clear H.
-      assert (H: a1 :: l <> nil) by discriminate.
-      specialize (IHl H).
-      assumption.
-    Qed.
 
     Theorem sendPCond: forall {p}, defined n -> defined p -> parent n p ->
                                    forall {m},

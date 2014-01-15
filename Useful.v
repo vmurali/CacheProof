@@ -1,4 +1,4 @@
-Require Import Arith Omega Coq.Logic.Classical.
+Require Import Arith Omega Coq.Logic.Classical List.
 
 Section minExists.
   Context {P : nat -> Prop}.
@@ -129,3 +129,137 @@ Section Induction.
     firstorder.
   Qed.
 End Induction.
+
+
+    Theorem listNeq: forall {A} (x: A) l, x :: l <> l.
+      unfold not; intros A x l eq.
+      assert (H: length (x :: l) = length l) by (f_equal; assumption).
+      unfold length in *.
+      remember ((fix length (l : list A) : nat :=
+            match l with
+            | nil => 0
+            | _ :: l' => S (length l')
+            end) l) as y.
+      generalize H; clear.
+      intros neq.
+
+      assert (H: S y <> y) by auto.
+      firstorder.
+    Qed.
+
+    Theorem listCond1: forall {A} (l: list A), l <> nil -> length l = S (length (tl l)).
+    Proof.
+      intros A l lgd.
+      unfold tl.
+      destruct l.
+      firstorder.
+      unfold length.
+      reflexivity.
+    Qed.
+
+    Theorem listCond2: forall {A} (l: list A), l <> nil -> length l = S (length (removelast l)).
+    Proof.
+      intros A l lgd.
+      induction l.
+      firstorder.
+      destruct l.
+      unfold length.
+      reflexivity.
+      unfold length in *.
+      f_equal.
+      assert (H: removelast (a :: a0 :: l) = a :: removelast (a0 :: l)) by
+          (
+            unfold removelast;
+            reflexivity).
+      rewrite H; clear H.
+      assert (H: a0 :: l <> nil) by discriminate.
+      specialize (IHl H).
+      assumption.
+    Qed.
+
+    Theorem notInRemove: forall {A} (a: A) l, In a (removelast l) -> In a l.
+    Proof.
+      intros A a l inl.
+      induction l.
+      unfold removelast in *; simpl in *.
+      assumption.
+      unfold removelast in inl.
+      destruct l.
+      unfold In in *.
+      firstorder.
+      unfold In in inl.
+      destruct inl.
+      unfold In.
+      left.
+      assumption.
+      specialize (IHl H).
+      unfold In.
+      right.
+      assumption.
+    Qed.
+
+    Theorem notInTail: forall {A} (a: A) l, In a (tl l) -> In a l.
+    Proof.
+      intros A a l inl.
+      destruct l.
+      unfold tl in inl; assumption.
+      unfold tl in inl.
+      unfold In.
+      right.
+      assumption.
+    Qed.
+
+    Theorem eachProd: forall {A B} {a b: A} {c d: B}, (a, c) = (b, d) -> a = b /\ c = d.
+    Proof.
+      intros A B a b c d eq.
+      injection eq.
+      auto.
+    Qed.
+
+    Theorem combNil: forall {A} B (l : list A), combine l (@nil B) = nil.
+    Proof.
+      intros A B l.
+      destruct l; unfold combine; reflexivity.
+    Qed.
+
+    Theorem removeCombine: forall {A B} (l1: list A) (l2: list B),
+                             removelast (combine l1 l2) = combine (removelast l1)
+                                                                  (removelast l2).
+    Proof.
+      intros A B l1.
+      induction l1.
+      intros l2.
+      reflexivity.
+      intros l2.
+      destruct l2.
+      simpl.
+      pose proof (combNil B match l1 with
+           | nil => nil
+           | _ :: _ => a :: removelast l1
+           end) as sth.
+      rewrite sth.
+      reflexivity.
+      unfold combine.
+      fold (combine l1 l2).
+      fold (combine (removelast (a::l1)) (removelast (b::l2))).
+      unfold removelast.
+      fold (removelast (a :: l1)).
+      fold (removelast (b :: l2)).
+      fold (removelast (combine l1 l2)).
+      destruct l1.
+      reflexivity.
+      destruct l2.
+      reflexivity.
+      assert (H: combine (a0::l1) (b0::l2) <> nil).
+      unfold not; intros.
+      unfold combine in H.
+      discriminate.
+      remember (combine (a0::l1) (b0::l2)) as  comb.
+      destruct comb.
+      firstorder.
+      rewrite Heqcomb.
+      clear Heqcomb p comb H.
+      specialize (IHl1 (b0::l2)).
+      rewrite IHl1.
+      reflexivity.
+    Qed.
