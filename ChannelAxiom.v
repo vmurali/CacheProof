@@ -565,6 +565,359 @@ Module mkChannel: Channel mkDataTypes.
       firstorder.
     Qed.
 
+    Theorem enqBetweenHelp:
+      forall {t i}, ~ In i (labelCh t s p c) -> In i (labelCh (S t) s p c) ->
+                    exists m, mark s p c t m.
+      Proof.
+        intros t i notIn isIn.
+        unfold labelCh in isIn; fold labelCh in isIn. unfold mark; fold mark.
+        destruct (trans oneBeh t).
+        firstorder.
+        firstorder.
+
+        destruct s.
+        firstorder.
+        destruct (decTree c0 p) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree p0 c) as [eq'|neq'].
+        rewrite <- eq' in *.
+        exists (Build_Mesg (st (sys oneBeh t) c0 a) x a Initial t).
+        firstorder.
+        firstorder.
+        firstorder.
+
+
+        destruct s.
+        destruct (decTree c0 c) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree p0 p) as [eq'|neq'].
+        rewrite <- eq' in *.
+        exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a) (toB r) a (dt (sys oneBeh t) p0 a) t).
+        firstorder.
+        firstorder.
+        firstorder.
+        destruct (decTree p0 c) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree c0 p) as [eq'|neq'].
+        rewrite <- eq' in *.
+        pose proof (notInRemove i (labelCh t rch c0 p0) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree p0 p) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree c0 c) as [eq'|neq'].
+        rewrite <- eq' in *.
+        pose proof (notInRemove i (labelCh t mch p0 c0) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        firstorder.
+        destruct (decTree p0 p) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree c0 c) as [eq'|neq'].
+        rewrite <- eq' in *.
+        exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a) x a Initial t).
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree p0 c) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree c0 p) as [eq'|neq'].
+        rewrite <- eq' in *.
+        exists (Build_Mesg (st (sys oneBeh t) c0 a) (toB r) a (dt (sys oneBeh t) c0 a) t).
+        firstorder.
+        firstorder.
+        firstorder.
+        destruct (decTree c0 c) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree p0 p) as [eq'|neq'].
+        rewrite <- eq' in *.
+        pose proof (notInRemove i (labelCh t rch p0 c0) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree c0 p) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree p0 c) as [eq'|neq'].
+        rewrite <- eq' in *.
+        pose proof (notInRemove i (labelCh t mch c0 p0) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+        firstorder.
+
+
+        destruct s.
+        destruct (decTree c0 p) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree p0 c) as [eq'|neq'].
+        rewrite <- eq' in *.
+        exists (Build_Mesg (st (sys oneBeh t) c0 a) x a (dt (sys oneBeh t) c0 a) t).
+        firstorder.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        firstorder.
+        destruct (decTree p0 p) as [eq|neq].
+        rewrite <- eq in *.
+        destruct (decTree c0 c) as [eq'|neq'].
+        rewrite <- eq' in *.
+        pose proof (notInRemove i (labelCh t rch p0 c0) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+      Qed.
+      
+      Theorem enqBetweenHelp':
+      forall {t i}, ~ In i (labelCh t s p c) -> In i (labelCh (S t) s p c) ->
+                    exists m, mark s p c t m /\ msgId m = i.
+      Proof.
+        intros t i notIn isIn.
+        pose proof (enqBetweenHelp notIn isIn) as [m markm].
+        exists m.
+        constructor.
+        assumption.
+        unfold labelCh in isIn; fold labelCh in isIn.
+        unfold mark in markm.
+        destruct (trans oneBeh t).
+        firstorder.
+        firstorder.
+
+        destruct s.
+        firstorder.
+        destruct (decTree c0 p).
+        destruct (decTree p0 c).
+        unfold In in isIn.
+        destruct isIn; destruct markm as [_ [_ [_ [_ [_ [_ [_ id]]]]]]]; [rewrite H in *|]; firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree c0 c).
+        destruct (decTree p0 p).
+        unfold In in isIn.
+        destruct isIn; destruct markm as [_ [_ [_ [_ [_ [_ [_ id]]]]]]]; [rewrite H in *|]; firstorder.
+        firstorder.
+        firstorder.
+        destruct (decTree p0 c) as [eq|neq].
+        rewrite eq in *.
+        destruct (decTree c0 p) as [eq'|neq'].
+        rewrite eq' in *.
+        pose proof (notInRemove i (labelCh t rch p c) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree p0 p) as [eq|neq].
+        rewrite eq in *.
+        destruct (decTree c0 c) as [eq'|neq'].
+        rewrite eq' in *.
+        pose proof (notInRemove i (labelCh t mch p c) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        firstorder.
+        destruct (decTree p0 p).
+        destruct (decTree c0 c).
+        unfold In in isIn.
+        destruct isIn; destruct markm as [_ [_ [_ [_ [_ [_ [_ id]]]]]]]; [rewrite H in *|]; firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree p0 c).
+        destruct (decTree c0 p).
+        unfold In in isIn.
+        destruct isIn; destruct markm as [_ [_ [_ [_ [_ [_ [_ id]]]]]]]; [rewrite H in *|]; firstorder.
+        firstorder.
+        firstorder.
+        destruct (decTree c0 c) as [eq'|neq'].
+        rewrite eq' in *.
+        destruct (decTree p0 p) as [eq|neq].
+        rewrite eq in *.
+        pose proof (notInRemove i (labelCh t rch p c) isIn) as stf.
+        firstorder.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        destruct s.
+        destruct (decTree c0 p).
+        destruct (decTree p0 c).
+        unfold In in isIn.
+        destruct isIn; destruct markm as [_ [_ [_ [_ [_ [_ [_ id]]]]]]]; [rewrite H in *|]; firstorder.
+        firstorder.
+        firstorder.
+        firstorder.
+
+        firstorder.
+      Qed.
+
+
+      Theorem enqBetween:
+      forall {t1 t2 i}, t1 < t2 -> ~ In i (labelCh t1 s p c) ->
+                        In i (labelCh t2 s p c) ->
+                        exists ti m, t1 <= ti < t2 /\ mark s p c ti m /\ msgId m = i.
+      Proof.
+      intros t1 t2 i cond notIn isIn.
+      remember (t2 - t1 - 1) as td.
+      assert (t2 = t1 + (S td)) by omega.
+      rewrite H in *; clear Heqtd H.
+      clear cond.
+      induction td.
+      assert (t1 + 1 = S t1) by omega.
+      rewrite H in *; clear H.
+      exists t1.
+      pose proof (enqBetweenHelp' notIn isIn) as [m rest].
+      assert (t1 <= t1 < S t1) by omega.
+      exists m.
+      firstorder.
+      destruct (classic (In i (labelCh (t1 + S td) s p c))).
+      specialize (IHtd H).
+      destruct IHtd as [ti [m [cond rest]]].
+      exists ti; exists m.
+      assert (t1 <= ti < t1 + S (S td)) by omega.
+      firstorder.
+      assert (eq: t1 + S (S td) = S (t1 + S td)) by omega.
+      rewrite eq in *.
+      pose proof (enqBetweenHelp' H isIn) as [m rest].
+      exists (t1 + S td); exists m.
+      assert (t1 <= t1 + S td < S (t1 + S td)) by omega.
+      firstorder.
+      Qed.
+
+      Theorem msgIdTime: forall {m t}, mark s p c t m -> msgId m = t.
+      Proof.
+        intros m t markm.
+        unfold mark in markm.
+        destruct (trans oneBeh t);firstorder.
+      Qed.
+
+      Theorem enqGreater':
+        forall {t i}, In i (labelCh t s p c) -> t > i.
+      Proof.
+        intros t i inI.
+        induction t.
+        unfold labelCh in *.
+        unfold In in inI.
+        firstorder.
+        unfold labelCh in inI; fold labelCh in inI.
+        destruct (trans oneBeh t).
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+        destruct s.
+        specialize (IHt inI); omega.
+        destruct (decTree c0 p).
+        destruct (decTree p0 c).
+        unfold In in inI.
+        destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+        destruct s.
+        destruct (decTree c0 c).
+        destruct (decTree p0 p).
+        unfold In in inI.
+        destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+        destruct (decTree p0 c).
+        destruct (decTree c0 p).
+        pose proof (notInRemove i (labelCh t rch p c) inI) as f.
+        specialize (IHt f); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+
+        destruct s.
+        destruct (decTree p0 p).
+        destruct (decTree c0 c).
+        pose proof (notInRemove i (labelCh t mch p c) inI) as f.
+        specialize (IHt f); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+        destruct s.
+        specialize (IHt inI); omega.
+        destruct (decTree p0 p).
+        destruct (decTree c0 c).
+        unfold In in inI.
+        destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+        destruct s.
+        destruct (decTree p0 c).
+        destruct (decTree c0 p).
+        unfold In in inI.
+        destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+        destruct (decTree p0 p).
+        destruct (decTree c0 c).
+        pose proof (notInRemove i (labelCh t rch p c) inI) as f.
+        specialize (IHt f); omega.
+        specialize (IHt inI); omega.
+        destruct (decTree c0 c); specialize (IHt inI); omega.
+
+        
+        destruct s.
+        destruct (decTree c0 p).
+        destruct (decTree p0 c).
+        pose proof (notInRemove i (labelCh t mch p c) inI) as f.
+        specialize (IHt f); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+
+        destruct s.
+        destruct (decTree c0 p).
+        destruct (decTree p0 c).
+        unfold In in inI.
+        destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+
+        destruct s.
+        specialize (IHt inI); omega.
+        destruct (decTree p0 p).
+        destruct (decTree c0 c).
+        pose proof (notInRemove i (labelCh t rch p c) inI) as f.
+        specialize (IHt f); omega.
+        specialize (IHt inI); omega.
+        specialize (IHt inI); omega.
+      Qed.
+
+      Theorem enqGreater: forall {m t i}, mark s p c t m ->
+                                          In i (labelCh t s p c) -> msgId m > i.
+      Proof.
+        intros m t i markm ini.
+        pose proof (enqGreater' ini) as H.
+        pose proof (msgIdTime markm).
+        rewrite H0.
+        assumption.
+      Qed.
+
     Theorem inImpSent: forall {b l t},
                          In (b, l) (combine (ch (sys oneBeh t) s p c) (labelCh t s p c)) ->
                          exists t', t' <= t /\ mark s p c t' (Build_Mesg (fromB b) (toB b) (addrB b)
@@ -884,6 +1237,136 @@ Module mkChannel: Channel mkDataTypes.
         dataBM := dataM m |} (ch (sys oneBeh t) rch p0 c0) dmy n lft (msgId m)
                                     (labelCh t rch p0 c0) 0 H use5) as almost.
       assumption.
+    Qed.
+
+    Theorem recvImpIn': forall {m t}, recv s p c t m ->
+                                      In (msgId m) (labelCh t s p c).
+    Proof.
+      intros m t recvm.
+      pose proof (recvImpIn recvm) as H.
+      apply (inComb {|
+         fromB := from m;
+         toB := to m;
+         addrB := addr m;
+         dataBM := dataM m |} (msgId m) (ch (sys oneBeh t) s p c) (labelCh t s p c) H).
+    Qed.
+
+    Theorem posGreater:
+      forall {t n},
+        n < length (labelCh t s p c) ->
+        forall {i}, i < n ->
+                    nth n (labelCh t s p c) 0 < nth i (labelCh t s p c) 0.
+    Proof.
+      intros t.
+      induction t.
+      intros n n_lt i i_lt.
+      unfold labelCh in n_lt.
+      simpl in n_lt.
+      assert False by omega; firstorder.
+
+      intros n n_lt i i_lt.
+      unfold labelCh in n_lt; fold labelCh in n_lt. unfold labelCh; fold labelCh.
+
+      assert (one: n < length (t :: labelCh t s p c) ->
+                   nth n (t :: labelCh t s p c) 0 < nth i (t :: labelCh t s p c) 0).
+      intros n_lt'.
+      destruct n.
+      assert False by omega; firstorder.
+      assert (n_lt'': n < length (labelCh t s p c)) by
+          (unfold length in n_lt'; fold (length (labelCh t s p c)) in n_lt'; omega).
+      unfold nth.
+      fold (nth n (labelCh t s p c) 0).
+      destruct i.
+      pose proof (enqGreater' (nth_In (labelCh t s p c) 0 n_lt'')).
+      assumption.
+      assert (H: i < n) by omega.
+      apply (IHt n n_lt'' i H).
+
+      destruct (trans oneBeh t).
+
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      specialize (IHt n n_lt i i_lt); assumption.
+      destruct (decTree c0 p).
+      destruct (decTree p0 c).
+      apply (one n_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      destruct (decTree c0 c).
+      destruct (decTree p0 p).
+      apply (one n_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct (decTree p0 c).
+      destruct (decTree c0 p).
+      apply (listNoShift IHt n_lt i_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      destruct (decTree p0 p).
+      destruct (decTree c0 c).
+      apply (listNoShift IHt n_lt i_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      specialize (IHt n n_lt i i_lt); assumption.
+      destruct (decTree p0 p).
+      destruct (decTree c0 c).
+      apply (one n_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      destruct (decTree p0 c).
+      destruct (decTree c0 p).
+      apply (one n_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+      
+
+      destruct s.
+      destruct (decTree c0 c).
+      destruct (decTree p0 p).
+      apply (listNoShift IHt n_lt i_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+      destruct (decTree c0 c).
+      destruct (decTree p0 p).
+      apply (listNoShift IHt n_lt i_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      destruct (decTree c0 p).
+      destruct (decTree p0 c).
+      apply (listNoShift IHt n_lt i_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      destruct (decTree c0 p).
+      destruct (decTree p0 c).
+      apply (one n_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
+
+      destruct s.
+      specialize (IHt n n_lt i i_lt); assumption.
+      destruct (decTree p0 p).
+      destruct (decTree c0 c).
+      apply (listNoShift IHt n_lt i_lt).
+      specialize (IHt n n_lt i i_lt); assumption.
+      specialize (IHt n n_lt i i_lt); assumption.
     Qed.
 
     Theorem recvImpSend: forall {m t}, recv s p c t m -> exists t', t' <= t /\ send s p c t' m.

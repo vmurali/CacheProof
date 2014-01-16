@@ -334,3 +334,86 @@ End Induction.
       f_equal.
       assumption.
     Qed.
+
+    Theorem listShift: forall {A l n} (a dmy: A),
+                         nth n l dmy = nth (S n) (a :: l) dmy.
+    Proof.
+      intros A l n a dmy.
+      unfold nth.
+      reflexivity.
+    Qed.
+
+    Theorem inComb: forall {A B} a b (la: list A) (lb: list B), In (a, b) (combine la lb)
+                                                                -> In b lb.
+    Proof.
+      intros A B a b la.
+      induction la.
+      intros lb inComb.
+      simpl in inComb.
+      firstorder.
+      intros lb inComb.
+      destruct lb.
+      pose proof (combNil B (a0::la)) as stf.
+      rewrite stf in inComb.
+      simpl in inComb.
+      firstorder.
+      simpl in inComb.
+      simpl.
+      destruct inComb.
+      left.
+      injection H; firstorder.
+      right.
+      specialize (IHla lb H).
+      firstorder.
+    Qed.
+
+    Theorem listEq: forall {A} {l: list A} dmy {n},
+                      n < length (removelast l) -> nth n (removelast l) dmy =
+                                                   nth n l dmy.
+    Proof.
+      intros A l dmy.
+      induction l.
+      intros n n_lt.
+      simpl in n_lt.
+      assert False by omega; firstorder.
+      intros n n_lt.
+      destruct l.
+      simpl in n_lt.
+      assert False by omega; firstorder.
+      destruct n.
+      reflexivity.
+      assert (H: n < length (removelast (a0 :: l))).
+      unfold removelast in n_lt.
+      unfold length in n_lt.
+      fold (removelast (a0 :: l)) in n_lt.
+      fold (length (removelast (a0 :: l))) in n_lt.
+      omega.
+      unfold removelast.
+      fold (removelast (a0 :: l)).
+      unfold nth.
+      fold (nth n (removelast (a0 :: l)) dmy).
+      fold (nth n (a0 :: l) dmy).
+      firstorder.
+    Qed.
+      
+    Theorem listNoShift: forall {l},
+                           (forall n, n < length l -> forall i, i < n -> nth n l 0 <
+                                                                         nth i l 0) ->
+                           forall {n}, n < length (removelast l) ->
+                                       forall {i}, i < n -> nth n (removelast l) 0 <
+                                                            nth i (removelast l) 0.
+    Proof.
+      intros l cond n n_lt i i_lt.
+      pose proof (listEq 0 n_lt) as n1.
+      assert (i_lt': i < length (removelast l)) by omega.
+      pose proof (listEq 0 i_lt') as i1.
+      rewrite n1; rewrite i1.
+      destruct l.
+      simpl in n_lt.
+      assert False by omega; firstorder.
+      assert (n0 :: l <> nil) by discriminate.
+      pose proof (listCond2 (n0::l) H).
+      assert (n < length (n0 :: l)) by omega.
+      specialize (cond n H1 i i_lt).
+      assumption.
+    Qed.
