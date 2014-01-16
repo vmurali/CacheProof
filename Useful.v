@@ -263,3 +263,74 @@ End Induction.
       rewrite IHl1.
       reflexivity.
     Qed.
+
+    Theorem lenEqLastCombine: forall {A B} (a: A) (la: list A) (da: A), la <> nil ->
+                                     a = last la da ->
+                                     forall (b: B) (lb: list B) (db: B),
+                                       length la = length lb -> b = last lb db ->
+                                       In (a, b) (combine la lb).
+    Proof.
+      intros A B a la da lanil lasta.
+      induction la.
+      firstorder.
+      intros b lb db lenEq lastb.
+      destruct lb.
+      unfold length in lenEq.
+      discriminate.
+      unfold length in lenEq.
+      injection lenEq.
+      clear lenEq; intros lenEq.
+      destruct la.
+      destruct lb.
+      unfold last in lasta.
+      unfold last in lastb.
+      rewrite lasta; rewrite lastb.
+      unfold In; unfold combine; simpl.
+      left; reflexivity.
+      discriminate.
+      destruct lb.
+      discriminate.
+      assert (H: a1 :: la <> nil) by discriminate.
+      specialize (IHla H lasta b (b1 :: lb) db lenEq lastb).
+      unfold combine; unfold In.
+      right.
+      apply IHla.
+    Qed.
+
+    Theorem eqLen: forall {A B} (la: list A) (lb: list B), length la = length lb ->
+                                                           length (removelast la) =
+                                                           length (removelast lb).
+    Proof.
+      intros A B la.
+      induction la.
+      intros lb cond.
+      destruct lb.
+      reflexivity.
+      unfold length in cond.
+      discriminate.
+      intros lb cond.
+      destruct la.
+      destruct lb.
+      unfold removelast.
+      reflexivity.
+      unfold length in cond.
+      assert (sim: 1 = S (length lb)) by (apply cond).
+      injection sim.
+      clear sim cond; intros sim.
+      destruct lb.
+      reflexivity.
+      unfold length in sim.
+      discriminate.
+      destruct lb.
+      simpl in cond.
+      discriminate.
+      injection cond as cond2.
+      specialize (IHla lb cond2).
+      destruct lb.
+      unfold length in cond2.
+      discriminate.
+      unfold removelast.
+      unfold length.
+      f_equal.
+      assumption.
+    Qed.

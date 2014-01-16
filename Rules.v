@@ -76,7 +76,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                                        decTree z p with
                                                                    | rch, left _, left _ =>
                                                                        (Build_BaseMesg
-                                                                          (st s z a)
+                                                                          (st s w a)
                                                                           x a Initial)
                                                                          :: ch s t w z
                                                                    | _, _, _ => ch s t w z
@@ -487,6 +487,7 @@ Module mkDataTypes <: DataTypes.
                                          c = src /\ p = dst /\ chn = rch /\
                                          from m = (st ((sys oneBeh) t) c a) /\
                                          to m = x /\ addr m = a /\
+                                         dataM m = Initial /\
                                          msgId m = t
                                        | ParentRecvReq p c _ _ _ _ _ _ _ _ =>
                                          p = src /\ c = dst /\ chn = mch /\
@@ -501,6 +502,7 @@ Module mkDataTypes <: DataTypes.
                                          p = src /\ c = dst /\ chn = rch /\
                                          from m = (dirSt ((sys oneBeh) t) p c a) /\
                                          to m = x /\ addr m = a /\
+                                         dataM m = Initial /\
                                          msgId m = t
                                        | ChildRecvReq p c _ _ _ _ _ _ =>
                                          c = src /\ p = dst /\ chn = mch /\
@@ -526,6 +528,7 @@ Module mkDataTypes <: DataTypes.
                                          let r := last (ch ((sys oneBeh) t) rch c p) dmy in
                                          from m = fromB r /\
                                          to m = toB r /\ addr m = addrB r /\
+                                         dataM m = dataBM r /\
                                          msgId m = last (labelCh t rch c p) 0
                                        | ChildRecvResp p c _ _ _ _ =>
                                          p = src /\ c = dst /\ chn = mch /\
@@ -539,6 +542,7 @@ Module mkDataTypes <: DataTypes.
                                          let r := last (ch ((sys oneBeh) t) rch p c) dmy in
                                          from m = fromB r /\
                                          to m = toB r /\ addr m = addrB r /\
+                                         dataM m = dataBM r /\
                                          msgId m = last (labelCh t rch p c) 0
                                        | ParentRecvResp p c _ _ _ _ =>
                                          c = src /\ p = dst /\ chn = mch /\
@@ -552,6 +556,7 @@ Module mkDataTypes <: DataTypes.
                                          let r := last (ch ((sys oneBeh) t) rch p c) dmy in
                                          from m = fromB r /\
                                          to m = toB r /\ addr m = addrB r /\
+                                         dataM m = dataBM r /\
                                          msgId m = last (labelCh t rch p c) 0
                                        | _ => False
                                      end.
