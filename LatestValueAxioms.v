@@ -1,4 +1,4 @@
-Require Import Rules Channel DataTypes MsiState.
+Require Import Rules Channel DataTypes MsiState ChannelAxiomHelp.
 
 Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
   Import mkDataTypes ch.
@@ -46,10 +46,16 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     rewrite use3 in *; rewrite use4 in *; rewrite use0 in *; rewrite eq2 in *; rewrite fromm in *; rewrite use5 in *;
     destruct (decTree n n); destruct (decAddr a a); firstorder.
     firstorder.
+    assert (e2: r = List.last (ch (sys oneBeh t) mch p0 c) dmy) by auto.
+    rewrite <- e2 in recvm.
+    rewrite e in *.
     destruct recvm as [[_ [_ [use _]]] _]; discriminate. 
     destruct recvm as [[use1 [use2 _]] _];
     rewrite use1 in *; rewrite use2 in *; pose proof (noCycle n_p p1); firstorder.
     firstorder.
+    assert (e2: r = List.last (ch (sys oneBeh t) mch p0 c) dmy) by auto.
+    rewrite <- e2 in recvm.
+    rewrite e in *.
     destruct recvm as [[_ [_ [use _]]] _]; discriminate. 
   Qed.
 
@@ -89,10 +95,15 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     firstorder.
     firstorder.
     firstorder.
+    pose proof (enqC2P p0 n0) as contra.
+    rewrite contra in recvm.
     destruct recvm as [[_ [_ [use _]]] _]; discriminate.
     destruct recvm as [[use1 [use2 _]] _];
     rewrite use1 in *; rewrite use2 in *; pose proof (noCycle c_n p0); firstorder.
     firstorder.
+    assert (re: r = List.last (ch (sys oneBeh t) mch p c0) dmy) by auto.
+    rewrite re in e.
+    rewrite e in recvm.
     destruct recvm as [[_ [_ [use _]]] _]; discriminate.
     simpl;
     assert (eq: m0 = List.last (ch (sys oneBeh t) mch c0 p) dmy) by auto;
@@ -102,6 +113,9 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     rewrite use3 in *; rewrite use4 in *; rewrite use0 in *; rewrite eq2 in *; rewrite fromm in *; rewrite use5 in *;
     destruct (decTree n n); destruct (decAddr a a); firstorder.
     firstorder.
+    assert (re: r = List.last (ch (sys oneBeh t) mch p c0) dmy) by auto.
+    rewrite re in e.
+    rewrite e in recvm.
     destruct recvm as [[_ [_ [use _]]] _]; discriminate.
   Qed.
 
@@ -200,6 +214,9 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     destruct (decTree n p) as [nEq | nNeq].
     rewrite <- nEq in *.
     destruct (decAddr a a0) as [aEq | aNeq].
+    pose proof (enqC2P p0 n0) as sth2.
+    rewrite <- sth in sth2.
+    rewrite sth2.
     destruct (fromB m); firstorder.
     firstorder.
     firstorder.

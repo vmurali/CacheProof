@@ -417,3 +417,47 @@ End Induction.
       specialize (cond n H1 i i_lt).
       assumption.
     Qed.
+
+    Theorem lastCombine: forall {A B} {la: list A} da {lb: list B} db,
+                           length la = length lb -> last la da = fst (last (combine la lb) (da, db)).
+    Proof.
+      intros A B la da.
+      induction la.
+      intros lb db eqLen.
+      reflexivity.
+      intros lb db eqLen.
+      destruct lb.
+      unfold length in eqLen.
+      discriminate.
+      simpl.
+      destruct la.
+      reflexivity.
+      destruct lb.
+      simpl in *.
+      assert False by omega; firstorder.
+      simpl.
+      unfold length in eqLen.
+      fold (length (a0 :: la)) in eqLen.
+      fold (length (b0 :: lb)) in eqLen.
+      assert (H: length (a0 :: la) = length (b0 :: lb)) by auto.
+      specialize (IHla (b0 :: lb) db H).
+      assumption.
+    Qed.
+
+    Theorem lastIn: forall {A} {la: list A} da, la <> nil -> In (last la da) la.
+    Proof.
+      intros A la da notNil.
+      induction la.
+      firstorder.
+      destruct la.
+      unfold last.
+      simpl.
+      left.
+      reflexivity.
+      unfold In.
+      fold (In (last (a :: a0 :: la) da) (a0 :: la)).
+      right.
+      assert (a0 :: la <> nil) by discriminate.
+      specialize (IHla H).
+      assumption.
+    Qed.

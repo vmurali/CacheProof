@@ -1,4 +1,4 @@
-Require Import Compatible DataTypes Rules Channel MsiState List Useful.
+Require Import Compatible DataTypes Rules Channel MsiState List Useful ChannelAxiomHelp.
 
 Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataTypes ch.
   Import mkDataTypes ch.
@@ -25,7 +25,7 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       destruct markm as [[use1 [use2 _]] _];
       rewrite use1 in *; rewrite use2 in *; pose proof (noCycle p1 n_p); firstorder.
 
-      assert (H: r = last (ch (sys oneBeh t) rch p0 c0) dmy) by auto;
+      assert (H: r = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto.
       destruct markm as [[use2 [use3 [_ [_ [use4 [use5 _]]]]]] use1];
         rewrite use2 in *; rewrite use3 in *; rewrite <- H in *; rewrite <- use1 in *;
         rewrite use5 in *; rewrite use4 in *;
@@ -104,8 +104,14 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
       destruct sthm1 as [[[_ [_ [use _]]] _] | easy]; [discriminate | firstorder].
       destruct sthm1 as [[[_ [use1 _]] _] | [[_ [_ [use1 _]]] _] ]; destruct sthm2 as [[[_ [use2 _]] _] | [[_ [_ [use2 _]]] _] ].
       rewrite use1 in use2; assumption.
+      pose proof (enqC2P p0 n0) as k0.
+      rewrite k0 in use2.
       discriminate.
+      pose proof (enqC2P p0 n0) as k0.
+      rewrite k0 in use1.
       discriminate.
+      pose proof (enqC2P p0 n0) as k0.
+      rewrite k0 in use1.
       discriminate.
 
       destruct sthm1 as [use1 | [[use1 [use2 _]] _] ];
