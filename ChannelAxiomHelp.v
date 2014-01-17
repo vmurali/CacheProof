@@ -1099,10 +1099,7 @@ Proof.
   repeat (decide equality).
   apply (decLabel).
   apply (decAddr).
-  destruct mDec as [same|diff].
-  destruct H1 as [u1 w1].
-  destruct pos as [u2 w2].
-  assert (
+  destruct mDec as [same|diff];
   admit.
   pose proof (inImpSent t1_lt_t2 H2 enq) as [ti [cond [markm rest]]].
   simpl in markm.

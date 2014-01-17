@@ -112,18 +112,21 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                dirWt s p c a = false ->
                                sle (dirSt s p c a) fromR ->
                                Transition s {| ch := fun t w z =>
-                                                       match t, decTree w p,
-                                                             decTree z c with
-                                                         | mch, left _, left _ =>
+                                                       match t with
+                                                         | mch => match decTree w p,
+                                                                        decTree z c with
+                                                         | left _, left _ =>
                                                              (Build_BaseMesg
                                                                 (dirSt s w z a) toR a (dt s w a) mch)
                                                                :: ch s t w z
-                                                         | _, _, _ =>
-                                                             match t, decTree w c,
+                                                         | _, _ => ch s t w z
+                                                                  end
+                                                         | rch =>
+                                                             match decTree w c,
                                                                    decTree z p with
-                                                               | rch, left _, left _ => removelast
+                                                               | left _, left _ => removelast
                                                                                           (ch s t w z)
-                                                               | _, _, _ => ch s t w z
+                                                               | _, _ => ch s t w z
                                                              end
                                                        end;
                                                dt := dt s;
@@ -225,19 +228,21 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                         slt toR (st s c a) ->
                               (forall {i}, defined i -> parent i c -> sle (dirSt s c i a) toR) ->
                               Transition s {| ch := fun t w z =>
-                                                      match t, decTree w c,
-                                                            decTree z p with
-                                                        | mch, left _, left _ =>
-                                                            (Build_BaseMesg
-                                                               (st s w a) toR a (dt s w a) mch)
-                                                              :: ch s t w z
-                                                        | _, _, _ =>
-                                                            match t, decTree w p,
-                                                                  decTree z c with
-                                                              | mch, left _, left _ => removelast
-                                                                                         (ch s t w z)
-                                                              | _, _, _ => ch s t w z
-                                                            end
+                                                      match t with
+                                                        | mch =>
+                                                          match decTree w c, decTree z p with
+                                                            | left _, left _ =>
+                                                              (Build_BaseMesg (st s w a) toR a
+                                                                              (dt s w a) mch)
+                                                                :: ch s t w z
+                                                            | _, _ => match decTree w p,
+                                                                           decTree z c with
+                                                                       | left _, left _ =>
+                                                                         removelast (ch s t w z)
+                                                                       | _, _ => ch s t w z
+                                                                     end
+                                                          end
+                                                        | _ => ch s t w z
                                                       end;
                                               dt := dt s;
                                               st := fun t w => match decTree t c, decAddr w a with
