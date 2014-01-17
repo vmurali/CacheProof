@@ -343,7 +343,7 @@ End Induction.
       reflexivity.
     Qed.
 
-    Theorem inComb: forall {A B} a b (la: list A) (lb: list B), In (a, b) (combine la lb)
+    Theorem inComb: forall {A B a b} {la: list A} {lb: list B}, In (a, b) (combine la lb)
                                                                 -> In b lb.
     Proof.
       intros A B a b la.

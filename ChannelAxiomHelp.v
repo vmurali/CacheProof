@@ -790,20 +790,21 @@ Proof.
   rewrite rew in *; clear rew.
   assert (cond2: t1 <= t1 < S t1) by omega.
   pose proof (inImpSend isIn notIn) as use.
-  exists t1; generalize cond2 use; clear; firstorder.
+  exists t1; generalize cond2 use; clear.
+  constructor; assumption.
   destruct (classic (In (b, l) (combine (ch (sys oneBeh (t1 + S td)) s p c)
                                         (labelCh (t1 + S td) s p c)))) as
       [easy | hard].
   destruct (IHtd easy) as [ti [cond use]].
   assert (ez: t1 <= ti < t1 + S (S td)) by omega.
-  generalize ez use; clear;
-  firstorder.
+  generalize ez use; clear.
+  intros; exists ti; constructor; assumption.
   assert (h: t1 + S (S td) = S (t1 + S td)) by omega.
   rewrite h in *; clear h.
   pose proof (inImpSend isIn hard) as use.
   exists (t1 + S td).
   assert (t1 <= t1 + S td < S ( t1 + S td)) by omega.
-  generalize H use; clear. firstorder.
+  generalize H use; clear; intros; constructor; assumption.
 Qed.
 
 Theorem recvImpIn: forall {s p c m t},
@@ -894,7 +895,13 @@ Proof.
   simpl in *.
   exists ti.
   assert (ti <= S t) by omega.
-  firstorder.
+  unfold send.
+  destruct rest as [useful _].
+  assert (great: mark s p c ti m).
+  destruct m.
+  simpl in *.
+  assumption.
+  constructor; assumption.
 Qed.
 
 Theorem enqC2P: forall {s p c t}, parent c p -> ch (sys oneBeh t) s c p <> nil ->
@@ -967,7 +974,7 @@ Proof.
   pose proof (noCycle c_p p1); intuition.
 
 
-  firstorder.
+  intuition.
 
   destruct stf as [[u1 [u2 _]] _].
   rewrite u1 in *; rewrite u2 in *.
@@ -982,7 +989,7 @@ Proof.
   pose proof (listNeq _ _ (eq_sym u1)); intuition.
 
 
-  firstorder.
+  intuition.
 
 
   simpl in *.
@@ -992,5 +999,122 @@ Proof.
   destruct stf as [_ u1].
   pose proof (listNeq _ _ (eq_sym u1)); intuition.
 
+  intuition.
+Qed.
+
+Theorem noEnqDeq: forall {s p c t m1 m2}, recv s p c t m1 -> mark s p c t m2 -> False.
+Proof.
+  intros s p c t m1 m2 recvm1 markm2.
+  unfold recv in *. unfold mark in *.
+  destruct (trans oneBeh t).
+  firstorder.
+  firstorder.
+  firstorder.
+  pose proof (enqC2P p1 n) as ty; rewrite ty in recvm1.
+  destruct recvm1 as [_ [_ [u1 _]]]; destruct markm2 as [_ [_ [u2 _]]].
+  rewrite u1 in u2; discriminate.
+  firstorder.
+  firstorder.
+  assert (H: r = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto.
+  rewrite <- H in recvm1; rewrite e in recvm1.
+  destruct recvm1 as [_ [_ [u1 _]]]; destruct markm2 as [_ [_ [u2 _]]].
+  rewrite u1 in u2; discriminate.
+  firstorder.
+  firstorder.
   firstorder.
 Qed.
+
+Theorem useful: forall {s p c t1 t2 m1 m2},
+                  recv s p c t1 m1 -> recv s p c t2 m2 -> recvc t1 = recvc t2.
+  intros s p c t1 t2 m1 m2 recv1 recv2.
+  unfold recv in *.
+  unfold recvc in *.
+  destruct (trans oneBeh t1); destruct (trans oneBeh t2); intuition.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
+  pose proof (noCycle p1 p3).
+  pose proof (noCycle p1 p3).
+  pose proof (noCycle p1 p3).
+  intuition.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
+  pose proof (noCycle p1 p3).
+  intuition.
+  pose proof (enqC2P p1 n).
+  pose proof (enqC2P p3 n0).
+  rewrite <- H2 in *; rewrite H16 in *; rewrite H13 in *; discriminate.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
+  pose proof (noCycle p1 p3).
+  intuition.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
+  pose proof (noCycle p1 p3).
+  intuition.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
+  pose proof (noCycle p1 p3).
+  firstorder.
+  pose proof (enqC2P p1 n).
+  pose proof (enqC2P p3 n0).
+  rewrite <- H2 in *; rewrite H16 in *; rewrite H13 in *; discriminate.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
+  pose proof (noCycle p1 p3).
+  firstorder.
+Qed.
+
+Theorem recvNotIn: forall {s p c t m}, recv s p c t m ->
+                                       In (Build_BaseMesg (from m) (to m) (addr m) (dataM m)
+                                                          s, msgId m)
+                                          (combine (ch (sys oneBeh (S t)) (recvc t) p c)
+                                                   (labelCh (S t) (recvc t) p c)) -> False.
+Proof.
+  intros s p c t m recvm isIn.
+  unfold recv in recvm. unfold recvc in isIn.
+  destruct (trans oneBeh t).
+  intuition.
+  intuition.
+  intuition.
+  admit.
+  admit.
+  intuition.
+  admit.
+  admit.
+  intuition.
+  admit.
+Qed.
+
+Theorem uniqRecv2: forall {s p c t1 t2 m1 m2},
+                     recv s p c t1 m1 -> recv s p c t2 m2 -> t1 < t2 ->
+                     msgId m1 < msgId m2.
+Proof.
+  intros s p c t1 t2 m1 m2 recvm1 recvm2 t1_lt_t2.
+  pose proof (recvImpIn recvm1) as H1.
+  pose proof (recvImpIn recvm2) as H2.
+  destruct (classic (In ({|
+          fromB := from m2;
+          toB := to m2;
+          addrB := addr m2;
+          dataBM := dataM m2;
+          type := s |}, msgId m2) ( (combine (ch (sys oneBeh t1) (recvc t2) p c)
+            (labelCh t1 (recvc t2) p c))))) as [pos|enq].
+  pose proof (useful recvm1 recvm2) as H.
+  rewrite <- H in pos.
+  assert (mDec: {m1 = m2} + {m1 <> m2}).
+  repeat (decide equality).
+  apply (decLabel).
+  apply (decAddr).
+  destruct mDec as [same|diff].
+  destruct H1 as [u1 w1].
+  destruct pos as [u2 w2].
+  assert (
+  admit.
+  pose proof (inImpSent t1_lt_t2 H2 enq) as [ti [cond [markm rest]]].
+  simpl in markm.
+  assert (cond2: t1 = ti \/ t1 < ti) by (unfold Time in *; omega).
+  destruct cond2 as [eq | lt].
+  rewrite eq in *.
+  pose proof (noEnqDeq recvm1 markm).
+  intuition.
+  pose proof (inComb H1) as use2.
+  pose proof (enqGreater' use2) as g1.
+  pose proof (msgIdTime markm) as id.
+  simpl in id.
+  omega.
+Qed.
+

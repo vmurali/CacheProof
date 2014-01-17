@@ -35,6 +35,7 @@ Proof.
 Qed.
 
 Parameter Label : Set.
+Axiom decLabel: forall (l1 l2: Label), {l1 = l2} + {l1 <> l2}.
 Inductive StLabel := Initial | Store : Label -> StLabel.
 
 Definition MLabel := Time.
