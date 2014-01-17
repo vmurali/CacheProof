@@ -1024,6 +1024,49 @@ Proof.
   firstorder.
 Qed.
 
+Section Local.
+  Context {s: ChannelType}.
+  Context {p c: Cache}.
+  Context {t: Time}.
+  Definition comb := combine (ch (sys oneBeh t) s p c) (labelCh t s p c).
+  Theorem posGreaterFull: forall {n}, n < length (ch (sys oneBeh t) s p c) ->
+                                      forall {i}, i < n -> snd (nth n comb (dmy, 0)) <
+                                                           snd (nth i comb (dmy, 0)).
+  Proof.
+    intros n n_lt i i_lt.
+    pose proof (@lenEq s p c t) as lEq.
+    rewrite lEq in n_lt.
+    pose proof (posGreater n_lt i_lt) as almost.
+    pose proof (eqComb dmy 0 n lEq) as bestn.
+    pose proof (eqComb dmy 0 i lEq) as besti.
+    unfold snd.
+    unfold comb.
+    rewrite bestn; rewrite besti.
+    assumption.
+  Qed.
+
+  Theorem posNeq: In (last comb (dmy, 0)) (combine (removelast (ch (sys oneBeh t) s p c))
+                                                   (removelast (labelCh t s p c))) -> False.
+  Proof.
+    intros isIn.
+    pose proof (removeCombine (ch (sys oneBeh t) s p c) (labelCh t s p c)) as eq.
+    rewrite <- eq in isIn; clear eq.
+    pose proof (lastInRemove isIn) as [i [cond1 cond2]].
+    pose proof (last_nth comb (dmy, 0)) as cond3.
+    pose proof (@lenEq s p c t) as H.
+    pose proof (combLength H) as H0.
+    fold comb in H0.
+    rewrite <- H0 in cond3.
+    assert (one: length (ch (sys oneBeh t) s p c) - 1 < length (ch (sys oneBeh t) s p c)) by
+        omega.
+    rewrite <- H0 in cond1.
+    pose proof (posGreaterFull one cond1).
+    rewrite cond3 in H1.
+    rewrite cond2 in H1.
+    omega.
+  Qed.
+End Local.
+
 Theorem useful: forall {s p c t1 t2 m1 m2},
                   recv s p c t1 m1 -> recv s p c t2 m2 -> recvc t1 = recvc t2.
   intros s p c t1 t2 m1 m2 recv1 recv2.
@@ -1065,11 +1108,13 @@ Theorem recvNotIn: forall {s p c t m}, recv s p c t m ->
                                                    (labelCh (S t) (recvc t) p c)) -> False.
 Proof.
   intros s p c t m recvm isIn.
-  unfold recv in recvm. unfold recvc in isIn.
+  unfold recv in recvm. unfold recvc in isIn. unfold labelCh in isIn; fold labelCh in isIn.
   destruct (trans oneBeh t).
   intuition.
   intuition.
   intuition.
+
+  simpl in isIn.
   admit.
   admit.
   intuition.

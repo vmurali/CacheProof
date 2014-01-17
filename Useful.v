@@ -461,3 +461,108 @@ End Induction.
       specialize (IHla H).
       assumption.
     Qed.
+
+    Theorem last_nth: forall {A} (la: list A) da, nth (length la - 1) la da =
+                                                  last la da.
+    Proof.
+      intros A la da.
+      induction la.
+      reflexivity.
+      simpl.
+      destruct la.
+      reflexivity.
+      unfold length.
+      fold (length la).
+      remember (S (length la) - 0) as contra.
+      destruct contra.
+      omega.
+      assert (S (length la) - 0 = length (a0 :: la)) by (unfold length; omega).
+      assert (length (a0 :: la) - 1 = contra) by omega.
+      rewrite <- H0.
+      assumption.
+    Qed.
+
+    Theorem lastInRemove: forall {A} {la: list A} {da}, In (last la da) (removelast la) ->
+                                                        exists i, i < length la - 1 /\
+                                                                  nth i la da = last la da.
+    Proof.
+      intros A la da isIn.
+      induction la.
+      simpl in isIn.
+      firstorder.
+      destruct la.
+      simpl in isIn.
+      firstorder.
+      simpl in isIn.
+      destruct isIn.
+      destruct la.
+      exists 0.
+      constructor.
+      simpl.
+      omega.
+      simpl.
+      assumption.
+      exists 0.
+      constructor.
+      simpl.
+      omega.
+      simpl.
+      assumption.
+      specialize (IHla H).
+      destruct IHla as [i [c1 c2]].
+      exists (S i).
+      constructor.
+      simpl in c1.
+      simpl.
+      omega.
+      simpl.
+      assumption.
+    Qed.
+
+    Theorem eqComb: forall {A B} {la: list A} da {lb: list B} db i,
+                      length la = length lb -> nth i (combine la lb) (da, db) =
+                                               (nth i la da, nth i lb db).
+    Proof.
+      intros A B la da.
+      induction la.
+      intros lb db i eq_len.
+      destruct lb.
+      simpl.
+      destruct i; reflexivity.
+      unfold length in eq_len; discriminate.
+      intros lb db i eq_len.
+      destruct lb.
+      unfold length in eq_len; discriminate.
+      unfold length in eq_len.
+      injection eq_len as gd1; clear eq_len; fold (length la) in gd1. fold (length lb) in gd1.
+      unfold combine.
+      fold (combine la lb).
+      destruct i.
+      reflexivity.
+      unfold nth.
+      fold (nth i (combine la lb) (da, db)).
+      fold (nth i la da).
+      fold (nth i lb db).
+      apply (IHla lb db i gd1).
+    Qed.
+
+    Theorem combLength: forall {A B} {la: list A} {lb: list B},
+                          length la = length lb -> length la = length (combine la lb).
+    Proof.
+      intros A B la.
+      induction la.
+      intros lb.
+      intros len.
+      reflexivity.
+      destruct lb.
+      intros len.
+      simpl in len.
+      discriminate.
+      intros len.
+      simpl in len.
+      injection len as len'.
+      simpl.
+      specialize (IHla lb len').
+      f_equal; assumption.
+    Qed.
+      
