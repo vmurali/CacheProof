@@ -16,22 +16,22 @@ Proof.
 
   destruct s.
   specialize (IHt inI); omega.
-  destruct (decTree c0 p).
-  destruct (decTree p0 c).
+  destruct (decTree p c0).
+  destruct (decTree c p0).
   unfold In in inI.
   destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
   specialize (IHt inI); omega.
   specialize (IHt inI); omega.
 
   destruct s.
-  destruct (decTree c0 c).
-  destruct (decTree p0 p).
+  destruct (decTree c c0).
+  destruct (decTree p p0).
   unfold In in inI.
   destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
   specialize (IHt inI); omega.
   specialize (IHt inI); omega.
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
+  destruct (decTree c p0).
+  destruct (decTree p c0).
   pose proof (notInRemove i (labelCh t rch p c) inI) as f.
   specialize (IHt f); omega.
   specialize (IHt inI); omega.
@@ -39,8 +39,8 @@ Proof.
 
 
   destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
+  destruct (decTree p p0).
+  destruct (decTree c c0).
   pose proof (notInRemove i (labelCh t mch p c) inI) as f.
   specialize (IHt f); omega.
   specialize (IHt inI); omega.
@@ -48,8 +48,8 @@ Proof.
   specialize (IHt inI); omega.
 
   destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
+  destruct (decTree p p0).
+  destruct (decTree c c0).
   unfold In in inI.
   destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
   specialize (IHt inI); omega.
@@ -57,39 +57,23 @@ Proof.
   specialize (IHt inI); omega.
 
   destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
+  destruct (decTree c p0).
+  destruct (decTree p c0).
+  unfold In in inI.
+  destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
+  specialize (IHt inI); omega.
+  destruct (decTree c c0).
+  destruct (decTree p p0).
   pose proof (notInRemove i (labelCh t mch p c) inI) as f.
   specialize (IHt f); omega.
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
-  unfold In in inI.
-  destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
-  specialize (IHt inI); omega.
-  specialize (IHt inI); omega.
-  destruct (decTree c0 c) as [e1|e2].
-  rewrite <- e1 in *.
-  destruct (decTree p0 c) as [e3|e4].
-  rewrite <- e3 in *.
-  pose proof (noParentChild e1 p1); firstorder.
-  destruct (decTree p0 c0) as [e5|e6].
-  assert (H: c0 = p0) by auto.
-  pose proof (noParentChild H p1); firstorder.
-  specialize (IHt inI); omega.
-  destruct (decTree p0 c) as [e3|e4].
-  rewrite <- e3 in *.
-  destruct (decTree c0 p) as [e5|e6].
-  rewrite <- e5 in *.
-  unfold In in inI.
-  destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
   specialize (IHt inI); omega.
   specialize (IHt inI); omega.
   specialize (IHt inI); omega.
 
   
   destruct s.
-  destruct (decTree c0 p).
-  destruct (decTree p0 c).
+  destruct (decTree p c0).
+  destruct (decTree c p0).
   pose proof (notInRemove i (labelCh t mch p c) inI) as f.
   specialize (IHt f); omega.
   specialize (IHt inI); omega.
@@ -98,8 +82,8 @@ Proof.
 
 
   destruct s.
-  destruct (decTree c0 p).
-  destruct (decTree p0 c).
+  destruct (decTree p c0).
+  destruct (decTree c p0).
   unfold In in inI.
   destruct inI as [mu1|mu2]; [ | specialize (IHt mu2)]; omega.
   specialize (IHt inI); omega.
@@ -107,8 +91,8 @@ Proof.
   specialize (IHt inI); omega.
 
   destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
+  destruct (decTree p p0).
+  destruct (decTree c c0).
   pose proof (notInRemove i (labelCh t mch p c) inI) as f.
   specialize (IHt f); omega.
   specialize (IHt inI); omega.
@@ -155,76 +139,72 @@ Proof.
 
   destruct s.
   specialize (IHt n n_lt i i_lt); assumption.
-  destruct (decTree c0 p).
-  destruct (decTree p0 c).
+  destruct (decTree p c0).
+  destruct (decTree c p0).
   apply (one n_lt).
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
 
   destruct s.
-  destruct (decTree c0 c).
-  destruct (decTree p0 p).
+  destruct (decTree c c0).
+  destruct (decTree p p0).
   apply (one n_lt).
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
 
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
+  destruct (decTree c p0).
+  destruct (decTree p c0).
   apply (listNoShift IHt n_lt i_lt).
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
 
   destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
-  apply (listNoShift IHt n_lt i_lt).
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-
-  destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
-  apply (one n_lt).
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-
-  destruct s.
-  destruct (decTree c0 c).
-  destruct (decTree p0 p).
-  apply (listNoShift IHt n_lt i_lt).
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
-  apply (one n_lt).
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
-  apply (one n_lt).
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-  specialize (IHt n n_lt i i_lt); assumption.
-
-  destruct s.
-  destruct (decTree c0 p).
-  destruct (decTree p0 c).
+  destruct (decTree p p0).
+  destruct (decTree c c0).
   apply (listNoShift IHt n_lt i_lt).
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
 
   destruct s.
-  destruct (decTree c0 p).
-  destruct (decTree p0 c).
+  destruct (decTree p p0).
+  destruct (decTree c c0).
   apply (one n_lt).
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
 
   destruct s.
-  destruct (decTree p0 p).
-  destruct (decTree c0 c).
+  destruct (decTree c p0).
+  destruct (decTree p c0).
+  apply (one n_lt).
+  specialize (IHt n n_lt i i_lt); assumption.  
+  destruct (decTree c c0).
+  destruct (decTree p p0).
+  apply (listNoShift IHt n_lt i_lt).
+  specialize (IHt n n_lt i i_lt); assumption.
+  specialize (IHt n n_lt i i_lt); assumption.
+  specialize (IHt n n_lt i i_lt); assumption.
+
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  apply (listNoShift IHt n_lt i_lt).
+  specialize (IHt n n_lt i i_lt); assumption.
+  specialize (IHt n n_lt i i_lt); assumption.
+  specialize (IHt n n_lt i i_lt); assumption.
+
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  apply (one n_lt).
+  specialize (IHt n n_lt i i_lt); assumption.
+  specialize (IHt n n_lt i i_lt); assumption.
+  specialize (IHt n n_lt i i_lt); assumption.
+
+  destruct s.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
   apply (listNoShift IHt n_lt i_lt).
   specialize (IHt n n_lt i i_lt); assumption.
   specialize (IHt n n_lt i i_lt); assumption.
@@ -267,18 +247,8 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   unfold length; f_equal; assumption.
   firstorder.
-  firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
-  destruct (decTree p p).
-  assumption.
-  firstorder.
-  destruct (decTree c0 p).
-  assert (p = c0) by auto; firstorder.
   firstorder.
 
   simpl in *.
@@ -287,34 +257,16 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   unfold length; f_equal; assumption.
   firstorder.
-  firstorder.
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  destruct (decTree c0 c); firstorder.
-  destruct (decTree p c0) as [ez | hd].
+  destruct (decTree c c0); firstorder.
+  destruct (decTree p c0) as [ez|hd].
   rewrite <- ez in *.
-  destruct (decTree c p0) as [y | ny].
+  destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   apply (eqLen (ch (sys oneBeh t) rch p c) (labelCh t rch p c) IHt).
   firstorder.
-  firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
-  assumption.
-  destruct (decTree c0 p).
-  assert (p = c0) by auto; firstorder.
-  destruct (decTree p0 c).
-  firstorder.
-  firstorder.
+  destruct (decTree c p0); firstorder.
 
 
   simpl in *.
@@ -323,18 +275,9 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
   firstorder.
   firstorder.
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  firstorder.
-  destruct (decTree p p); firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  firstorder.
   firstorder.
 
   simpl in *.
@@ -343,18 +286,8 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   unfold length; firstorder.
   firstorder.
-  firstorder.
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  destruct (decTree p p).
-  firstorder.
-  firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
   firstorder.
   firstorder.
 
@@ -366,49 +299,36 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p c).
-  pose proof (noParentChild e0 p1); firstorder.
-  destruct (decTree c c).
-  destruct (decTree p p).
   unfold length; firstorder.
+  destruct (decTree c p).
+  rewrite <- e0 in *.
+  destruct (decTree c p0);
   firstorder.
-  firstorder.
-  destruct (decTree p p0) as [ex|hx].
-  pose proof (noParentChild ex p1); firstorder.
-  destruct (decTree p c).
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
-  firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
   firstorder.
   destruct (decTree p p0).
+  rewrite <- e0 in *.
   destruct (decTree c c0).
-  destruct (decTree c0 c).
-  destruct (decTree p0 p).
+  rewrite <- e1 in *.
+  destruct (decTree c p).
+  rewrite <- e2 in *.
+  firstorder.
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
-  assert (p0 = p) by auto; firstorder.
-  assert (c0 = c) by auto; firstorder.
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
-  rewrite e0 in e2.
-  pose proof (noParentChild e2 p1); firstorder.
+  destruct (decTree c p);
   firstorder.
+  destruct (decTree c p0).
   firstorder.
-  destruct (decTree c0 c).
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  destruct (decTree p0 c).
-  rewrite <- e1 in e0.
-  pose proof (noParentChild e0 p1); firstorder.
+  destruct (decTree c c0); firstorder.
   firstorder.
-  destruct (decTree p0 c).
-  destruct (decTree c0 p).
-  assert (p = c0) by auto; firstorder.
+  
+
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p c0) as [ez|hd].
+  rewrite <- ez in *.
+  destruct (decTree c p0) as [y|ny].
+  rewrite <- y in *.
+  apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
   firstorder.
   firstorder.
   firstorder.
@@ -420,38 +340,8 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
-  apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
-  firstorder.
-  firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto.
-  firstorder.
-  destruct (decTree p p); firstorder.
-  destruct (decTree c0 p).
-  assert (p = c0) by auto.
-  firstorder.
-  firstorder.
-  firstorder.
-
-
-  simpl in *.
-  destruct s.
-  destruct (decTree p c0) as [ez|hd].
-  rewrite <- ez in *.
-  destruct (decTree c p0) as [y|ny].
-  rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   unfold length; firstorder.
   firstorder.
-  firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
-  destruct (decTree p p); firstorder.
-  destruct (decTree c0 p).
-  assert (p = c0) by auto; firstorder.
   firstorder.
   firstorder.
 
@@ -462,16 +352,8 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
   firstorder.
-  firstorder.
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  destruct (decTree p p); firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
   firstorder.
   firstorder.
 Qed.
@@ -498,8 +380,6 @@ Proof.
   rewrite <- pEq in *.
   destruct (decTree c p0) as [cEq | cNeq].
   rewrite <- cEq in *.
-  destruct (decTree p p) as [peq | pneq].
-  destruct (decTree c c) as [ceq | cneq].
   unfold combine in inComb.
   unfold In in inComb.
   assert (L: (b, l) = ({|
@@ -511,21 +391,17 @@ Proof.
   rewrite L1; rewrite L2; simpl; firstorder.
   firstorder.
   firstorder.
-  destruct (decTree p0 c) as [ceq | cneq].
-  assert   (c = p0) by auto; firstorder.
-  destruct (decTree p p) as [easy | hard]; firstorder.
-  destruct (decTree c0 p); [assert (p = c0) by auto; firstorder| firstorder].
+
+
 
   simpl in *.
-  assert (rew: r = last (ch (sys oneBeh t) rch c0 p0) dmy) by auto;
-    rewrite <- rew in *.
+  assert (rew: r = last (ch (sys oneBeh t) rch c0 p0) dmy) by auto.
+  rewrite <- rew in *.
   destruct s.
   destruct (decTree p p0) as [pEq | pNeq].
   rewrite <- pEq in *.
   destruct (decTree c c0) as [cEq | cNeq].
   rewrite <- cEq in *.
-  destruct (decTree p p) as [peq | pneq].
-  destruct (decTree c c) as [ceq | cneq].
   unfold combine in inComb.
   unfold In in inComb.
   assert (L: (b, l) = ({|
@@ -536,22 +412,12 @@ Proof.
   pose proof (eachProd L) as [L1 L2]; clear L.
   rewrite L1; rewrite L2; simpl; firstorder.
   firstorder.
-  firstorder.
-  destruct (decTree c0 c) as [easy|hard].
-  assert (c = c0) by auto; firstorder.
-  firstorder.
-  destruct (decTree c0 c) as [sth | easy].
-  destruct (decTree p0 p) as [ez | hd].
-  assert (p = p0) by auto; firstorder.
-  firstorder.
-  firstorder.
+  destruct (decTree c c0) as [easy|hard]; firstorder.
 
   destruct (decTree p c0) as [pEq | pNeq].
   rewrite <- pEq in *.
   destruct (decTree c p0) as [cEq | cNeq].
   rewrite <- cEq in *.
-  destruct (decTree c c) as [peq | pneq].
-  destruct (decTree p p) as [ceq | cneq].
   pose proof (removeCombine (ch (sys oneBeh t) rch p c) (labelCh t rch p c))
     as sthEq.
   rewrite <- sthEq in inComb.
@@ -559,15 +425,7 @@ Proof.
                           inComb) as H.
   firstorder.
   firstorder.
-  firstorder.
-  destruct (decTree p0 c) as [ez|hd].
-  assert (c = p0) by auto; firstorder.
-  firstorder.
-  destruct (decTree p0 c) as [ez|hd].
-  destruct (decTree c0 p) as [yay|nay].
-  assert (p = c0) by auto; firstorder.
-  firstorder.
-  firstorder.
+  destruct (decTree c p0) as [ez|hd]; firstorder.
 
 
   simpl in *.
@@ -576,8 +434,6 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [yay|nay].
   rewrite <- yay in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as sthEq.
   rewrite <- sthEq in inComb.
   pose proof (notInRemove (b, l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c))
@@ -585,14 +441,6 @@ Proof.
   firstorder.
   firstorder.
   firstorder.
-  destruct (decTree c0 c) as [m1 | m2].
-  assert (c = c0) by auto; firstorder.
-  destruct (decTree p p) as [k1 | k2].
-  firstorder.
-  firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  firstorder.
   firstorder.
 
 
@@ -602,8 +450,6 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [yay|nay].
   rewrite <- yay in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   unfold combine in inComb.
   unfold In in inComb.
   assert (L: (b, l) = ({|
@@ -615,14 +461,6 @@ Proof.
   rewrite L1; rewrite L2; simpl; firstorder.
   firstorder.
   firstorder.
-  destruct (decTree p p).
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  firstorder.
-  firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  firstorder.
   firstorder.
 
   simpl in *.
@@ -633,10 +471,6 @@ Proof.
   rewrite pEq in *.
   destruct (decTree c p0) as [cEq | cNeq].
   rewrite cEq in *.
-  destruct (decTree c0 p0).
-  pose proof (noParentChild e0 p1); firstorder.
-  destruct (decTree p0 p0) as [peq | pneq].
-  destruct (decTree c0 c0) as [ceq | cneq].
   unfold combine in inComb.
   unfold In in inComb.
   assert (L: (b, l) = ({|
@@ -646,53 +480,29 @@ Proof.
                           dataBM := dt (sys oneBeh t) c0 a; type := mch |}, t)) by firstorder.
   pose proof (eachProd L) as [L1 L2]; clear L.
   rewrite L1; rewrite L2; simpl; firstorder.
-  firstorder.
-  firstorder.
-
+  destruct (decTree c c0) as [ceq | cneq].
   destruct (decTree c0 p0) as [peq | pneq].
-  pose proof (noParentChild peq p1); firstorder.
-  destruct (decTree c0 c) as [ceq | cneq].
-  rewrite ceq in *.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
+  rewrite <- pEq in *; rewrite ceq in *; rewrite peq in *.
   firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
   firstorder.
-
+  firstorder.
   destruct (decTree p p0) as [ez|hd].
-  rewrite ez in *.
-  destruct (decTree c0 c) as [mu|su].
-  rewrite mu in *.
-  destruct (decTree c c).
-  destruct (decTree p0 p0).
-  pose proof (removeCombine (ch (sys oneBeh t) mch p0 c) (labelCh t mch p0 c)) as H.
-  rewrite <- H in inComb.
-  pose proof (notInRemove (b,l) (combine (ch (sys oneBeh t) mch p0 c) (labelCh t mch p0 c)) inComb) as H2.
+  rewrite <- ez in *.
+  destruct (decTree c c0) as [mu|su].
+  rewrite <- mu in *.
+  destruct (decTree c p) as [alf|bet].
+  rewrite alf in *.
   firstorder.
+  pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as sthEq.
+  rewrite <- sthEq in inComb.
+  pose proof (notInRemove (b, l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c))
+                          inComb) as H.
   firstorder.
+  destruct (decTree c p) as [yes|no]; firstorder.
+
+  destruct (decTree c p0).
   firstorder.
-  destruct (decTree c c0).
-  assert (c0 = c) by auto; firstorder.
-  destruct (decTree p0 c).
-  destruct (decTree c0 p0).
-  assert (p0 = c0) by auto; firstorder.
-  firstorder.
-  firstorder.
-  destruct (decTree c0 c) as [ea|ec].
-  rewrite ea in *.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
-  destruct (decTree p0 c) as [ef|eg].
-  assert (xxx: c = p0) by auto.
-  pose proof (noParentChild xxx p1); firstorder.
-  firstorder.
-  destruct (decTree p0 c) as [ef|eg].
-  rewrite ef in *.
-  destruct (decTree c0 p) as [eh|ej].
-  rewrite eh in *.
-  firstorder.
-  firstorder.
+  destruct (decTree c c0);
   firstorder.
   firstorder.
   
@@ -703,19 +513,11 @@ Proof.
   rewrite <- pEq in *.
   destruct (decTree c p0) as [cEq | cNeq].
   rewrite <- cEq in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as H.
   rewrite <- H in inComb.
   pose proof (notInRemove (b,l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) inComb) as H2.
   firstorder.
   firstorder.
-  firstorder.
-  destruct (decTree p0 c).
-  assert (c = p0) by auto; firstorder.
-  destruct (decTree p p); firstorder.
-  destruct (decTree c0 p).
-  assert (p = c0) by auto; firstorder.
   firstorder.
   firstorder.
 
@@ -725,8 +527,6 @@ Proof.
   rewrite <- pEq in *.
   destruct (decTree c p0) as [cEq | cNeq].
   rewrite <- cEq in *.
-  destruct (decTree p p) as [peq | pneq].
-  destruct (decTree c c) as [ceq | cneq].
   unfold combine in inComb.
   unfold In in inComb.
   assert (L: (b, l) = ({|
@@ -738,15 +538,6 @@ Proof.
   rewrite L1; rewrite L2; simpl; firstorder.
   firstorder.
   firstorder.
-  destruct (decTree p0 c) as [easy|hard].
-  assert (c = p0) by auto; firstorder.
-  destruct (decTree p p);
-    firstorder.
-  destruct (decTree c0 p) as [sth | easy].
-  destruct (decTree p0 c) as [ez | hd].
-  assert (p = c0) by auto; firstorder.
-  firstorder.
-  firstorder.
   firstorder.
 
   simpl in *.
@@ -755,19 +546,11 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [m1 | m2].
   rewrite <- m1 in *.
-  destruct (decTree p p).
-  destruct (decTree c c).
   pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as H.
   rewrite <- H in inComb.
   pose proof (notInRemove (b,l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) inComb) as H2.
   firstorder.
   firstorder.
-  firstorder.
-  destruct (decTree c0 c).
-  assert (c = c0) by auto; firstorder.
-  destruct (decTree p p); firstorder.
-  destruct (decTree p0 p).
-  assert (p = p0) by auto; firstorder.
   firstorder.
   firstorder.
 Qed.

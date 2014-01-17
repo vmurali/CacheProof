@@ -391,8 +391,8 @@ Fixpoint labelCh t ch src dst :=
                | ChildSendReq p c _ _ _ _ _ _ _ =>
                  match ch with
                    | rch =>
-                     if (decTree c src)
-                     then if (decTree p dst)
+                     if (decTree src c)
+                     then if (decTree dst p)
                           then t :: labelCh t ch src dst
                           else labelCh t ch src dst
                      else labelCh t ch src dst
@@ -401,14 +401,14 @@ Fixpoint labelCh t ch src dst :=
                | ParentRecvReq p c _ _ _ _ _ _ _ _ =>
                  match ch with
                    | rch =>
-                     if (decTree p dst)
-                     then if (decTree c src)
+                     if (decTree dst p)
+                     then if (decTree src c)
                           then removelast (labelCh t ch src dst)
                           else labelCh t ch src dst
                      else labelCh t ch src dst
                    | mch =>
-                     if (decTree c dst)
-                     then if (decTree p src)
+                     if (decTree dst c)
+                     then if (decTree src p)
                           then t :: labelCh t ch src dst
                           else labelCh t ch src dst
                      else labelCh t ch src dst
@@ -416,8 +416,8 @@ Fixpoint labelCh t ch src dst :=
                | ChildRecvResp p c _ _ _ _ _ =>
                  match ch with
                    | mch =>
-                     if (decTree p src)
-                     then if (decTree c dst)
+                     if (decTree src p)
+                     then if (decTree dst c)
                           then removelast (labelCh t ch src dst)
                           else labelCh t ch src dst
                      else labelCh t ch src dst
@@ -426,8 +426,8 @@ Fixpoint labelCh t ch src dst :=
                | ParentSendReq p c _ _ _ _ _ _ _ =>
                  match ch with
                    | mch =>
-                     if (decTree p src)
-                     then if (decTree c dst)
+                     if (decTree src p)
+                     then if (decTree dst c)
                           then t :: labelCh t ch src dst
                           else labelCh t ch src dst
                      else labelCh t ch src dst
@@ -436,10 +436,13 @@ Fixpoint labelCh t ch src dst :=
                | ChildRecvReq p c _ _ _ _ _ _ _ =>
                  match ch with
                    | mch =>
-                     match decTree c dst, decTree p src with
-                       | left _, left _ => removelast (labelCh t ch src dst)
-                       | _, _ => match decTree p dst, decTree c src with
-                                   | left _, left _ => t :: labelCh t ch src dst
+                     match decTree dst p, decTree src c with
+                       | left _, left _ => t :: labelCh t ch src dst
+                       | left _, _ => labelCh t ch src dst
+                       | _, _ =>
+                         match decTree dst c, decTree src p with
+                                   | left _, left _ => 
+                                                         removelast (labelCh t ch src dst)
                                    | _, _ => labelCh t ch src dst
                                  end
                      end
@@ -448,8 +451,8 @@ Fixpoint labelCh t ch src dst :=
                | ParentRecvResp p c _ _ _ _ =>
                  match ch with
                    | mch =>
-                     if (decTree c src)
-                     then if (decTree p dst)
+                     if (decTree src c)
+                     then if (decTree dst p)
                           then removelast (labelCh t ch src dst)
                           else labelCh t ch src dst
                      else labelCh t ch src dst
@@ -458,8 +461,8 @@ Fixpoint labelCh t ch src dst :=
                | ChildVolResp p c _ _ _ _ _ _ _ _ =>
                  match ch with
                    | mch =>
-                     if (decTree c src)
-                     then if (decTree p dst)
+                     if (decTree src c)
+                     then if (decTree dst p)
                           then t :: labelCh t ch src dst
                           else labelCh t ch src dst
                      else labelCh t ch src dst
@@ -468,8 +471,8 @@ Fixpoint labelCh t ch src dst :=
                | ChildDropReq p c _ _ _ _ _ _ =>
                  match ch with
                    | mch =>
-                     if (decTree p src)
-                     then if (decTree c dst)
+                     if (decTree src p)
+                     then if (decTree dst c)
                           then removelast (labelCh t ch src dst)
                           else labelCh t ch src dst
                      else labelCh t ch src dst
