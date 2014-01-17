@@ -590,6 +590,29 @@ Proof.
   generalize H use; clear; intros; constructor; assumption.
 Qed.
 
+Theorem inImpSent2: forall {s p c b l t},
+                      In (b, l) (combine (ch (sys oneBeh t) s p c) (labelCh t s p c)) ->
+                      exists ti, ti < t /\ mark (type b) p c ti
+                                    (Build_Mesg (fromB b) (toB b) (addrB b) (dataBM b) l) /\
+                                    (combine (ch (sys oneBeh (S ti)) s p c) (labelCh (S ti) s p c)) =
+                                 (b, l) :: combine (ch (sys oneBeh ti) s p c) (labelCh ti s p c).
+Proof.
+  intros s p c b l t isIn.
+  assert (zero: ~ In (b, l) (combine (ch (sys oneBeh 0) s p c) (labelCh 0 s p c))).
+  pose proof (init oneBeh).
+  rewrite H.
+  unfold initGlobalState.
+  simpl.
+  intuition.
+  destruct t.
+  intuition.
+  assert (0 < S t) by omega.
+  pose proof (inImpSent H isIn zero) as [ti [cond rest]].
+  assert (ti < S t) by omega.
+  exists ti.
+  intuition.
+Qed.
+  
 Theorem recvImpIn: forall {s p c m t},
                      recv s p c t m ->
                      In (Build_BaseMesg (from m) (to m) (addr m) (dataM m) s,
@@ -1025,11 +1048,11 @@ Proof.
   firstorder.
 Qed.
 
-Theorem uniqRecv2: forall {s p c t1 t2 m1 m2},
-                     recv s p c t1 m1 -> recv s p c t2 m2 -> t1 < t2 ->
+Theorem uniqRecv2: forall {s1 s2 p c t1 t2 m1 m2},
+                     recv s1 p c t1 m1 -> recv s2 p c t2 m2 -> t1 < t2 -> recvc t1 = recvc t2 ->
                      msgId m1 < msgId m2.
 Proof.
-  intros s p c t1 t2 m1 m2 recvm1 recvm2 t1_lt_t2.
+  intros s1 s2 p c t1 t2 m1 m2 recvm1 recvm2 t1_lt_t2 eq_recv.
   pose proof (recvImpIn recvm1) as H1.
   pose proof (recvImpIn recvm2) as H2.
   destruct (classic (In ({|
@@ -1037,27 +1060,23 @@ Proof.
           toB := to m2;
           addrB := addr m2;
           dataBM := dataM m2;
-          type := s |}, msgId m2) ( (combine (ch (sys oneBeh t1) (recvc t2) p c)
+          type := s2 |}, msgId m2) ( (combine (ch (sys oneBeh t1) (recvc t2) p c)
             (labelCh t1 (recvc t2) p c))))) as [pos|enq].
-  pose proof (useful recvm1 recvm2) as H.
-  rewrite <- H in pos.
+  rewrite <- eq_recv in pos.
   assert (mDec: {m1 = m2} + {m1 <> m2}).
   repeat (decide equality).
   apply (decLabel).
   apply (decAddr).
   destruct mDec as [same|diff];
   admit.
-  pose proof (inImpSent t1_lt_t2 H2 enq) as [ti [cond [markm rest]]].
-  simpl in markm.
-  assert (cond2: t1 = ti \/ t1 < ti) by (unfold Time in *; omega).
-  destruct cond2 as [eq | lt].
-  rewrite eq in *.
-  pose proof (noEnqDeq recvm1 markm).
-  intuition.
-  pose proof (inComb H1) as use2.
-  pose proof (enqGreater' use2) as g1.
-  pose proof (msgIdTime markm) as id.
-  simpl in id.
-  omega.
+  pose proof (inImpSent t1_lt_t2 H2 enq) as [t2i [cond2 [mark2 rest2]]].
+  simpl in mark2.
+  pose proof (inImpSent2 H1) as [t1i [cond1 [mark1 rest1]]].
+  simpl in mark1.
+
+  pose proof (msgIdTime mark1) as lt.
+  pose proof (msgIdTime mark2) as gt.
+  simpl in *.
+  rewrite lt; rewrite gt; omega.
 Qed.
 
