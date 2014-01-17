@@ -235,6 +235,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                               (Build_BaseMesg (st s w a) toR a
                                                                               (dt s w a) mch)
                                                                 :: ch s t w z
+                                                            | left _, _ => ch s t w z
                                                             | _, _ => match decTree w p,
                                                                            decTree z c with
                                                                        | left _, left _ =>
