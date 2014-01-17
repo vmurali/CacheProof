@@ -565,4 +565,34 @@ End Induction.
       specialize (IHla lb len').
       f_equal; assumption.
     Qed.
-      
+    
+
+Theorem lastCombineDist: forall {A B} (la : list A) da (lb : list B) db,
+                           length la = length lb ->
+                           last (combine la lb) (da, db) = (last la da, last lb db).
+Proof.
+  intros A B la da.
+  induction la.
+  intros lb db lenEq.
+  destruct lb.
+  reflexivity.
+  unfold length in lenEq.
+  discriminate.
+  intros lb db lenEq.
+  destruct lb.
+  unfold length in lenEq; discriminate.
+  simpl in lenEq.
+  injection lenEq as l'.
+  clear lenEq.
+  specialize (IHla lb db l').
+  simpl.
+  destruct la.
+  simpl.
+  destruct lb.
+  reflexivity.
+  unfold length in l'; discriminate.
+  destruct lb.
+  unfold length in l'; discriminate.
+  simpl.
+  assumption.
+Qed.

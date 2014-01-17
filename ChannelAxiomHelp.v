@@ -828,24 +828,34 @@ Section Local.
     assumption.
   Qed.
 
-  Theorem posNeq: In (last comb (dmy, 0)) (combine (removelast (ch (sys oneBeh t) s p c))
-                                                   (removelast (labelCh t s p c))) -> False.
+  Theorem posNeq: In (last (ch (sys oneBeh t) s p c) dmy, last (labelCh t s p c) 0)
+                     (combine (removelast (ch (sys oneBeh t) s p c))
+                              (removelast (labelCh t s p c))) -> False.
   Proof.
     intros isIn.
     pose proof (removeCombine (ch (sys oneBeh t) s p c) (labelCh t s p c)) as eq.
     rewrite <- eq in isIn; clear eq.
+    pose proof (lastCombineDist (ch (sys oneBeh t) s p c) dmy (labelCh t s p c) 0 (@lenEq s p c t)) as use1.
+    rewrite <- use1 in isIn.
     pose proof (lastInRemove isIn) as [i [cond1 cond2]].
     pose proof (last_nth comb (dmy, 0)) as cond3.
     pose proof (@lenEq s p c t) as H.
     pose proof (combLength H) as H0.
     fold comb in H0.
     rewrite <- H0 in cond3.
+    assert (length (ch (sys oneBeh t) s p c) <> 0).
+    unfold comb in *; rewrite <- H0 in cond1.
+    unfold not; intro K.
+    rewrite K in cond1.
+    omega.
     assert (one: length (ch (sys oneBeh t) s p c) - 1 < length (ch (sys oneBeh t) s p c)) by
-        omega.
+           omega.
+    unfold comb in H0.
     rewrite <- H0 in cond1.
     pose proof (posGreaterFull one cond1).
-    rewrite cond3 in H1.
-    rewrite cond2 in H1.
+    rewrite cond3 in H2.
+    unfold comb in H2.
+    rewrite cond2 in H2.
     omega.
   Qed.
 End Local.
@@ -898,13 +908,121 @@ Proof.
   intuition.
 
   simpl in isIn.
-  admit.
-  admit.
+  destruct (decTree p c0).
+  rewrite <- e0 in *.
+  destruct (decTree c p0).
+  rewrite <- e1 in *.
+  assert (gd: In (last (ch (sys oneBeh t) rch p c) dmy, last (labelCh t rch p c) 0)
+                 (combine (removelast (ch (sys oneBeh t) rch p c)) (removelast (labelCh t rch p c)))).
+  destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].
+  rewrite u1 in isIn; rewrite u2 in isIn; rewrite u3 in isIn; rewrite u4 in isIn;
+  rewrite u5 in isIn; rewrite u6 in isIn;
+  destruct (last (ch (sys oneBeh t) rch p c) dmy).
+  simpl in *.
+  assumption.
+  pose proof (posNeq gd).
+  firstorder.
+  firstorder.
+  destruct (decTree c p0); firstorder.
+
+  simpl in isIn.
+  destruct (decTree p p0).
+  rewrite <- e0 in *.
+  destruct (decTree c c0).
+  rewrite <- e1 in *.
+  assert (gd: In (last (ch (sys oneBeh t) mch p c) dmy, last (labelCh t mch p c) 0)
+                 (combine (removelast (ch (sys oneBeh t) mch p c)) (removelast (labelCh t mch p c)))).
+  destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].
+  rewrite u1 in isIn; rewrite u2 in isIn; rewrite u3 in isIn; rewrite u4 in isIn;
+  rewrite u5 in isIn; rewrite u6 in isIn;
+  destruct (last (ch (sys oneBeh t) mch p c) dmy).
+  simpl in *.
+  assumption.
+  pose proof (posNeq gd).
+  firstorder.
+  firstorder.
+  firstorder.
+
   intuition.
-  admit.
-  admit.
+
+  simpl in isIn.
+  destruct (decTree p c0).
+  rewrite <- e0 in *.
+  destruct (decTree c p0).
+  rewrite <- e1 in *.
+  destruct recvm as [u1 [u2 _]].
+  pose proof (noParentChild u2 p1).
+  firstorder.
+  destruct (decTree c p).
+  rewrite <- e1 in *.
+  destruct (decTree p p0).
+  rewrite <- e2 in *.
+  firstorder.
+  destruct (decTree c p0).
+  firstorder.
+  firstorder.
+  firstorder.
+  destruct (decTree p p0).
+  rewrite <- e0 in *.
+  destruct (decTree c c0).
+  rewrite <- e1 in *.
+  destruct (decTree c p).
+  rewrite <- e2 in *.
+  pose proof (noParentChild eq_refl p1).
+  firstorder.
+  assert (gd: In (last (ch (sys oneBeh t) mch p c) dmy, last (labelCh t mch p c) 0)
+                 (combine (removelast (ch (sys oneBeh t) mch p c)) (removelast (labelCh t mch p c)))).
+  destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].
+  rewrite u1 in isIn; rewrite u2 in isIn; rewrite u3 in isIn; rewrite u4 in isIn;
+  rewrite u5 in isIn; rewrite u6 in isIn;
+  destruct (last (ch (sys oneBeh t) mch p c) dmy).
+  simpl in *.
+  assumption.
+  pose proof (posNeq gd).
+  firstorder.
+  destruct (decTree c p).
+  firstorder.
+  firstorder.
+  destruct (decTree c p0); destruct (decTree c c0); firstorder.
+
+  simpl in isIn.
+  destruct (decTree p c0).
+  rewrite <- e in *.
+  destruct (decTree c p0).
+  rewrite <- e0 in *.
+  assert (gd: In (last (ch (sys oneBeh t) mch p c) dmy, last (labelCh t mch p c) 0)
+                 (combine (removelast (ch (sys oneBeh t) mch p c)) (removelast (labelCh t mch p c)))).
+  destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].
+  rewrite u1 in isIn; rewrite u2 in isIn; rewrite u3 in isIn; rewrite u4 in isIn;
+  rewrite u5 in isIn; rewrite u6 in isIn;
+  destruct (last (ch (sys oneBeh t) mch p c) dmy).
+  simpl in *.
+  assumption.
+  pose proof (posNeq gd).
+  firstorder.
+  firstorder.
+  firstorder.
+
+
   intuition.
-  admit.
+
+  simpl in *.
+  destruct (decTree p p0).
+  rewrite <- e0 in *.
+  destruct (decTree c c0).
+  rewrite <- e1 in *.
+  assert (gd: In (last (ch (sys oneBeh t) mch p c) dmy, last (labelCh t mch p c) 0)
+                 (combine (removelast (ch (sys oneBeh t) mch p c)) (removelast (labelCh t mch p c)))).
+  destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].
+  rewrite u1 in isIn; rewrite u2 in isIn; rewrite u3 in isIn; rewrite u4 in isIn;
+  rewrite u5 in isIn; rewrite u6 in isIn;
+  destruct (last (ch (sys oneBeh t) mch p c) dmy).
+  simpl in *.
+  assumption.
+  pose proof (posNeq gd).
+  firstorder.
+  firstorder.
+  firstorder.
 Qed.
 
 Theorem uniqRecv2: forall {s p c t1 t2 m1 m2},
