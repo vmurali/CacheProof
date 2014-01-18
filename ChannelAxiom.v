@@ -103,14 +103,6 @@ Module mkChannel: Channel mkDataTypes.
     Qed.
 
     Definition deqImpProc {m t} := @procImpRecv m t.
-    Theorem deqImpRecv: forall {m t}, deq s p c t m -> exists t', t' <= t /\ recv s p c t' m.
-    Proof.
-      intros m t deqm.
-      pose proof (deqImpProc deqm) as [t' [t'LeT procm]].
-      pose proof (procImpRecv procm) as [t'' [t''LeT' recvm]].
-      assert (t''LeT: t'' <= t) by omega.
-      firstorder.
-    Qed.
 
 
     Definition recvImpSend {m t} := @ChannelAxiomHelp.recvImpSend s p c m t.
@@ -119,63 +111,5 @@ Module mkChannel: Channel mkDataTypes.
     Definition uniqProc2 {m t1 t2} := @uniqRecv2 m t1 t2.
     Definition uniqDeq2 {m t1 t2} := @uniqRecv2 m t1 t2.
 
-
-    Theorem deqImpSend: forall {m t}, deq s p c t m -> exists t', t' <= t /\ send s p c t' m.
-    Proof.
-      intros m t deqm.
-      pose proof (deqImpRecv deqm) as [t' [t'LeT recvm]].
-      pose proof (recvImpSend recvm) as [t'' [t''LeT' sendm]].
-      assert (t''LeT: t'' <= t) by omega.
-      firstorder.
-    Qed.
-
-    Theorem deqImpMark: forall {m t}, deq s p c t m -> exists t', t' <= t /\ mark s p c t' m.
-    Proof.
-      intros m t deqm.
-      pose proof (deqImpSend deqm) as [t' [t'LeT sendm]].
-      pose proof (sendImpMark sendm) as [t'' [t''LeT' markm]].
-      assert (t''LeT: t'' <= t) by omega.
-      firstorder.
-    Qed.
-
-    Theorem procImpSend: forall {m t}, proc s p c t m -> exists t', t' <= t /\ send s p c t' m.
-    Proof.
-      intros m t procm.
-      pose proof (procImpRecv procm) as [t' [t'LeT recvm]].
-      pose proof (recvImpSend recvm) as [t'' [t''LeT' sendm]].
-      assert (t''LeT: t'' <= t) by omega.
-      firstorder.
-    Qed.
-
-    Theorem procImpMark: forall {m t}, proc s p c t m -> exists t', t' <= t /\ mark s p c t' m.
-    Proof.
-      intros m t procm.
-      pose proof (procImpSend procm) as [t' [t'LeT sendm]].
-      pose proof (sendImpMark sendm) as [t'' [t''LeT' markm]].
-      assert (t''LeT: t'' <= t) by omega.
-      firstorder.
-    Qed.
-    Theorem recvImpMark: forall {m t}, recv s p c t m -> exists t', t' <= t /\ mark s p c t' m.
-    Proof.
-      intros m t recvm.
-      pose proof (recvImpSend recvm) as [t' [t'LeT sendm]].
-      pose proof (sendImpMark sendm) as [t'' [t''LeT' markm]].
-      assert (t''LeT: t'' <= t) by omega.
-      firstorder.
-    Qed.
-    Theorem procImpMarkBefore: forall {m ts tr}, proc s p c tr m -> mark s p c ts m -> ts <= tr.
-    Proof.
-      intros m ts tr procm markm.
-      pose proof (procImpMark procm) as [t' [t'_le_tr markm']].
-      pose proof uniqMark2 markm markm' as ts_eq_t'.
-      omega.
-    Qed.
-    Theorem recvImpMarkBefore: forall {m ts tr}, recv s p c tr m -> mark s p c ts m -> ts <= tr.
-    Proof.
-      intros m ts tr recvm markm.
-      pose proof (recvImpMark recvm) as [t' [t'_le_tr markm']].
-      pose proof uniqMark2 markm markm' as ts_eq_t'.
-      omega.
-    Qed.
   End local.
 End mkChannel.

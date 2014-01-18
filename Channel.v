@@ -20,6 +20,14 @@ Module Type Channel (dt: DataTypes).
     Axiom recvImpSend: forall {m t}, recv s p c t m -> exists t', t' <= t /\ send s p c t' m.
     Axiom procImpRecv: forall {m t}, proc s p c t m -> exists t', t' <= t /\ recv s p c t' m.
     Axiom deqImpProc: forall {m t}, deq s p c t m -> exists t', t' <= t /\ proc s p c t' m.
+  End local.
+End Channel.
+
+Module mkChannelThms (dt: DataTypes) (ch: Channel dt).
+  Import dt ch.
+  Section local.
+    Context {s: ChannelType}.
+    Context {p c: Cache}.
     Theorem deqImpRecv: forall {m t}, deq s p c t m -> exists t', t' <= t /\ recv s p c t' m.
     Proof.
       intros m t deqm.
@@ -83,7 +91,7 @@ Module Type Channel (dt: DataTypes).
       omega.
     Qed.
   End local.
-End Channel.
+End mkChannelThms.
 
 Module Type ChannelPerAddr (dt: DataTypes).
 
@@ -124,6 +132,7 @@ Module Type ChannelPerAddr (dt: DataTypes).
 End ChannelPerAddr.
 
 Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
+  Module chThm := mkChannelThms dt ch.
   Definition mark ch p c a t m := dt.mark ch p c t m /\ addr m = a.
   Definition send ch p c a t m := dt.send ch p c t m /\ addr m = a.
   Definition recv ch p c a t m := dt.recv ch p c t m /\ addr m = a.
@@ -185,42 +194,42 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
           end.
 
     Definition deqImpRecv {m t} (deqm: deq s p c a t m) :=
-      match ch.deqImpRecv (proj1 deqm) with
+      match chThm.deqImpRecv (proj1 deqm) with
           | ex_intro x Px =>
               ex_intro (fun t' =>
                           t' <= t /\ recv s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition deqImpSend {m t} (deqm: deq s p c a t m) :=
-      match ch.deqImpSend (proj1 deqm) with
+      match chThm.deqImpSend (proj1 deqm) with
           | ex_intro x Px =>
               ex_intro (fun t' =>
                           t' <= t /\ send s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition deqImpMark {m t} (deqm: deq s p c a t m) :=
-      match ch.deqImpMark (proj1 deqm) with
+      match chThm.deqImpMark (proj1 deqm) with
           | ex_intro x Px => 
               ex_intro (fun t' =>
                           t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition procImpSend {m t} (deqm: proc s p c a t m) :=
-      match ch.procImpSend (proj1 deqm) with
+      match chThm.procImpSend (proj1 deqm) with
           | ex_intro x Px =>
               ex_intro (fun t' =>
                           t' <= t /\ send s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition procImpMark {m t} (deqm: proc s p c a t m) :=
-      match ch.procImpMark (proj1 deqm) with
+      match chThm.procImpMark (proj1 deqm) with
           | ex_intro x Px => 
               ex_intro (fun t' =>
                           t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
           end.
 
     Definition recvImpMark {m t} (deqm: recv s p c a t m) :=
-      match ch.recvImpMark (proj1 deqm) with
+      match chThm.recvImpMark (proj1 deqm) with
           | ex_intro x Px =>
               ex_intro (fun t' =>
                           t' <= t /\ mark s p c a t' m) x (conj (proj1 Px) (conj (proj2 Px) (proj2 deqm)))
@@ -233,7 +242,7 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
       unfold mark in *.
       destruct procm as [procm _].
       destruct markm as [markm _].
-      apply (ch.procImpMarkBefore procm markm).
+      apply (chThm.procImpMarkBefore procm markm).
     Qed.
 
     Definition recvImpMarkBefore: forall {m ts tr}, recv s p c a tr m -> mark s p c a ts m ->
@@ -244,7 +253,7 @@ Module mkChannelPerAddr (dt: DataTypes) (ch: Channel dt) : ChannelPerAddr dt.
       unfold mark in *.
       destruct procm as [procm _].
       destruct markm as [markm _].
-      apply (ch.recvImpMarkBefore procm markm).
+      apply (chThm.recvImpMarkBefore procm markm).
     Qed.
   End local.
 End mkChannelPerAddr.
