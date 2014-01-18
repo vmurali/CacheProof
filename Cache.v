@@ -1,5 +1,6 @@
 Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical MsiState.
 
+
 Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
   Import dt ch.
 
@@ -9,44 +10,144 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
     Context {src dst: Cache}.
     Context {wt: Addr -> Time -> bool}.
     Context {wtS: Addr -> Time -> State}.
-    Record CommonBehavior :=
-      {
-        change: forall {t a}, st a (S t) <> st a t -> (exists m, mark mch src dst a t m) \/
-                                                      (exists m, recv mch dst src a t m);
-        sendmChange: forall {t a m}, mark mch src dst a t m -> st a (S t) = to m;
-        recvmChange: forall {t a m}, recv mch dst src a t m -> st a (S t) = to m;
-        sendrImpSt: forall {t a r}, mark rch src dst a t r -> toRSComp (to r) (st a t);
 
-        sendrImpSetWait: forall {t a r}, mark rch src dst a t r -> wt a (S t) = true;
-        sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
-        sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
-        recvmImpResetWait: forall {t a m}, recv rch src dst a t m ->
-                                           ~ toRSComp (wtS a t) (to m) -> wt a (S t) = false;
-        waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
-                                 exists m, recv mch dst src a t m /\
-                                           ~ toRSComp (wtS a t) (to m);
-        waitSet: forall {t a}, wt a t = false -> wt a (S t) = true ->
-                               exists r, mark rch src dst a t r;
-        waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
-        recvmImpNoSendr: forall {t a m r}, recv mch src dst a t m -> send rch dst src a t r ->
-                                           False;
+Record CommonBehavior :=
+  {
+    change: forall {t a}, st a (S t) <> st a t -> (exists m, mark mch src dst a t m) \/
+                                                  (exists m, recv mch dst src a t m);
+    sendmChange: forall {t a m}, mark mch src dst a t m -> st a (S t) = to m;
+    recvmChange: forall {t a m}, recv mch dst src a t m -> st a (S t) = to m;
+    sendrImpSt: forall {t a r}, mark rch src dst a t r -> toRSComp (to r) (st a t);
 
-(*
+    sendrImpSetWait: forall {t a r}, mark rch src dst a t r -> wt a (S t) = true;
+    sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
+    sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
+    recvmImpResetWait: forall {t a m}, recv rch src dst a t m ->
+                                       ~ toRSComp (wtS a t) (to m) -> wt a (S t) = false;
+    waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
+                             exists m, recv mch dst src a t m /\
+                                       ~ toRSComp (wtS a t) (to m);
+    waitSet: forall {t a}, wt a t = false -> wt a (S t) = true ->
+                           exists r, mark rch src dst a t r;
+    waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
+    recvmImpNoSendr: forall {t a m r}, recv mch src dst a t m -> send rch dst src a t r ->
+                                       False;
+
+    (*
         sendrImpNoSendr: forall {a t1 t2 r1 r2},
                            t1 < t2 -> mark rch src dst a t1 r1 ->
                            mark rch src dst a t2 r2 ->
                            exists t', t1 < t' <= t2 /\ ~ toRSComp (to r1) (st a t');
-*)
-        sendmFrom: forall {t a m}, mark mch src dst a t m -> from m = st a t;
-        sendrFrom: forall {t a r}, mark rch src dst a t r -> from r = st a t;
-        noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
-                                      forall {m'}, recv mch dst src a t m' -> False;
-        noSendmSendr: forall {t a m}, mark mch src dst a t m ->
-                                      forall {r}, mark rch src dst a t r -> False
-      }.
+     *)
+    sendmFrom: forall {t a m}, mark mch src dst a t m -> from m = st a t;
+    sendrFrom: forall {t a r}, mark rch src dst a t r -> from r = st a t;
+    noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
+                                  forall {m'}, recv mch dst src a t m' -> False;
+    noSendmSendr: forall {t a m}, mark mch src dst a t m ->
+                                  forall {r}, mark rch src dst a t r -> False
+  }.
+
+
     Variable cb: CommonBehavior.
+  End CommonBeh.
 
+  Section Pair.
+    Axiom noParentSame: forall {n a t}, defined n -> (forall {p}, defined p -> ~ parent n p) ->
+                        state n a (S t) = state n a t.
+    Context {p c: Cache}.
+    Variable pDef: defined p.
+    Variable cDef: defined c.
+    Variable isParent: parent c p.
+    Axiom st: defined p -> defined c -> parent c p ->
+              @CommonBehavior (state c) sgt c p (wait c) (waitS c).
+    Axiom sendmImpSt: defined p -> defined c -> parent c p ->
+                      forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
 
+    Axiom volAxiom: defined p -> defined c -> parent c p ->
+                    forall {t' a m}, mark mch c p a t' m ->
+                                     wait c a t' = true ->
+                                     exists r1, recv rch p c a t' r1 /\
+                                                slt (to r1) (state c a t').
+
+(*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
+
+    Axiom dt: defined p -> defined c -> parent c p -> @CommonBehavior (dir p c) slt p c
+    (dwait p c) (dwaitS p c).
+    Section ForT.
+      Context {a: Addr} {t: Time}.
+
+      Axiom sendmImpRecvr: defined p -> defined c -> parent c p -> 
+                           forall {m}, mark mch p c a t m -> exists r, recv rch c p a t r.
+
+      Axiom sendmImpRecvrGe: defined p -> defined c -> parent c p ->
+                             forall {m}, mark mch p c a t m ->
+                                         forall {r}, recv rch c p a t r -> sle (to r) (to m).
+
+      Axiom recvrCond: defined p -> defined c -> parent c p ->
+                       forall {r}, recv rch c p a t r -> sle (dir p c a t) (from r).
+
+      Axiom recvmCond: defined p -> defined c -> parent c p ->
+                       forall {m}, recv mch c p a t m -> from m = dir p c a t.
+
+      Axiom sendmNoWait: defined p -> defined c -> parent c p ->
+                         forall {t2 m2}, mark mch p c a t2 m2 -> dwait p c a t2 = false.
+
+      (*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
+    End ForT.
+
+    Axiom init: defined p -> defined c -> parent c p -> forall {a}, dir p c a 0 = state c a 0.
+
+    Definition twoEqPRespFalse (pDef: defined p) (cDef: defined c) (isParent: parent c p) :=
+      forall a t t1 m1, t1 <= t -> mark mch p c a t1 m1 ->
+                        forall t2 m2, t2 <= t -> mark mch p c a t2 m2 ->
+                                      (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) ->
+                                      (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
+                                      t1 = t2.
+
+    Definition twoPReqEqNeedsPResp (pDef: defined p) (cDef: defined c) (isParent: parent c p):=
+      forall a t t1 r1,
+        t1 <= t -> mark rch p c a t1 r1 ->
+        forall t2 r2,
+          t2 <= t -> mark rch p c a t2 r2 ->
+          (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
+          (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> t1 < t2 ->
+          sle (to r1) (to r2) -> exists tm, t1 < tm < t2 /\ exists m, mark mch p c a tm m.
+
+    Section ForA.
+      Context {a: Addr}.
+      Axiom pRespReq: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
+                      twoEqPRespFalse pDef cDef isParent ->
+                      twoPReqEqNeedsPResp pDef cDef isParent ->
+                      forall {t1 t2 t3},
+                      forall {m},
+                        mark mch p c a t1 m ->
+                        forall {r}, mark rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
+                                    exists t4, t4 < t3 /\ recv mch p c a t4 m.
+
+      Axiom pReqResp: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
+        twoEqPRespFalse pDef cDef isParent ->
+                      twoPReqEqNeedsPResp pDef cDef isParent ->
+                      forall {t1 t2 t3},
+                      forall {r},
+                        mark rch p c a t1 r ->
+                        forall {m}, mark mch p c a t2 m -> recv mch p c a t3 m -> t1 <= t2 ->
+                                    exists t4, t4 < t3 /\ recv rch p c a t4 r.
+    End ForA.
+
+  End Pair.
+End BehaviorAxioms.
+
+Module mkBehaviorHelp (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorAxioms dt ch).
+  Import dt ch st.
+
+  Section CommonBeh.
+    Context {st: Addr -> Time -> State}.
+    Context {toRSComp: State -> State -> Prop}.
+    Context {src dst: Cache}.
+    Context {wt: Addr -> Time -> bool}.
+    Context {wtS: Addr -> Time -> State}.
+
+    Variable cb: @CommonBehavior st toRSComp src dst wt wtS.
 
     Lemma nochangeWait': forall {a t td r}, mark rch src dst a t r ->
                            (forall ti, t < ti <= t + td ->
@@ -187,95 +288,11 @@ Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
       apply noChange; intuition.
     Qed.
   End CommonBeh.
-
-  Section Pair.
-    Axiom noParentSame: forall {n a t}, defined n -> (forall {p}, defined p -> ~ parent n p) ->
-                        state n a (S t) = state n a t.
-    Context {p c: Cache}.
-    Variable pDef: defined p.
-    Variable cDef: defined c.
-    Variable isParent: parent c p.
-    Axiom st: defined p -> defined c -> parent c p ->
-              @CommonBehavior (state c) sgt c p (wait c) (waitS c).
-    Axiom sendmImpSt: defined p -> defined c -> parent c p ->
-                      forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
-
-    Axiom volAxiom: defined p -> defined c -> parent c p ->
-                    forall {t' a m}, mark mch c p a t' m ->
-                                     wait c a t' = true ->
-                                     exists r1, recv rch p c a t' r1 /\
-                                                slt (to r1) (state c a t').
-
-(*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
-
-    Axiom dt: defined p -> defined c -> parent c p -> @CommonBehavior (dir p c) slt p c
-    (dwait p c) (dwaitS p c).
-    Section ForT.
-      Context {a: Addr} {t: Time}.
-
-      Axiom sendmImpRecvr: defined p -> defined c -> parent c p -> 
-                           forall {m}, mark mch p c a t m -> exists r, recv rch c p a t r.
-
-      Axiom sendmImpRecvrGe: defined p -> defined c -> parent c p ->
-                             forall {m}, mark mch p c a t m ->
-                                         forall {r}, recv rch c p a t r -> sle (to r) (to m).
-
-      Axiom recvrCond: defined p -> defined c -> parent c p ->
-                       forall {r}, recv rch c p a t r -> sle (dir p c a t) (from r).
-
-      Axiom recvmCond: defined p -> defined c -> parent c p ->
-                       forall {m}, recv mch c p a t m -> from m = dir p c a t.
-
-      Axiom sendmNoWait: defined p -> defined c -> parent c p ->
-                         forall {t2 m2}, mark mch p c a t2 m2 -> dwait p c a t2 = false.
-
-      (*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
-    End ForT.
-
-    Axiom init: defined p -> defined c -> parent c p -> forall {a}, dir p c a 0 = state c a 0.
-
-    Definition twoEqPRespFalse (pDef: defined p) (cDef: defined c) (isParent: parent c p) :=
-      forall a t t1 m1, t1 <= t -> mark mch p c a t1 m1 ->
-                        forall t2 m2, t2 <= t -> mark mch p c a t2 m2 ->
-                                      (forall t3, t3 <= t -> ~ recv mch p c a t3 m1) ->
-                                      (forall {t4}, t4 <= t -> ~ recv mch p c a t4 m2) ->
-                                      t1 = t2.
-
-    Definition twoPReqEqNeedsPResp (pDef: defined p) (cDef: defined c) (isParent: parent c p):=
-      forall a t t1 r1,
-        t1 <= t -> mark rch p c a t1 r1 ->
-        forall t2 r2,
-          t2 <= t -> mark rch p c a t2 r2 ->
-          (forall t3, t3 <= t -> ~ recv rch p c a t3 r1) ->
-          (forall t4, t4 <= t -> ~ recv rch p c a t4 r2) -> t1 < t2 ->
-          sle (to r1) (to r2) -> exists tm, t1 < tm < t2 /\ exists m, mark mch p c a tm m.
-
-    Section ForA.
-      Context {a: Addr}.
-      Axiom pRespReq: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
-                      twoEqPRespFalse pDef cDef isParent ->
-                      twoPReqEqNeedsPResp pDef cDef isParent ->
-                      forall {t1 t2 t3},
-                      forall {m},
-                        mark mch p c a t1 m ->
-                        forall {r}, mark rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
-                                    exists t4, t4 < t3 /\ recv mch p c a t4 m.
-
-      Axiom pReqResp: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
-        twoEqPRespFalse pDef cDef isParent ->
-                      twoPReqEqNeedsPResp pDef cDef isParent ->
-                      forall {t1 t2 t3},
-                      forall {r},
-                        mark rch p c a t1 r ->
-                        forall {m}, mark mch p c a t2 m -> recv mch p c a t3 m -> t1 <= t2 ->
-                                    exists t4, t4 < t3 /\ recv rch p c a t4 r.
-    End ForA.
-
-  End Pair.
-End BehaviorAxioms.
+End mkBehaviorHelp.
 
 Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorAxioms dt ch).
-  Import dt ch st.
+  Module hl := mkBehaviorHelp dt ch st.
+  Import dt ch st hl.
   Section Pair.
     Context {p c: Cache}.
     Variable pDef: defined p.
