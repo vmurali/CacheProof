@@ -1148,6 +1148,7 @@ Section Local.
   Context {p c: Cache}.
   Context {t: Time}.
   Definition comb := combine (ch (sys oneBeh t) s p c) (labelCh t s p c).
+
   Theorem posGreaterFull: forall {n}, n < length (ch (sys oneBeh t) s p c) ->
                                       forall {i}, i < n -> snd (nth n comb (dmy, 0)) <
                                                            snd (nth i comb (dmy, 0)).
@@ -1162,6 +1163,16 @@ Section Local.
     unfold comb.
     rewrite bestn; rewrite besti.
     assumption.
+  Qed.
+
+  Theorem posGreaterFull': forall {n}, n < length comb ->
+                                       forall {i}, i < n -> snd (nth n comb (dmy, 0)) <
+                                                            snd (nth i comb (dmy, 0)).
+  Proof.
+    pose proof (combLength (@lenEq s p c t)) as H.
+    unfold comb.
+    rewrite <- H.
+    apply @posGreaterFull.
   Qed.
 
   Theorem posNeq: In (last (ch (sys oneBeh t) s p c) dmy, last (labelCh t s p c) 0)
@@ -1193,6 +1204,62 @@ Section Local.
     unfold comb in H2.
     rewrite cond2 in H2.
     omega.
+  Qed.
+
+  Theorem allLow: forall {b l}, In (b, l) comb -> (b, l) = last comb (dmy, 0) \/
+                                                  l > snd (last comb (dmy, 0)).
+  Proof.
+    intros b l isIn.
+    pose proof (last_nth comb (dmy, 0)) as whichNth.
+    pose proof (@in_nth (BaseMesg * nat) comb (b, l) (dmy, 0) isIn) as [i [cond posi]].
+    assert (i = length comb - 1 \/ i < length comb - 1) by omega.
+    destruct H as [eq|neq].
+    rewrite eq in posi.
+    rewrite posi in whichNth.
+    left; assumption.
+    assert (K: length comb - 1 < length comb) by omega.
+    pose proof (posGreaterFull' K neq) as use.
+    rewrite whichNth in use.
+    rewrite posi in use.
+    simpl in use.
+    right; assumption.
+  Qed.
+
+  Theorem allLowRecv: forall {b l m s'}, In (b, l) comb -> recv s' p c t m -> recvc t = s ->
+                                      msgId m > l -> False.
+  Proof.
+    intros b l m s' isIn recvm which gt.
+    unfold recvc in which.
+    pose proof (allLow isIn) as useful.
+    pose proof (lastCombineDist _ dmy _ 0 (@lenEq s p c t)) as dist.
+    unfold comb in useful; rewrite dist in useful.
+    assert (use': l = last (labelCh t s p c) 0 \/ l > last (labelCh t s p c) 0).
+    destruct useful.
+    left.
+    injection H as u1 u2.
+    assumption.
+    simpl in H.
+    right.
+    assumption.
+    rewrite <- which in use'.
+    simpl in useful; clear dist useful.
+    unfold recv in recvm.
+    destruct (trans oneBeh t).
+    intuition.
+    intuition.
+    intuition.
+    destruct recvm as [u1 [u2 [u3 [_ [_ [_ [_ u]]]]]]].
+    rewrite <- u1 in *; rewrite <- u2 in *; rewrite <- u in *; omega.
+    destruct recvm as [u1 [u2 [u3 [_ [_ [_ [_ u]]]]]]].
+    rewrite <- u1 in *; rewrite <- u2 in *; rewrite <- u in *; omega.
+    intuition.
+    destruct recvm as [u1 [u2 [u3 [_ [_ [_ [_ u]]]]]]].
+    rewrite <- u1 in *; rewrite <- u2 in *; rewrite <- u in *; omega.
+    destruct recvm as [u1 [u2 [u3 [_ [_ [_ [_ u]]]]]]].
+    rewrite <- u1 in *; rewrite <- u2 in *; rewrite <- u in *; omega.
+    intuition.
+    destruct recvm as [u1 [u2 [u3 [_ [_ [_ [_ u]]]]]]].
+    rewrite <- u1 in *; rewrite <- u2 in *; rewrite <- u in *; omega.
   Qed.
 End Local.
 
@@ -1728,14 +1795,40 @@ Proof.
   firstorder.
 Qed.
 
+Theorem toCSameCh: forall {x1 x2 p c t1 t2 m r}, parent c p ->
+                                                 mark x1 p c t1 m ->
+                                                 recv x2 p c t2 r ->
+                                                 recvc t2 = markc t1.
+Proof.
+  intros x1 x2 p c t1 t2 m r c_p mark1 recv2.
+  unfold mark in *; unfold recv in *.
+  unfold markc; unfold recvc.
+  destruct (trans oneBeh t1); destruct (trans oneBeh t2); intuition.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p1); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p1); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p3); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p1); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p3); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p3); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p3); firstorder.
+  rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
+  pose proof (noCycle c_p p3); firstorder.
+Qed.  
 
 
-Theorem fifo1: forall {p c t1 t2 t3 m r},
+Theorem fifo1: forall {p c t1 t2 t3 m r}, parent c p ->
                  mark mch p c t1 m ->
                  mark rch p c t2 r -> recv rch p c t3 r -> t1 <= t2 ->
                  exists t4, t4 < t3 /\ recv mch p c t4 m.
 Proof.
-  intros p c t1 t2 t3 m r markm markr recvr t1_le_t2.
+  intros p c t1 t2 t3 m r c_p markm markr recvr t1_le_t2.
   unfold Time in *. unfold labelCh in *; fold labelCh in *.
   assert (t1 = t2 \/ t1 < t2) by omega; clear t1_le_t2.
   destruct H as [eq | t1_lt_t2].
@@ -1756,7 +1849,54 @@ Proof.
            dataBM := dataM m;
            type := mch |}, msgId m) (combine (ch (sys oneBeh t3) (markc t1) p c)
              (labelCh t3 (markc t1) p c)))) as [pres|noPres].
-  admit.
+  pose proof (msgIdTime markm) as sth1.
+  pose proof (msgIdTime markr) as sth2.
+  rewrite <- sth1 in t1_lt_t2.
+  rewrite <- sth2 in t1_lt_t2.
+  pose proof (toCSameCh c_p markm recvr) as markEq.
+  pose proof (allLowRecv pres recvr markEq) as contra.
+  intuition.
+  pose proof (notInImpExRecv hard noPres inm) as mustRecv.
+  simpl in mustRecv.
+  destruct mustRecv as [t [cond [recvt _]]].
+  exists t.
+  intuition.
+Qed.
+
+
+Theorem fifo2: forall {p c t1 t2 t3 m r}, parent c p ->
+                 mark rch p c t1 m ->
+                 mark mch p c t2 r -> recv mch p c t3 r -> t1 <= t2 ->
+                 exists t4, t4 < t3 /\ recv rch p c t4 m.
+Proof.
+  intros p c t1 t2 t3 m r c_p markm markr recvr t1_le_t2.
+  unfold Time in *. unfold labelCh in *; fold labelCh in *.
+  assert (t1 = t2 \/ t1 < t2) by omega; clear t1_le_t2.
+  destruct H as [eq | t1_lt_t2].
+  rewrite eq in *.
+  pose proof (noEnqMR markr markm); firstorder.
+  pose proof (enqImpIn markm) as inm.
+  pose proof (recvImpSend' recvr) as [tx [tx_le_t3 mark'r]].
+  unfold send in mark'r.
+  pose proof (uniqMark2 markr mark'r) as H.
+  rewrite <- H in *; clear mark'r H.
+  assert (S t1 = t3 \/ S t1 < t3) by omega.
+  destruct H as [ez|hard].
+  omega.
+  destruct (classic (In ({|
+           fromB := from m;
+           toB := to m;
+           addrB := addr m;
+           dataBM := dataM m;
+           type := rch |}, msgId m) (combine (ch (sys oneBeh t3) (markc t1) p c)
+             (labelCh t3 (markc t1) p c)))) as [pres|noPres].
+  pose proof (msgIdTime markm) as sth1.
+  pose proof (msgIdTime markr) as sth2.
+  rewrite <- sth1 in t1_lt_t2.
+  rewrite <- sth2 in t1_lt_t2.
+  pose proof (toCSameCh c_p markm recvr) as markEq.
+  pose proof (allLowRecv pres recvr markEq) as contra.
+  intuition.
   pose proof (notInImpExRecv hard noPres inm) as mustRecv.
   simpl in mustRecv.
   destruct mustRecv as [t [cond [recvt _]]].
