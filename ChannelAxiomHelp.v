@@ -688,7 +688,7 @@ Proof.
   destruct s.
   destruct (decTree p c0).
   destruct (decTree c p0).
-  rewrite <- e in *; rewrite <- e0 in *.
+  rewrite <- e0 in *; rewrite <- e1 in *.
   pose proof (lastByRemove notIn isIn) as u.
   firstorder.
   firstorder.
@@ -1390,9 +1390,9 @@ Proof.
 
   simpl in isIn.
   destruct (decTree p c0).
-  rewrite <- e in *.
-  destruct (decTree c p0).
   rewrite <- e0 in *.
+  destruct (decTree c p0).
+  rewrite <- e1 in *.
   assert (gd: In (last (ch (sys oneBeh t) mch p c) dmy, last (labelCh t mch p c) 0)
                  (combine (removelast (ch (sys oneBeh t) mch p c)) (removelast (labelCh t mch p c)))).
   destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].

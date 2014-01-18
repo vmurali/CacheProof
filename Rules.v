@@ -264,6 +264,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                     let toM := toB m in
                                       let a := addrB m in
                                         let d := dataBM m in
+                                        fromM = dirSt s p c a ->
                                           Transition s {| dt := fun t w => match decTree t p, decAddr w a with
                                                                              | left _, left _ =>
                                                                                  match fromB m with
@@ -448,7 +449,7 @@ Fixpoint labelCh t ch src dst :=
                      end
                    | rch => labelCh t ch src dst
                  end
-               | ParentRecvResp p c _ _ _ _ =>
+               | ParentRecvResp p c _ _ _ _ _ =>
                  match ch with
                    | mch =>
                      if (decTree src c)
@@ -558,7 +559,7 @@ Module mkDataTypes <: DataTypes.
                                          to m = toB r /\ addr m = addrB r /\
                                          dataM m = dataBM r /\
                                          msgId m = last (labelCh t mch p c) 0
-                                       | ParentRecvResp p c _ _ _ _ =>
+                                       | ParentRecvResp p c _ _ _ _ _ =>
                                          c = src /\ p = dst /\
                                          let r := last (ch ((sys oneBeh) t) mch c p) dmy in
                                          chn = type r /\
