@@ -621,3 +621,24 @@ Proof.
   simpl.
   assumption.
 Qed.
+
+Theorem inNotInRemove: forall {A} {a} {la: list A} da , In a la -> ~ In a (removelast la) ->
+                                                        last la da = a.
+Proof.
+  intros A a la da isIn notIn.
+  induction la.
+  simpl in isIn.
+  intuition.
+  destruct la.
+  simpl in *.
+  destruct isIn; intuition.
+  simpl in *.
+  destruct isIn.
+  firstorder.
+  specialize (IHla H).
+  assert (notIn': ~ In a match la with
+                         | nil => nil
+                         | _ :: _ => a1 :: removelast la
+                       end) by firstorder.
+  apply (IHla notIn').
+Qed.

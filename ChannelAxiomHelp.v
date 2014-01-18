@@ -555,6 +555,311 @@ Proof.
   firstorder.
 Qed.
 
+  Theorem lastByRemove: forall {b l ty src dst t},
+                          ~ In (b, l)
+                            (combine (removelast (ch (sys oneBeh t) ty src dst))
+                                     (removelast (labelCh t ty src dst))) ->
+                          In (b, l) (combine (ch (sys oneBeh t) ty src dst)
+                                             (labelCh t ty src dst)) ->
+                          type b = type (last (ch (sys oneBeh t) ty src dst) dmy) /\
+                          fromB b = fromB (last (ch (sys oneBeh t) ty src dst) dmy) /\
+                          toB b = toB (last (ch (sys oneBeh t) ty src dst) dmy) /\
+                          addrB b = addrB (last (ch (sys oneBeh t) ty src dst) dmy) /\
+                          dataBM b = dataBM (last (ch (sys oneBeh t) ty src dst) dmy) /\
+                          l = last (labelCh t ty src dst) 0 /\
+                          combine (removelast (ch (sys oneBeh t) ty src dst))
+                                  (removelast (labelCh t ty src dst)) =
+                          removelast (combine (ch (sys oneBeh t) ty src dst)
+                                              (labelCh t ty src dst)).
+  Proof.
+    intros b l ty src dst t notIn isIn.
+    pose proof (removeCombine (ch (sys oneBeh t) ty src dst) (labelCh t ty src dst)) as dist.
+    rewrite <- dist in notIn.
+    pose proof (inNotInRemove (dmy, 0) isIn notIn) as bLast.
+    pose proof (lastCombineDist _ dmy _ 0 (@lenEq ty src dst t)) as dist2.
+    rewrite dist2 in bLast.
+    pose proof (eachProd bLast) as [bEq lEq].
+    rewrite bEq in *; rewrite lEq in *.
+    pose proof (removeCombine (ch (sys oneBeh t) ty src dst)
+                              (labelCh t ty src dst)) as dist3.
+    rewrite dist3.
+    constructor; firstorder.
+  Qed.
+
+Theorem notInImpRecv: forall {s p c b l t},
+                     ~ In (b, l) (combine (ch (sys oneBeh (S t)) s p c)
+                                        (labelCh (S t) s p c)) ->
+                     In (b, l) (combine (ch (sys oneBeh t) s p c)
+                                          (labelCh t s p c)) ->
+                     recv (type b) p c t (Build_Mesg (fromB b) (toB b) (addrB b)
+                                                     (dataBM b) l) /\
+                     (combine (ch (sys oneBeh (S t)) s p c) (labelCh (S t) s p c)) =
+                     removelast (combine (ch (sys oneBeh t) s p c) (labelCh t s p c)).
+Proof.
+  intros s p c b l t notIn isIn.
+  unfold recv. unfold labelCh in *; fold labelCh in *.
+  simpl.
+
+  destruct (trans oneBeh t).
+  simpl in *. intuition.
+  simpl in *; intuition.
+
+
+  simpl in *.
+  destruct s.
+  intuition.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  unfold combine in notIn.
+  unfold In in notIn.
+  intuition.
+  intuition.
+  intuition.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree c c0).
+  destruct (decTree p p0).
+  unfold combine in notIn.
+  unfold In in notIn.
+  intuition.
+  intuition.
+  destruct (decTree p p0); intuition.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  rewrite <- e0 in *; rewrite <- e1 in *.
+  pose proof (lastByRemove notIn isIn) as u.
+  firstorder.
+  firstorder.
+  destruct (decTree c p0);
+  firstorder.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
+  rewrite <- e0 in *; rewrite <- e1 in *.
+  pose proof (lastByRemove notIn isIn) as u.
+  firstorder.
+  firstorder.
+  firstorder.
+  firstorder.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
+  rewrite <- e0 in *; rewrite <- e1 in *.
+  unfold combine in notIn.
+  unfold In in notIn.
+  intuition.
+  firstorder.
+  firstorder.
+  firstorder.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  rewrite <- e0 in *; rewrite <- e1 in *.
+  unfold combine in notIn.
+  unfold In in notIn.
+  intuition.
+  destruct (decTree c c0).
+  rewrite <- e1 in *.
+  destruct (decTree p p0).
+  rewrite <- e2 in *.
+  assert (c = p) by auto; firstorder.
+  firstorder.
+  firstorder.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
+  destruct (decTree c p0).
+  rewrite <- e0 in *; rewrite <- e1 in *; rewrite <- e2 in *.
+  firstorder.
+  rewrite <- e0 in *; rewrite <- e1 in *.
+  pose proof (lastByRemove notIn isIn) as u.
+  firstorder.
+  destruct (decTree c p0); firstorder.
+  destruct (decTree c p0); destruct (decTree c c0); firstorder.
+  firstorder.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  rewrite <- e in *; rewrite <- e0 in *.
+  pose proof (lastByRemove notIn isIn) as u.
+  firstorder.
+  firstorder.
+  firstorder.
+  firstorder.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  unfold combine in notIn.
+  unfold In in notIn.
+  firstorder.
+  firstorder.
+  firstorder.
+  firstorder.
+
+  simpl in *.
+  destruct s.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
+  rewrite <- e0 in *; rewrite <- e1 in *.
+  pose proof (lastByRemove notIn isIn) as u.
+  firstorder.
+  firstorder.
+  firstorder.
+  firstorder.
+Qed.
+
+Theorem notInImpExRecv:
+  forall {s p c b l t1 t2}, t1 < t2 ->
+                            ~ In (b, l) (combine (ch (sys oneBeh t2) s p c)
+                                                 (labelCh t2 s p c)) ->
+                            In (b, l) (combine (ch (sys oneBeh t1) s p c)
+                                               (labelCh t1 s p c)) ->
+                            exists t, t1 <= t < t2 /\ recv (type b) p c t
+                                           (Build_Mesg (fromB b) (toB b) (addrB b)
+                                                       (dataBM b) l) /\
+                                      (combine (ch (sys oneBeh (S t)) s p c)
+                                               (labelCh (S t) s p c)) =
+                                      removelast (combine (ch (sys oneBeh t) s p c)
+                                                          (labelCh t s p c)).
+Proof.
+  intros s p c b l t1 t2 cond notIn isIn.
+  remember (t2 - t1 - 1) as td.
+  assert (t2 = t1 + S td) by omega.
+  rewrite H in *; clear cond Heqtd H.
+  induction td.
+  assert (t1 + 1 = S t1) by omega.
+  rewrite H in *.
+  exists t1.
+  assert (t1 <= t1 < S t1) by omega.
+  pose proof (notInImpRecv notIn isIn); intuition.
+  destruct (classic (In (b, l) (combine (ch (sys oneBeh (t1 + S td)) s p c)
+                                        (labelCh (t1 + S td) s p c)))) as [same|diff].
+  assert (t1 + S (S td) = S (t1 + S td)) by omega.
+  rewrite H in *.
+  exists (t1 + S td).
+  pose proof (notInImpRecv notIn same); intuition.
+  specialize (IHtd diff).
+  destruct IHtd as [t [cond rest]].
+  assert (t1 <= t1 + S td < t1 + S (S td)) by omega.
+  exists t.
+  intuition.
+Qed.
+
+Theorem enqImpIn: forall {s p c t m}, mark s p c t m ->
+                                      In
+                                        (Build_BaseMesg (from m) (to m) (addr m) (dataM m)
+                                                        s, msgId m)
+                                        (combine (ch (sys oneBeh (S t)) (markc t) p c)
+                                                 (labelCh (S t) (markc t) p c)).
+Proof.
+  intros s p c t m markm.
+  unfold mark in markm. unfold labelCh; fold labelCh. unfold markc in *.
+  destruct (trans oneBeh t).
+  intuition.
+  intuition.
+
+  simpl.
+  destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  destruct s.
+  discriminate.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  unfold combine; unfold In; left.
+  rewrite <- u1 in *; rewrite <- u2 in *;
+  rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  reflexivity.
+  assert (c = p0) by auto; firstorder.
+  assert (p = c0) by auto; firstorder.
+
+  simpl.
+  destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  destruct s.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
+  unfold combine; unfold In; left.
+  fold r in u4; fold a in u4.
+  fold r in u6; fold a in u6.
+  rewrite <- u1 in *; rewrite <- u2 in *;
+  rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  reflexivity.
+  assert (c = c0) by auto; firstorder.
+  assert (p = p0) by auto; firstorder.
+  discriminate.
+
+  intuition.
+
+  simpl.
+  destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  destruct s.
+  discriminate.
+  destruct (decTree p p0).
+  destruct (decTree c c0).
+  unfold combine; unfold In; left.
+  rewrite <- u1 in *; rewrite <- u2 in *;
+  rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  reflexivity.
+  assert (c = c0) by auto; firstorder.
+  assert (p = p0) by auto; firstorder.
+
+  simpl.
+  destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  fold r in u4; fold a in u4.
+  fold r in u6; fold a in u6.  
+  unfold combine; unfold In; left.
+  rewrite <- u1 in *; rewrite <- u2 in *;
+  rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  reflexivity.
+  assert (c = p0) by auto; firstorder.
+  assert (p = c0) by auto; firstorder.
+  discriminate.
+
+  intuition.
+
+  simpl.
+  destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  destruct s.
+  destruct (decTree p c0).
+  destruct (decTree c p0).
+  unfold combine; unfold In; left.
+  rewrite <- u1 in *; rewrite <- u2 in *;
+  rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  reflexivity.
+  assert (c = p0) by auto; firstorder.
+  assert (p = c0) by auto; firstorder.
+  discriminate.
+
+  intuition.
+Qed.
+
+Theorem noEnqMR: forall {p c t m r}, mark mch p c t m -> mark rch p c t r -> False.
+Proof.
+  intros p c t m r send1 send2.
+  unfold mark in *; destruct (trans oneBeh t).
+  intuition.
+  intuition.
+  destruct send1 as [_ [_ [u _]]]; discriminate.
+  destruct send2 as [_ [_ [u _]]]; discriminate.
+  intuition.
+  destruct send1 as [_ [_ [u _]]]; discriminate.
+  destruct send2 as [_ [_ [u _]]]; discriminate.
+  intuition.
+  destruct send2 as [_ [_ [u _]]]; discriminate.
+  intuition.
+Qed.
+
 Theorem inImpSent: forall {s p c b l t1 t2}, t1 < t2 ->
                      In (b, l) (combine (ch (sys oneBeh t2) s p c) (labelCh t2 s p c)) ->
                      ~ In (b, l) (combine (ch (sys oneBeh t1) s p c) (labelCh t1 s p c)) ->
@@ -675,7 +980,7 @@ Proof.
   assumption.
 Qed.
 
-Theorem recvImpSend: forall {s p c m t}, recv s p c t m -> exists t', t' <= t /\ send s p c t' m.
+Theorem recvImpSend': forall {s p c m t}, recv s p c t m -> exists t', t' < t /\ send s p c t' m.
 Proof.
   intros s p c m t recvm.
   pose proof (recvImpIn recvm) as gdIn.
@@ -700,7 +1005,7 @@ Proof.
   pose proof (inImpSent sth gdIn sth3) as [ti [cond rest]].
   simpl in *.
   exists ti.
-  assert (ti <= S t) by omega.
+  assert (ti < S t) by omega.
   unfold send.
   destruct rest as [useful _].
   assert (great: mark s p c ti m).
@@ -708,6 +1013,14 @@ Proof.
   simpl in *.
   assumption.
   constructor; assumption.
+Qed.
+
+Theorem recvImpSend: forall {s p c m t}, recv s p c t m -> exists t', t' <= t /\ send s p c t' m.
+Proof.
+  intros s p c m t recvm.
+  pose proof recvImpSend' recvm as [t' [cond sendm]].
+  assert (t' <= t) by omega.
+  exists t'; firstorder.
 Qed.
 
 Theorem enqC2P: forall {s p c t}, parent c p -> ch (sys oneBeh t) s c p <> nil ->
@@ -1215,4 +1528,238 @@ Proof.
   assert (recvc t2 = recvc t1) by auto.
   pose proof (uniqRecv2' recv2 recv1 gt H0).
   omega.
+Qed.
+
+Theorem uniqMark1: forall {s p c m n t}, mark s p c t m -> mark s p c t n -> m = n.
+Proof.
+  intros s p c m n t markm markn.
+  unfold mark in *.
+  destruct (trans oneBeh t).
+  firstorder.
+  firstorder.
+
+  destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
+  destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
+  rewrite <- fromm in fromn;
+    rewrite <- tom in ton;
+    rewrite <- addrm in addrn;
+    rewrite <- datam in datan;
+    rewrite <- idm in idn.
+  destruct m; destruct n; simpl in *.
+  rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
+  reflexivity.
+
+  destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
+  destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
+  rewrite <- fromm in fromn;
+    rewrite <- tom in ton;
+    rewrite <- addrm in addrn;
+    rewrite <- datam in datan;
+    rewrite <- idm in idn.
+  destruct m; destruct n; simpl in *.
+  rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
+  reflexivity.
+
+  firstorder.
+
+  destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
+  destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
+  rewrite <- fromm in fromn;
+    rewrite <- tom in ton;
+    rewrite <- addrm in addrn;
+    rewrite <- datam in datan;
+    rewrite <- idm in idn.
+  destruct m; destruct n; simpl in *.
+  rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
+  reflexivity.
+
+  destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
+  destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
+  rewrite <- fromm in fromn;
+    rewrite <- tom in ton;
+    rewrite <- addrm in addrn;
+    rewrite <- datam in datan;
+    rewrite <- idm in idn.
+  destruct m; destruct n; simpl in *.
+  rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
+  reflexivity.
+
+  firstorder.
+
+  destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
+  destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
+  rewrite <- fromm in fromn;
+    rewrite <- tom in ton;
+    rewrite <- addrm in addrn;
+    rewrite <- datam in datan;
+    rewrite <- idm in idn.
+  destruct m; destruct n; simpl in *.
+  rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
+  reflexivity.
+
+  firstorder.
+Qed.
+
+Theorem uniqMark2: forall {s p c m t1 t2}, mark s p c t1 m -> mark s p c t2 m -> t1 = t2.
+Proof.
+  intros s p c m t1 t2 markm1 markm2.
+  unfold mark in *.
+
+  destruct (trans oneBeh t1).
+  firstorder.
+  firstorder.
+
+  destruct (trans oneBeh t2).
+  firstorder.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+
+  firstorder.
+
+  destruct (trans oneBeh t2).
+  firstorder.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+
+  firstorder.
+
+  destruct (trans oneBeh t2).
+  firstorder.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+
+  destruct (trans oneBeh t2).
+  firstorder.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+
+  firstorder.
+
+  destruct (trans oneBeh t2).
+  firstorder.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  firstorder.
+
+  firstorder.
+Qed.
+
+
+
+Theorem fifo1: forall {p c t1 t2 t3 m r},
+                 mark mch p c t1 m ->
+                 mark rch p c t2 r -> recv rch p c t3 r -> t1 <= t2 ->
+                 exists t4, t4 < t3 /\ recv mch p c t4 m.
+Proof.
+  intros p c t1 t2 t3 m r markm markr recvr t1_le_t2.
+  unfold Time in *. unfold labelCh in *; fold labelCh in *.
+  assert (t1 = t2 \/ t1 < t2) by omega; clear t1_le_t2.
+  destruct H as [eq | t1_lt_t2].
+  rewrite eq in *.
+  pose proof (noEnqMR markm markr); firstorder.
+  pose proof (enqImpIn markm) as inm.
+  pose proof (recvImpSend' recvr) as [tx [tx_le_t3 mark'r]].
+  unfold send in mark'r.
+  pose proof (uniqMark2 markr mark'r) as H.
+  rewrite <- H in *; clear mark'r H.
+  assert (S t1 = t3 \/ S t1 < t3) by omega.
+  destruct H as [ez|hard].
+  omega.
+  destruct (classic (In ({|
+           fromB := from m;
+           toB := to m;
+           addrB := addr m;
+           dataBM := dataM m;
+           type := mch |}, msgId m) (combine (ch (sys oneBeh t3) (markc t1) p c)
+             (labelCh t3 (markc t1) p c)))) as [pres|noPres].
+  admit.
+  pose proof (notInImpExRecv hard noPres inm) as mustRecv.
+  simpl in mustRecv.
+  destruct mustRecv as [t [cond [recvt _]]].
+  exists t.
+  intuition.
 Qed.
