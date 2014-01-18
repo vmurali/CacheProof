@@ -1063,12 +1063,36 @@ Proof.
           type := s2 |}, msgId m2) ( (combine (ch (sys oneBeh t1) (recvc t2) p c)
             (labelCh t1 (recvc t2) p c))))) as [pos|enq].
   rewrite <- eq_recv in pos.
-  assert (mDec: {m1 = m2} + {m1 <> m2}).
-  repeat (decide equality).
-  apply (decLabel).
-  apply (decAddr).
-  destruct mDec as [same|diff];
+  assert (mDec: {(Build_BaseMesg (from m1) (to m1) (addr m1) (dataM m1) s1, msgId m1) =
+                (Build_BaseMesg (from m2) (to m2) (addr m2) (dataM m2) s2, msgId m2)} +
+               {(Build_BaseMesg (from m1) (to m1) (addr m1) (dataM m1) s1, msgId m1) <>
+                (Build_BaseMesg (from m2) (to m2) (addr m2) (dataM m2) s2, msgId m2)}).
+  repeat decide equality.
+  apply decLabel.
+  apply decAddr.
+  destruct mDec as [same|diff].
+  rewrite <- same in *.
+  pose proof (recvNotIn recvm1) as notIn.
+  assert (S t1 = t2 \/ S t1 < t2) by omega.
+  destruct H as [easy | hard].
+  rewrite easy in *.
+  rewrite eq_recv in *.
+  intuition.
+  rewrite eq_recv in *.
+  pose proof (inImpSent hard H2 notIn) as [t2i [cond2 [mark2 rest2]]].
+  simpl in mark2.
+  pose proof (msgIdTime mark2) as gt.
+  simpl in gt.
+  pose proof (inImpSent2 H1) as [t1i [cond1 [mark1 rest1]]].
+  simpl in mark1.
+  pose proof (msgIdTime mark1) as lt.
+  simpl in lt.
+  omega.
+
+
   admit.
+
+
   pose proof (inImpSent t1_lt_t2 H2 enq) as [t2i [cond2 [mark2 rest2]]].
   simpl in mark2.
   pose proof (inImpSent2 H1) as [t1i [cond1 [mark1 rest1]]].
