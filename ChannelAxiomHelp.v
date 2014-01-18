@@ -1048,6 +1048,73 @@ Proof.
   firstorder.
 Qed.
 
+Theorem recvLast: forall {s p c t m}, recv s p c t m ->
+                                      last (combine (ch (sys oneBeh t) (recvc t) p c)
+                                                    (labelCh t (recvc t) p c)) (dmy, 0) =
+                                      (Build_BaseMesg (from m) (to m) (addr m) (dataM m) s,
+                                      msgId m).
+Proof.
+  intros s p c t m recvm.
+  unfold recv in *.
+  unfold recvc in *.
+  destruct (trans oneBeh t).
+  intuition.
+  intuition.
+  intuition.
+  destruct recvm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  assert (rew: r = last (ch (sys oneBeh t) rch c0 p0) dmy) by auto.
+  rewrite <- rew in *.
+  rewrite <- u1 in *; rewrite <- u2 in *. rewrite u3 in *; rewrite u4 in *; rewrite u5 in *;
+  rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  destruct r.
+  simpl in *.
+  rewrite rew.
+  pose proof (lastCombineDist _ dmy _ 0 (@lenEq rch c0 p0 t)) as r2.
+  auto.
+  destruct recvm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  assert (rew: m0 = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto.
+  rewrite <- rew in *.
+  rewrite <- u1 in *; rewrite <- u2 in *. rewrite u3 in *; rewrite u4 in *; rewrite u5 in *;
+  rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  destruct m0.
+  simpl in *.
+  rewrite rew.
+  pose proof (lastCombineDist _ dmy _ 0 (@lenEq mch p0 c0 t)) as r2.
+  auto.
+  intuition.
+  destruct recvm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  assert (rew: r = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto.
+  rewrite <- rew in *.
+  rewrite <- u1 in *; rewrite <- u2 in *. rewrite u3 in *; rewrite u4 in *; rewrite u5 in *;
+  rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  destruct r.
+  simpl in *.
+  rewrite rew.
+  pose proof (lastCombineDist _ dmy _ 0 (@lenEq mch p0 c0 t)) as r2.
+  auto.
+  destruct recvm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  assert (rew: m0 = last (ch (sys oneBeh t) mch c0 p0) dmy) by auto.
+  rewrite <- rew in *.
+  rewrite <- u1 in *; rewrite <- u2 in *. rewrite u3 in *; rewrite u4 in *; rewrite u5 in *;
+  rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  destruct m0.
+  simpl in *.
+  rewrite rew.
+  pose proof (lastCombineDist _ dmy _ 0 (@lenEq mch c0 p0 t)) as r2.
+  auto.
+  intuition.
+  destruct recvm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
+  assert (rew: r = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto.
+  rewrite <- rew in *.
+  rewrite <- u1 in *; rewrite <- u2 in *. rewrite u3 in *; rewrite u4 in *; rewrite u5 in *;
+  rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
+  destruct r.
+  simpl in *.
+  rewrite rew.
+  pose proof (lastCombineDist _ dmy _ 0 (@lenEq mch p0 c0 t)) as r2.
+  auto.
+Qed.
+
 Theorem uniqRecv2: forall {s1 s2 p c t1 t2 m1 m2},
                      recv s1 p c t1 m1 -> recv s2 p c t2 m2 -> t1 < t2 -> recvc t1 = recvc t2 ->
                      msgId m1 < msgId m2.
@@ -1089,8 +1156,38 @@ Proof.
   simpl in lt.
   omega.
 
+  pose proof (last_nth (combine (ch (sys oneBeh t1) (recvc t1) p c) (labelCh t1 (recvc t1) p c)) (dmy, 0)) as isLast.
+  pose proof (in_nth (dmy, 0) pos) as [i [i_lt eq]].
 
-  admit.
+  assert (i = length (combine (ch (sys oneBeh t1) (recvc t1) p c)
+                              (labelCh t1 (recvc t1) p c)) - 1 \/
+         i < length (combine (ch (sys oneBeh t1) (recvc t1) p c)
+                    (labelCh t1 (recvc t1) p c)) - 1) by omega.
+  destruct H as [isEq | neq].
+  rewrite isEq in eq.
+  rewrite isLast in eq.
+
+  pose proof (recvLast recvm1) as H.
+  rewrite H in eq.
+  firstorder.
+
+
+  pose proof (combLength (@lenEq (recvc t1) p c t1)) as H0.
+  rewrite <- H0 in neq.
+  rewrite <- H0 in i_lt.
+
+  assert (la: length (ch (sys oneBeh t1) (recvc t1) p c) - 1 < length (ch (sys oneBeh t1)
+                                                                      (recvc t1) p c))
+    by omega.
+  pose proof (posGreaterFull la neq) as almost.
+  rewrite <- H0 in isLast.
+  unfold comb in almost.
+  rewrite isLast in almost.
+  rewrite eq in almost.
+  pose proof (recvLast recvm1) as K.
+  rewrite K in almost.
+  simpl in almost.
+  assumption.
 
 
   pose proof (inImpSent t1_lt_t2 H2 enq) as [t2i [cond2 [mark2 rest2]]].

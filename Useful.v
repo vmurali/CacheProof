@@ -482,6 +482,31 @@ End Induction.
       assumption.
     Qed.
 
+    Theorem in_nth: forall {A} {la: list A} {a} da, In a la -> exists i, i < length la /\
+                                                                         nth i la da = a.
+    Proof.
+      intros A la a da ina.
+      induction la.
+      unfold In in ina.
+      firstorder.
+      unfold In in ina.
+      destruct ina.
+      exists 0.
+      constructor.
+      unfold length.
+      omega.
+      unfold nth.
+      assumption.
+      specialize (IHla H).
+      destruct IHla as [i [i_lt nth_a]].
+      exists (S i).
+      constructor.
+      simpl.
+      omega.
+      simpl.
+      assumption.
+    Qed.
+
     Theorem lastInRemove: forall {A} {la: list A} {da}, In (last la da) (removelast la) ->
                                                         exists i, i < length la - 1 /\
                                                                   nth i la da = last la da.
