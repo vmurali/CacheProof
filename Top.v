@@ -1,17 +1,22 @@
-Require Import DataTypes L1 StoreAtomicity LatestValue Cache Channel Compatible.
+Require Import DataTypes L1 StoreAtomicity LatestValue Cache Channel Compatible
+Rules ChannelAxiom L1Axioms CompatBehavior LatestValueAxioms.
 
-Module mkTop (dt: DataTypes) (l1: L1Axioms dt) (ch: ChannelPerAddr dt)
-       (ba: BehaviorAxioms dt ch) (comp: CompatBehavior dt ch)
-       (lv: LatestValueAxioms dt ch).
+Module mkTop.
+  Module dt := mkDataTypes.
+  Module l1 := mkL1Axioms.
+  Module ch' := mkChannel.
+  Module ch := mkChannelPerAddr dt ch'.
+  Module comp := mkCompatBehavior ch.
+  Module lv := mkLatestValueAxioms ch.
   Module test := mkL1InputAxioms dt l1.
   Module li := test.li.
-  Import dt l1 ch ba comp lv test li.
-  Module mkStoreAtomicity (lb: L1BaseInputAxioms dt li)
+  Import dt l1 ch comp lv test li.
+  Module mkStoreAtomicity (ba: BehaviorAxioms dt ch) (lb: L1BaseInputAxioms dt li)
   : StoreAtomicity dt li.
     Module liA := mkRealL1InputAxioms lb.
     Module l1T := LatestValueTheorems dt ch ba l1 comp lv.
     Module l1S := mkL1StoreAtomicity dt l1 liA l1T.
-    Import l1T l1S liA.
+    Import l1T l1S liA ba.
 
     Theorem respProc:
       forall {r q}, labelR r = labelQ q -> procR r = procQ q.
