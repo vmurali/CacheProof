@@ -307,8 +307,8 @@ Module mkChannel: Channel mkDataTypes.
     Qed.
 
 
-    Axiom recvImpSend: forall {m t}, recv s p c t m -> exists t', t' <= t /\ send s p c t' m.
-    Axiom uniqRecv2: forall {m t1 t2}, recv s p c t1 m -> recv s p c t2 m -> t1 = t2.
+    Definition recvImpSend {m t} := @ChannelAxiomHelp.recvImpSend s p c m t.
+    Definition uniqRecv2 {m : Mesg} {t1 t2: Time} := @ChannelAxiomHelp.uniqRecv2 s p c t1 t2 m.
 
     Definition uniqProc2 {m t1 t2} := @uniqRecv2 m t1 t2.
     Definition uniqDeq2 {m t1 t2} := @uniqRecv2 m t1 t2.

@@ -1115,7 +1115,7 @@ Proof.
   auto.
 Qed.
 
-Theorem uniqRecv2: forall {s1 s2 p c t1 t2 m1 m2},
+Theorem uniqRecv2': forall {s1 s2 p c t1 t2 m1 m2},
                      recv s1 p c t1 m1 -> recv s2 p c t2 m2 -> t1 < t2 -> recvc t1 = recvc t2 ->
                      msgId m1 < msgId m2.
 Proof.
@@ -1201,3 +1201,18 @@ Proof.
   rewrite lt; rewrite gt; omega.
 Qed.
 
+Theorem uniqRecv2: forall {s p c t1 t2 m},
+                     recv s p c t1 m -> recv s p c t2 m -> t1 = t2.
+Proof.
+  intros s p c t1 t2 m recv1 recv2.
+  pose proof (useful recv1 recv2).
+  unfold Time in *.
+  assert (t1 = t2 \/ t1 < t2 \/ t2 < t1) by omega.
+  destruct H0 as [eq | [lt | gt]].
+  assumption.
+  pose proof (uniqRecv2' recv1 recv2 lt H).
+  omega.
+  assert (recvc t2 = recvc t1) by auto.
+  pose proof (uniqRecv2' recv2 recv1 gt H0).
+  omega.
+Qed.
