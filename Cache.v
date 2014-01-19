@@ -46,18 +46,17 @@ Record CommonBehavior :=
     noSendmSendr: forall {t a m}, mark mch src dst a t m ->
                                   forall {r}, mark rch src dst a t r -> False
   }.
-
-
-    Variable cb: CommonBehavior.
   End CommonBeh.
 
   Section Pair.
     Axiom noParentSame: forall {n a t}, defined n -> (forall {p}, defined p -> ~ parent n p) ->
                         state n a (S t) = state n a t.
     Context {p c: Cache}.
+(*
     Variable pDef: defined p.
     Variable cDef: defined c.
     Variable isParent: parent c p.
+*)
     Axiom st: defined p -> defined c -> parent c p ->
               @CommonBehavior (state c) sgt c p (wait c) (waitS c).
     Axiom sendmImpSt: defined p -> defined c -> parent c p ->

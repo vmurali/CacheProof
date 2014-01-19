@@ -187,6 +187,16 @@ Proof.
   omega.
 Qed.
 
+Theorem descHt {p c}: descendent c p -> ht p >= ht c.
+Proof.
+  intros desc.
+  induction desc.
+  pose proof (parentHt H).
+  omega.
+  omega.
+  omega.
+Qed.
+
 Theorem noCycle: forall {p c}, parent c p -> parent p c -> False.
 Proof.
   intros p c c_p p_c.
