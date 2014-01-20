@@ -1,8 +1,8 @@
-Require Import Omega Useful Rules ChannelAxiom ChannelAxiomHelp Channel Coq.Logic.Classical MsiState DataTypes Tree HierProperties.
+Require Import Omega Useful Rules ChannelAxiom ChannelAxiomHelp Channel Coq.Logic.Classical MsiState DataTypes Tree HierProperties Cache.
 
-Module mkBehaviorAxioms.
-  Module ch' := mkChannel.
-  Module ch := mkChannelPerAddr mkDataTypes ch'.
+Module ch' := mkChannel.
+Module ch := mkChannelPerAddr mkDataTypes ch'.
+Module mkBehaviorAxioms: BehaviorAxioms mkDataTypes ch.
   Import mkDataTypes ch.
 
   Section CommonBeh.
@@ -11,36 +11,29 @@ Module mkBehaviorAxioms.
     Context {src dst: Cache}.
     Context {wt: Addr -> Time -> bool}.
     Context {wtS: Addr -> Time -> State}.
-    Record CommonBehavior :=
-      {
-        change: forall {t a}, st a (S t) <> st a t -> (exists m, mark mch src dst a t m) \/
-                                                      (exists m, recv mch dst src a t m);
-        sendmChange: forall {t a m}, mark mch src dst a t m -> st a (S t) = to m;
-        recvmChange: forall {t a m}, recv mch dst src a t m -> st a (S t) = to m;
-        sendrImpSt: forall {t a r}, mark rch src dst a t r -> toRSComp (to r) (st a t);
+Record CommonBehavior :=
+  {
+    change: forall {t a}, st a (S t) <> st a t -> (exists m, mark mch src dst a t m) \/
+                                                  (exists m, recv mch dst src a t m);
+    sendmChange: forall {t a m}, mark mch src dst a t m -> st a (S t) = to m;
+    recvmChange: forall {t a m}, recv mch dst src a t m -> st a (S t) = to m;
+    sendrImpSt: forall {t a r}, mark rch src dst a t r -> toRSComp (to r) (st a t);
 
-        sendrImpSetWait: forall {t a r}, mark rch src dst a t r -> wt a (S t) = true;
-        sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
-        sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
-        recvmImpResetWait: forall {t a m}, recv rch src dst a t m ->
-                                           ~ toRSComp (wtS a t) (to m) -> wt a (S t) = false;
-        waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
-                                 exists m, recv mch dst src a t m /\
-                                           ~ toRSComp (wtS a t) (to m);
-        waitSet: forall {t a}, wt a t = false -> wt a (S t) = true ->
-                               exists r, mark rch src dst a t r;
-        waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
-        recvmImpNoSendr: forall {t a m r}, recv mch src dst a t m -> send rch dst src a t r ->
-                                           False;
+    sendrImpSetWait: forall {t a r}, mark rch src dst a t r -> wt a (S t) = true;
+    sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
+    sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
+    waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
+                             exists m, recv mch dst src a t m /\
+                                       ~ toRSComp (wtS a t) (to m);
+    waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
+    sendmFrom: forall {t a m}, mark mch src dst a t m -> from m = st a t;
+    sendrFrom: forall {t a r}, mark rch src dst a t r -> from r = st a t;
+    noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
+                                  forall {m'}, recv mch dst src a t m' -> False;
+    noSendmSendr: forall {t a m}, mark mch src dst a t m ->
+                                  forall {r}, mark rch src dst a t r -> False
+  }.
 
-        sendmFrom: forall {t a m}, mark mch src dst a t m -> from m = st a t;
-        sendrFrom: forall {t a r}, mark rch src dst a t r -> from r = st a t;
-        noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
-                                      forall {m'}, recv mch dst src a t m' -> False;
-        noSendmSendr: forall {t a m}, mark mch src dst a t m ->
-                                      forall {r}, mark rch src dst a t r -> False
-      }.
-    Variable cb: CommonBehavior.
   End CommonBeh.
 
   Section Pair.
@@ -76,6 +69,8 @@ Module mkBehaviorAxioms.
     Qed.
 
     Context {p c: Cache}.
+
+    Section Local.
     Context {defp: defined p}.
     Context {defc: defined c}.
     Context {c_p: parent c p}.
@@ -387,42 +382,266 @@ Module mkBehaviorAxioms.
       intuition.
     Qed.
 
-    Theorem st_recvmImpResetWait: forall {t a m},
-                                    recv rch c p a t m ->
-                                    ~ sgt (waitS c a t) (to m) -> wait c a (S t) = false.
+    Theorem st_waitReset: forall {t a}, wait c a t = true -> wait c a (S t) = false ->
+                                        exists m, recv mch p c a t m /\
+                                                  ~ sgt (waitS c a t) (to m).
     Proof.
-      intros t a m recvm notGt.
-      unfold wait; unfold recv in *; unfold mkDataTypes.recv in *.
+      intros t a waitT waitF.
+      unfold wait in *.
+      unfold recv in *; unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      fold m.
+      exists (Build_Mesg (fromB m) (toB m) (addrB m) (dataBM m)
+                         (List.last (labelCh t mch p0 c0) 0)).
+      simpl.
+      rewrite e0 in *.
+      pose proof (uniqParent defc defp d c_p p1) as peq.
+      rewrite peq in *.
+      assert (mch = type m) by auto.
+      rewrite e1 in *.
+      unfold a0 in *.
+      unfold toM in *.
+      unfold waitS.
+      intuition.
+      unfold sgt in *.
+      destruct (toB m); destruct (wtS (sys oneBeh t) c0 (addrB m)); simpl in *; auto.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+    Qed.
+
+    Theorem st_waitSSet: forall {t a}, waitS c a (S t) <> waitS c a t ->
+                                       exists r, mark rch c p a t r.
+    Proof.
+      intros t a waitNeq.
+      unfold waitS in *; unfold mark; unfold mkDataTypes.mark.
+      destruct (trans oneBeh t).
+      simpl in *; intuition.
+      simpl in *; intuition.
+
+      simpl in *.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0 Initial t).
+      simpl.
+      rewrite e0 in *.
+      pose proof (uniqParent defc defp d c_p p1) as peq.
+      rewrite peq in *.
+      rewrite e1.
+      intuition.
+      intuition.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+    Qed.
+      
+    Theorem st_sendmFrom: forall {t a m}, mark mch c p a t m -> from m = state c a t.
+    Proof.
+      intros t a m markm.
+      unfold mark in *; unfold mkDataTypes.mark in *.
+      destruct (trans oneBeh t).
+      intuition.
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _].
+      discriminate.
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      intuition.
+      
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      destruct markm as [[u1 [_ [_ [u2 [_ [u3 _]]]]]] u4].
+      unfold r in a0.
+      rewrite u4 in u3.
+      rewrite u3.
+      rewrite <- u1.
+      assumption.
+
+      intuition.
+
+      destruct markm as [[u1 [_ [_ [u2 [_ [u3 _]]]]]] u4].
+      rewrite u4 in u3.
+      rewrite u3; rewrite <- u1.
+      assumption.
+
+      intuition.
+    Qed.
+
+    Theorem st_sendrFrom: forall {t a r}, mark rch c p a t r -> from r = state c a t.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markr as [[u1 [_ [_ [u2 [_ [u3 _]]]]]] u4].
+      rewrite u4 in u3.
+      rewrite u3.
+      rewrite <- u1.
+      assumption.
+
+      destruct markr as [[_ [_ [u _]]] _].
+      discriminate.
+
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      destruct markr as [[_ [_  [u _]]] _].
+      discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_  [u _]]] _].
+      discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem st_noSendmRecvm: forall {t a m}, mark mch c p a t m ->
+                                             forall {m'}, recv mch p c a t m' -> False.
+    Proof.
+      intros t a m markm m' recvm'.
+      unfold mark in *; unfold recv in *; unfold mkDataTypes.mark in *;
+      unfold mkDataTypes.recv in *.
       destruct (trans oneBeh t).
 
       intuition.
       intuition.
       intuition.
 
-      pose proof (enqC2P p1 n).
-      simpl.
-        waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
-                                 exists m, recv mch dst src a t m /\
-                                           ~ toRSComp (wtS a t) (to m);
-        waitSet: forall {t a}, wt a t = false -> wt a (S t) = true ->
-                               exists r, mark rch src dst a t r;
-        waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
-        recvmImpNoSendr: forall {t a m r}, recv mch src dst a t m -> send rch dst src a t r ->
-                                           False;
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *. rewrite <- u2 in *.
 
-        sendmFrom: forall {t a m}, mark mch src dst a t m -> from m = st a t;
-        sendrFrom: forall {t a r}, mark rch src dst a t r -> from r = st a t;
-        noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
-                                      forall {m'}, recv mch dst src a t m' -> False;
-        noSendmSendr: forall {t a m}, mark mch src dst a t m ->
-                                      forall {r}, mark rch src dst a t r -> False
+      pose proof (noCycle c_p p1); firstorder.
 
-    End CmnBeh.
+      intuition.
+      intuition.
+
+      unfold r in e.
+      rewrite e in recvm'.
+      destruct recvm' as [[_ [_ [u _]]] _].
+      discriminate.
+
+      intuition.
+      intuition.
+      intuition.
+    Qed.
+
+    Theorem st_noSendmSendr: forall {t a m}, mark mch c p a t m ->
+                                             forall {r}, mark rch c p a t r -> False.
+    Proof.
+      intros t a m markm r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+    End Local.
+
     Theorem st: defined p -> defined c -> parent c p ->
                 @CommonBehavior (state c) sgt c p (wait c) (waitS c).
     Proof.
       intros defp defc c_p.
-      destruct (@CommonBehavior (state c) sgt c p (wait c) (waitS c)).
+
+      apply (Build_CommonBehavior
+               (@st_change defp defc c_p)
+               (@st_sendmChange c_p)
+               (@st_recvmChange c_p)
+               (@st_sendrImpSt c_p)
+               (@st_sendrImpSetWait c_p)
+               (@st_sendrImpSetWaitState c_p)
+               (@st_sendrImpNoPrevWait defc c_p)
+               (@st_waitReset defp defc c_p)
+               (@st_waitSSet defp defc c_p)
+               (@st_sendmFrom defp defc c_p)
+               (@st_sendrFrom defp defc c_p)
+               (@st_noSendmRecvm defp defc c_p)
+               (@st_noSendmSendr)).
+    Qed.
 
     Theorem sendmImpSt: defined p -> defined c -> parent c p ->
                       forall {a t m}, mark mch c p a t m -> slt (to m) (state c a t).
@@ -507,8 +726,11 @@ Module mkBehaviorAxioms.
     Qed.
       
 
-    Axiom dt: defined p -> defined c -> parent c p -> @CommonBehavior (dir p c) slt p c
+    Theorem dt: defined p -> defined c -> parent c p -> @CommonBehavior (dir p c) slt p c
     (dwait p c) (dwaitS p c).
+    Proof.
+      admit.
+    Qed.
 
     Section ForT.
       Context {a: Addr} {t: Time}.
@@ -535,7 +757,7 @@ Module mkBehaviorAxioms.
         destruct markm as [[u1 [u2 [u3 [u4 [u5 [u6 u7]]]]]] u0].
         rewrite <- u1 in *; rewrite <- u2 in *.
         rewrite u0 in u6; rewrite u6 in *.
-        pose proof (enqC2P isParent n) as useful.
+        pose proof (enqC2P c_p n) as useful.
         rewrite useful.
         intuition.
 
@@ -736,7 +958,7 @@ Module mkBehaviorAxioms.
       destruct (decTree c hier).
       rewrite e in *.
       unfold defined in *.
-      clear initi e a pDef cDef isParent defc c.
+      clear initi e a defc defc c.
       pose proof (parentHt c_p).
       pose proof (descHt defp).
       omega.
@@ -770,19 +992,21 @@ Module mkBehaviorAxioms.
                         forall {r}, mark rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
                                     exists t4, t4 < t3 /\ recv mch p c a t4 m.
       Proof.
-        intros pd cd c_p _ _ t1 t2 t3 m mark1 r mark2 recv2 le.
-        About fifo1.
-        apply (fifo1 c_p mark1 mark2 recv2).
+        admit.
       Qed.
 
-      Axiom pReqResp: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
-        twoEqPRespFalse pDef cDef isParent ->
-                      twoPReqEqNeedsPResp pDef cDef isParent ->
-                      forall {t1 t2 t3},
-                      forall {r},
-                        mark rch p c a t1 r ->
-                        forall {m}, mark mch p c a t2 m -> recv mch p c a t3 m -> t1 <= t2 ->
-                                    exists t4, t4 < t3 /\ recv rch p c a t4 r.
+      Theorem pReqResp: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
+                          twoEqPRespFalse pDef cDef isParent ->
+                          twoPReqEqNeedsPResp pDef cDef isParent ->
+                          forall {t1 t2 t3},
+                          forall {r},
+                            mark rch p c a t1 r ->
+                            forall {m}, mark mch p c a t2 m ->
+                                        recv mch p c a t3 m -> t1 <= t2 ->
+                                        exists t4, t4 < t3 /\ recv rch p c a t4 r.
+      Proof.
+        admit.
+      Qed.
     End ForA.
 
   End Pair.

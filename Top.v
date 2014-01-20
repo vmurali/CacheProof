@@ -1,5 +1,5 @@
 Require Import DataTypes L1 StoreAtomicity LatestValue Cache Channel Compatible
-Rules ChannelAxiom L1Axioms CompatBehavior LatestValueAxioms.
+Rules ChannelAxiom L1Axioms CompatBehavior LatestValueAxioms BehaviorAxioms.
 
 Module mkTop.
   Module dt := mkDataTypes.
@@ -10,8 +10,9 @@ Module mkTop.
   Module lv := mkLatestValueAxioms ch.
   Module test := mkL1InputAxioms dt l1.
   Module li := test.li.
+  Module ba := mkBehaviorAxioms.
   Import dt l1 ch comp lv test li.
-  Module mkStoreAtomicity (ba: BehaviorAxioms dt ch) (lb: L1BaseInputAxioms dt li)
+  Module mkStoreAtomicity (lb: L1BaseInputAxioms dt li)
   : StoreAtomicity dt li.
     Module liA := mkRealL1InputAxioms lb.
     Module l1T := LatestValueTheorems dt ch ba l1 comp lv.

@@ -26,13 +26,6 @@ Record CommonBehavior :=
                              exists m, recv mch dst src a t m /\
                                        ~ toRSComp (wtS a t) (to m);
     waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
-
-    (*
-        sendrImpNoSendr: forall {a t1 t2 r1 r2},
-                           t1 < t2 -> mark rch src dst a t1 r1 ->
-                           mark rch src dst a t2 r2 ->
-                           exists t', t1 < t' <= t2 /\ ~ toRSComp (to r1) (st a t');
-     *)
     sendmFrom: forall {t a m}, mark mch src dst a t m -> from m = st a t;
     sendrFrom: forall {t a r}, mark rch src dst a t r -> from r = st a t;
     noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
