@@ -1581,7 +1581,13 @@ Record CommonBehavior :=
                                     exists t4, t4 < t3 /\ recv mch p c a t4 m.
       Proof.
         intros defp defc c_p _ _ t1 t2 t3 m markm r markr recvr t1_le_t2.
-        admit.
+        unfold mark in *; unfold recv in *.
+        destruct markm as [markm ma].
+        destruct markr as [markr ra].
+        destruct recvr as [recvr _].
+        pose proof (fifo1 c_p markm markr recvr t1_le_t2) as [t4 [cond recvm]].
+        exists t4.
+        intuition.
       Qed.
 
       Theorem pReqResp: forall (pDef: defined p) (cDef: defined c) (isParent: parent c p),
@@ -1594,8 +1600,14 @@ Record CommonBehavior :=
                                         recv mch p c a t3 m -> t1 <= t2 ->
                                         exists t4, t4 < t3 /\ recv rch p c a t4 r.
       Proof.
-        intros defp defc c_p _ _ t1 t2 t3 r markr m markm recvm t1_le_t2.
-        admit.
+        intros defp defc c_p _ _ t1 t2 t3 m markm r markr recvr t1_le_t2.
+        unfold mark in *; unfold recv in *.
+        destruct markm as [markm ma].
+        destruct markr as [markr ra].
+        destruct recvr as [recvr _].
+        pose proof (fifo2 c_p markm markr recvr t1_le_t2) as [t4 [cond recvm]].
+        exists t4.
+        intuition.
       Qed.
     End ForA.
 
