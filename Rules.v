@@ -185,7 +185,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                          req := req s
                                                       |}
 | ParentSendReq: forall {p c}, defined p -> defined c -> parent c p ->
-                               forall {x a}, slt (dirSt s p c a) x -> dirWt s p c a = false ->
+                               forall {x a}, slt x (dirSt s p c a) -> dirWt s p c a = false ->
                                              Transition s {|
                                                           dt := dt s;
                                                           ch := fun t w z =>

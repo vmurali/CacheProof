@@ -725,11 +725,599 @@ Record CommonBehavior :=
       intuition.
     Qed.
       
+    Section Local2.
+    Context {defp: defined p}.
+    Context {defc: defined c}.
+    Context {c_p: parent c p}.
+    Theorem dt_change:
+      forall {t a}, dir p c a (S t) <> dir p c a t -> (exists m, mark mch p c a t m) \/
+                                                      (exists m, recv mch c p a t m).
+    Proof.
+      intros t a stNeq.
+      unfold dir in *; unfold mark; unfold recv; unfold mkDataTypes.mark;
+      unfold mkDataTypes.recv.
+      destruct (trans oneBeh t).
+      intuition.
+      intuition.
+      intuition.
+
+      simpl in *.
+      left.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      fold r; fold a0.
+      exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a0) (toB r) a0 (dt (sys oneBeh t) p0 a0)
+             t).
+      simpl.
+      rewrite e0; rewrite e1; rewrite e2.
+      intuition.
+      intuition.
+      intuition.
+      intuition.
+
+      intuition.
+
+      intuition.
+
+      intuition.
+
+      simpl in *.
+      right.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      pose proof (enqC2P p1 n) as H.
+      fold m; fold m in H; fold a0.
+      exists (Build_Mesg (fromB m) (toB m) a0 (dataBM m) (List.last (labelCh t mch c0 p0) 0)).
+      simpl.
+      rewrite H; rewrite e2; rewrite e0; rewrite e1.
+      intuition.
+      intuition.
+      intuition.
+      intuition.
+
+      intuition.
+
+      intuition.
+    Qed.
+
+    Theorem dt_sendmChange: forall {t a m}, mark mch p c a t m -> dir p c a (S t) = to m.
+    Proof.
+      intros t a m markm.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold dir in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
+
+      simpl in *.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      fold r in markm; fold toR in markm.
+      destruct markm as [[_ [_ [_ [_ [u _]]]]] _].
+      auto.
+      destruct markm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      fold r in u1; fold a0 in u1.
+      rewrite u2 in u1; intuition.
+      destruct markm as [[_ [u _]] _].
+      assert (c = c0) by auto.
+      intuition.
+      destruct markm as [[u _] _].
+      assert (p = p0) by auto.
+      intuition.
+
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _].
+      discriminate.
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      intuition.
+
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      intuition.
+    Qed.
+
+    Theorem dt_recvmChange: forall {t a m}, recv mch c p a t m -> dir p c a (S t) = to m.
+    Proof.
+      intros t a m recvm.
+      unfold dir; unfold recv in *; unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+      intuition.
+
+      simpl.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct recvm as [[_ [_ [_ [_ [u _]]]]] _].
+      unfold toR; unfold r.
+      auto.
+      destruct recvm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1.
+      unfold a0 in n0; unfold r in n0.
+      intuition.
+      destruct recvm as [[c_eq _] _].
+      assert (c = c0) by auto.
+      intuition.
+      destruct recvm as [[_ [u _]] _].
+      assert (p = p0) by auto.
+      intuition.
+
+      destruct recvm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); firstorder.
+
+      intuition.
+
+      destruct recvm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); firstorder.
+
+      simpl.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct recvm as [[_ [_ [_ [_ [u _]]]]] _].
+      unfold toM; unfold m0.
+      auto.
+      destruct recvm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1.
+      unfold a0 in n0; unfold m0 in n0.
+      intuition.
+      destruct recvm as [[c_eq _] _].
+      assert (c = c0) by auto.
+      intuition.
+      destruct recvm as [[_ [u _]] _].
+      assert (p = p0) by auto.
+      intuition.
+
+      intuition.
+
+      destruct recvm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); firstorder.
+
+    Qed.
+
+    Theorem dt_sendrImpSt: forall {t a r}, mark rch p c a t r -> slt (to r) (dir p c a t).
+    Proof.
+      intros t a r markr.
+      unfold mark in markr; unfold mkDataTypes.mark in markr.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle c_p p1); firstorder.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[u1 [u5 [_ [_ [u2 [u3 _]]]]]] u4].
+      rewrite <- u1; rewrite u4 in u3; rewrite u3; rewrite u2 in *; rewrite <- u5 in *.
+      unfold dir; assumption.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle c_p p1); firstorder.
+
+      intuition.
+
+      intuition.
+
+      discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem dt_sendrImpSetWait: forall {t a r}, mark rch p c a t r -> dwait p c a (S t) = true.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold dwait in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      simpl.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      reflexivity.
+      destruct markr as [[_ [_ [_ [_ [_ [u2 _]]]]]] u1].
+      rewrite u1 in u2.
+      intuition.
+      destruct markr as [[_ [u1 _]] _].
+      assert (c = c0) by auto; intuition.
+      destruct markr as [[u1 _] _].
+      assert (p = p0) by auto; intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem dt_sendrImpSetWaitState: forall {t a r},
+                                       mark rch p c a t r -> dwaitS p c a (S t) = to r.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold dwaitS.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      simpl.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct markr as [[_ [_ [_ [_ [u _]]]]] _].
+      auto.
+      destruct markr as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1; intuition.
+      destruct markr as [[_ [u _]] _].
+      assert (c = c0) by auto; intuition.
+      destruct markr as [[u _] _].
+      assert (p = p0) by auto; firstorder.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem dt_sendrImpNoPrevWait: forall {t a r}, mark rch p c a t r -> dwait p c a t = false.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold dwaitS.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      simpl.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      rewrite e0 in *; rewrite e1 in *; rewrite e2 in *.
+      assumption.
+      destruct markr as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1; intuition.
+      destruct markr as [[_ [u _]] _].
+      assert (c = c0) by auto; intuition.
+      destruct markr as [[u _] _].
+      assert (p = p0) by auto; intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem dt_waitReset: forall {t a}, dwait p c a t = true -> dwait p c a (S t) = false ->
+                                        exists m, recv mch c p a t m /\
+                                                  ~ slt (dwaitS p c a t) (to m).
+    Proof.
+      intros t a waitT waitF.
+      unfold dwait in *.
+      unfold recv in *; unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      fold m.
+      exists (Build_Mesg (fromB m) (toB m) (addrB m) (dataBM m)
+                         (List.last (labelCh t mch c0 p0) 0)).
+      simpl.
+      rewrite e0 in *.
+      rewrite e1 in *.
+      pose proof (enqC2P c_p n) as whichmch.
+      rewrite <- whichmch in *.
+      unfold a0 in *.
+      unfold toM in *.
+      unfold dwaitS.
+      intuition.
+      unfold sgt in *.
+      rewrite e2 in *.
+      destruct (toB m); destruct (dirWtS (sys oneBeh t) p0 c0 (addrB m)); simpl in *; auto.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+
+      simpl in *.
+      rewrite waitF in waitT; discriminate.
+    Qed.
+
+    Theorem dt_waitSSet: forall {t a}, dwaitS p c a (S t) <> dwaitS p c a t ->
+                                       exists r, mark rch p c a t r.
+    Proof.
+      intros t a waitNeq.
+      unfold dwaitS in *; unfold mark; unfold mkDataTypes.mark.
+      destruct (trans oneBeh t).
+      simpl in *; intuition.
+      simpl in *; intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      destruct (decTree p p0).
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a0) x a0 Initial t).
+      simpl.
+      rewrite e0 in *.
+      rewrite e1 in *.
+      rewrite e2.
+      intuition.
+      intuition.
+      intuition.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+
+      simpl in *.
+      intuition.
+    Qed.
+
+    Theorem dt_sendmFrom: forall {t a m}, mark mch p c a t m -> from m = dir p c a t.
+    Proof.
+      intros t a m markm.
+      unfold mark in *; unfold mkDataTypes.mark in *.
+      destruct (trans oneBeh t).
+      intuition.
+      intuition.
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      destruct markm as [[u1 [u5 [_ [u2 [_ [u3 _]]]]]] u4].
+      unfold r in a0.
+      rewrite u4 in u3.
+      rewrite u3.
+      rewrite <- u1.
+      rewrite <- u5.
+      assumption.
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _].
+      discriminate.
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      intuition.
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      intuition.
+    Qed.
+
+    Theorem dt_sendrFrom: forall {t a r}, mark rch p c a t r -> from r = dir p c a t.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite <- u1 in *; rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); intuition.
+
+      destruct markr as [[_ [_  [u _]]] _].
+      discriminate.
+
+      intuition.
+
+      destruct markr as [[u1 [u5 [_ [u2 [_ [u3 _]]]]]] u4].
+      rewrite u4 in u3.
+      rewrite u3.
+      rewrite <- u1; rewrite <- u5.
+      assumption.
+
+      destruct markr as [[_ [_ [u _]]] _].
+      discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_  [u _]]] _].
+      discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem dt_noSendmRecvm: forall {t a m}, mark mch p c a t m ->
+                                             forall {m'}, recv mch c p a t m' -> False.
+    Proof.
+      intros t a m markm m' recvm'.
+      unfold mark in *; unfold recv in *; unfold mkDataTypes.mark in *;
+      unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      intuition.
+
+      pose proof (enqC2P p1 n) as H.
+      rewrite H in recvm'.
+      destruct recvm' as [[_ [_ [u _]]] _].
+      discriminate.
+
+      intuition.
+
+      intuition.
+
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite <- u1 in *. rewrite <- u2 in *.
+      pose proof (noCycle c_p p1); firstorder.
+
+      intuition.
+
+      intuition.
+
+      intuition.
+    Qed.
+
+    Theorem dt_noSendmSendr: forall {t a m}, mark mch p c a t m ->
+                                             forall {r}, mark rch p c a t r -> False.
+    Proof.
+      intros t a m markm r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+    End Local2.
+
 
     Theorem dt: defined p -> defined c -> parent c p -> @CommonBehavior (dir p c) slt p c
     (dwait p c) (dwaitS p c).
     Proof.
-      admit.
+      intros defp defc c_p.
+
+      pose proof @dt_change.
+
+      apply (Build_CommonBehavior
+               (@dt_change)
+               (@dt_sendmChange c_p)
+               (@dt_recvmChange c_p)
+               (@dt_sendrImpSt defc c_p)
+               (@dt_sendrImpSetWait c_p)
+               (@dt_sendrImpSetWaitState c_p)
+               (@dt_sendrImpNoPrevWait defp defc c_p)
+               (@dt_waitReset defp defc c_p)
+               (@dt_waitSSet defp defc c_p)
+               (@dt_sendmFrom defp defc c_p)
+               (@dt_sendrFrom defp defc c_p)
+               (@dt_noSendmRecvm defp defc c_p)
+               (@dt_noSendmSendr)).
     Qed.
 
     Section ForT.
@@ -992,6 +1580,7 @@ Record CommonBehavior :=
                         forall {r}, mark rch p c a t2 r -> recv rch p c a t3 r -> t1 <= t2 ->
                                     exists t4, t4 < t3 /\ recv mch p c a t4 m.
       Proof.
+        intros defp defc c_p _ _ t1 t2 t3 m markm r markr recvr t1_le_t2.
         admit.
       Qed.
 
@@ -1005,6 +1594,7 @@ Record CommonBehavior :=
                                         recv mch p c a t3 m -> t1 <= t2 ->
                                         exists t4, t4 < t3 /\ recv rch p c a t4 r.
       Proof.
+        intros defp defc c_p _ _ t1 t2 t3 r markr m markm recvm t1_le_t2.
         admit.
       Qed.
     End ForA.
