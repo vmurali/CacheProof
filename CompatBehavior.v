@@ -145,7 +145,42 @@ Module mkCompatBehavior (ch: ChannelPerAddr mkDataTypes): CompatBehavior mkDataT
                                       forall {c}, defined c -> parent c n -> forall mc,
                                         ~ (mark mch n c a t mc \/ recv mch c n a t mc).
     Proof.
-      admit.
+      intros p defn defp n_p m sth1 c defc c_n mc sth2.
+      unfold mark in*; unfold recv in *; unfold mkDataTypes.mark in *;
+      unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      destruct sth1 as [[[_ [_ [use _]]] _] | easy]; [discriminate | firstorder].
+
+      destruct sth1 as [[[u1 [u2 _]] _] | [[u1 [u2 _]] _]]; rewrite <- u1 in *;
+                                         rewrite <- u2 in *; pose proof (noCycle p1 n_p);
+                                         firstorder.
+
+      destruct sth2 as [x | [[u1 [u2 _]] _]]; [intuition |
+                                              rewrite <- u1 in *; rewrite <- u2 in *;
+                                              pose proof (noCycle p1 c_n); intuition].
+
+      destruct sth1 as [[[_ [_ [use _]]] _] | easy]; [discriminate | firstorder].
+
+      destruct sth2 as [[[u1 [u2 _]] _] | [[u1 [u2 _]] _]]; rewrite <- u1 in *;
+                                         rewrite <- u2 in *; pose proof (noCycle p1 c_n);
+                                         firstorder.
+
+      destruct sth1 as [x | [[u1 [u2 _]] _]]; [intuition |
+                                              rewrite <- u1 in *; rewrite <- u2 in *;
+                                              pose proof (noCycle p1 n_p); intuition].
+
+      destruct sth2 as [[[u1 [u2 _]] _] | y]; [
+                                              rewrite <- u1 in *; rewrite <- u2 in *;
+                                              pose proof (noCycle p1 c_n); intuition |
+        intuition].
+
+      destruct sth2 as [x | [[u1 [u2 _]] _]]; [intuition|
+                                              rewrite <- u1 in *; rewrite <- u2 in *;
+                                              pose proof (noCycle p1 c_n); intuition].
     Qed.
   End Node.
   Theorem initCompat:

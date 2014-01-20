@@ -134,5 +134,12 @@ Module mkTop.
       pose proof (uniqEnqTimes defR0 defR1 H defQ0 defQ1 H0 H1 H2 H3).
       assumption.
     Qed.
+
+    Print Assumptions respProc.
+    Print Assumptions uniqRespLabels.
+    Print Assumptions localOrdering.
+    Print Assumptions storeAtomicity.
+    Print Assumptions respHasReq.
+    Print Assumptions uniqRespTimes.
   End mkStoreAtomicity.
 End mkTop.
