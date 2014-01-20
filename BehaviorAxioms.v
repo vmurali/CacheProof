@@ -76,227 +76,331 @@ Module mkBehaviorAxioms.
     Qed.
 
     Context {p c: Cache}.
-
-    Theorem st: defined p -> defined c -> parent c p ->
-                @CommonBehavior (state c) sgt c p (wait c) (waitS c).
+    Context {defp: defined p}.
+    Context {defc: defined c}.
+    Context {c_p: parent c p}.
+    Theorem st_change:
+      forall {t a}, state c a (S t) <> state c a t -> (exists m, mark mch c p a t m) \/
+                                                      (exists m, recv mch p c a t m).
     Proof.
-      intros defp defc c_p.
+      intros t a stNeq.
+      unfold state in *; unfold mark; unfold recv; unfold mkDataTypes.mark;
+      unfold mkDataTypes.recv.
+      destruct (trans oneBeh t).
+      intuition.
+      intuition.
+      intuition.
+      intuition.
 
-      assert (change: forall 
-      Print CommonBehavior.
-      unfold (@CommonBehavior (state c)).
+      simpl in *.
+      destruct (decTree c c0).
+      rewrite e0 in *.
+      destruct (decAddr a a0).
+      rewrite e1 in *.
+      pose proof (uniqParent defc defp d c_p p1) as p_p0.
+      rewrite p_p0 in *.
+      assert (H: mch = type m) by auto.
+      unfold a0 in *.
+      fold m.
+      right.
+      exists (Build_Mesg (fromB m) (toB m) (addrB m) (dataBM m)
+                         (List.last (labelCh t mch p0 c0) 0)).
+      simpl.
+      intuition.
+      intuition.
+      intuition.
 
-      Theorem cb: @CommonBehavior (state c) sgt c p (wait c) (waitS c).
-      Theorem st_change:
-        forall {t a}, state c a (S t) <> state c a t -> (exists m, mark mch c p a t m) \/
-                                                        (exists m, recv mch p c a t m).
-      Proof.
-        intros t a stNeq.
-        unfold state in *; unfold mark; unfold recv; unfold mkDataTypes.mark;
-        unfold mkDataTypes.recv.
-        destruct (trans oneBeh t).
-        intuition.
-        intuition.
-        intuition.
-        intuition.
+      intuition.
 
-        simpl in *.
-        destruct (decTree c c0).
-        rewrite e0 in *.
-        destruct (decAddr a a0).
-        rewrite e1 in *.
-        pose proof (uniqParent defc defp d c_p p1) as p_p0.
-        rewrite p_p0 in *.
-        assert (H: mch = type m) by auto.
-        unfold a0 in *.
-        fold m.
-        right.
-        exists (Build_Mesg (fromB m) (toB m) (addrB m) (dataBM m)
-                           (List.last (labelCh t mch p0 c0) 0)).
-        simpl.
-        intuition.
-        intuition.
-        intuition.
+      simpl in *.
+      left.
+      destruct (decTree c c0).
+      rewrite e0 in *.
+      destruct (decAddr a a0).
+      rewrite e1 in *.
+      pose proof (uniqParent defc defp d c_p p1) as p_p0.
+      rewrite p_p0 in *.
+      unfold a0 in *.
+      fold r.
+      exists (Build_Mesg (st (sys oneBeh t) c0 (addrB r)) (toB r) (addrB r)
+                         (dt (sys oneBeh t) c0 (addrB r))
+                         t).
+      simpl.
+      intuition.
+      intuition.
+      intuition.
 
-        intuition.
+      intuition.
 
-        simpl in *.
-        left.
-        destruct (decTree c c0).
-        rewrite e0 in *.
-        destruct (decAddr a a0).
-        rewrite e1 in *.
-        pose proof (uniqParent defc defp d c_p p1) as p_p0.
-        rewrite p_p0 in *.
-        unfold a0 in *.
-        fold r.
-        exists (Build_Mesg (st (sys oneBeh t) c0 (addrB r)) (toB r) (addrB r)
-                           (dt (sys oneBeh t) c0 (addrB r))
-                           t).
-        simpl.
-        intuition.
-        intuition.
-        intuition.
+      simpl in *.
+      destruct (decTree c c0).
+      rewrite e0 in *.
+      destruct (decAddr a a0).
+      rewrite e1 in *.
+      pose proof (uniqParent defc defp d c_p p1) as p_p0.
+      rewrite p_p0 in *.
+      left.
+      exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0
+                         (dt (sys oneBeh t) c0 a0) t).
+      simpl.
+      intuition.
+      intuition.
+      intuition.
 
-        intuition.
+      intuition.
+    Qed.
 
-        simpl in *.
-        destruct (decTree c c0).
-        rewrite e0 in *.
-        destruct (decAddr a a0).
-        rewrite e1 in *.
-        pose proof (uniqParent defc defp d c_p p1) as p_p0.
-        rewrite p_p0 in *.
-        left.
-        exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0
-                           (dt (sys oneBeh t) c0 a0) t).
-        simpl.
-        intuition.
-        intuition.
-        intuition.
+    Theorem st_sendmChange: forall {t a m}, mark mch c p a t m -> state c a (S t) = to m.
+    Proof.
+      intros t a m markm.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold state in *.
+      destruct (trans oneBeh t).
 
-        intuition.
-      Qed.
+      intuition.
+      intuition.
 
-      Theorem st_sendmChange: forall {t a m}, mark mch c p a t m -> state c a (S t) = to m.
-      Proof.
-        intros t a m markm.
-        unfold mark in *; unfold mkDataTypes.mark in *; unfold state in *.
-        destruct (trans oneBeh t).
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
 
-        intuition.
-        intuition.
+      destruct markm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); firstorder.
 
-        destruct markm as [[_ [_ [u _]]] _]; discriminate.
+      intuition.
 
-        destruct markm as [[u1 [u2 _]] _].
-        rewrite u1 in *; rewrite u2 in *.
-        pose proof (noCycle p1 c_p); firstorder.
+      destruct markm as [[_ [_ [u _]]] _]; discriminate.
 
-        intuition.
+      simpl in *.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct markm as [[_ [_ [_ [_ [u _]]]]] _].
+      unfold toR.
+      unfold r.
+      auto.
+      destruct markm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      unfold a0 in n0; unfold r in n0.
+      rewrite u2 in u1.
+      intuition.
+      destruct markm as [[c_eq _] _].
+      assert (c = c0) by auto.
+      intuition.
 
-        destruct markm as [[_ [_ [u _]]] _]; discriminate.
+      intuition.
 
-        simpl in *.
-        destruct (decTree c c0).
-        destruct (decAddr a a0).
-        destruct markm as [[_ [_ [_ [_ [u _]]]]] _].
-        unfold toR.
-        unfold r.
-        auto.
-        destruct markm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
-        unfold a0 in n0; unfold r in n0.
-        rewrite u2 in u1.
-        intuition.
-        destruct markm as [[c_eq _] _].
-        assert (c = c0) by auto.
-        intuition.
+      simpl.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct markm as [[_ [_ [_ [_ [u _]]]]] _].
+      auto.
+      destruct markm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1.
+      intuition.
+      destruct markm as [[c_eq _] _].
+      assert (c = c0) by auto.
+      intuition.
 
-        intuition.
+      intuition.
+    Qed.
 
-        simpl.
-        destruct (decTree c c0).
-        destruct (decAddr a a0).
-        destruct markm as [[_ [_ [_ [_ [u _]]]]] _].
-        auto.
-        destruct markm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
-        rewrite u2 in u1.
-        intuition.
-        destruct markm as [[c_eq _] _].
-        assert (c = c0) by auto.
-        intuition.
+    Theorem st_recvmChange: forall {t a m}, recv mch p c a t m -> state c a (S t) = to m.
+    Proof.
+      intros t a m recvm.
+      unfold state; unfold recv in *; unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
 
-        intuition.
-      Qed.
+      intuition.
+      intuition.
+      intuition.
 
-      Theorem st_recvmChange: forall {t a m}, recv mch p c a t m -> state c a (S t) = to m.
-      Proof.
-        intros t a m recvm.
-        unfold state; unfold recv in *; unfold mkDataTypes.recv in *.
-        destruct (trans oneBeh t).
+      destruct recvm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); firstorder.
 
-        intuition.
-        intuition.
-        intuition.
+      simpl.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct recvm as [[_ [_ [_ [_ [u _]]]]] _].
+      unfold toM; unfold m0.
+      auto.
+      destruct recvm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1.
+      unfold a0 in n0; unfold m0 in n0.
+      intuition.
+      destruct recvm as [[_ [c_eq _]] _].
+      assert (c = c0) by auto.
+      intuition.
 
-        destruct recvm as [[u1 [u2 _]] _].
-        rewrite u1 in *; rewrite u2 in *.
-        pose proof (noCycle p1 c_p); firstorder.
+      intuition.
 
-        simpl.
-        destruct (decTree c c0).
-        destruct (decAddr a a0).
-        destruct recvm as [[_ [_ [_ [_ [u _]]]]] _].
-        unfold toM; unfold m0.
-        auto.
-        destruct recvm as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
-        rewrite u2 in u1.
-        unfold a0 in n0; unfold m0 in n0.
-        intuition.
-        destruct recvm as [[_ [c_eq _]] _].
-        assert (c = c0) by auto.
-        intuition.
+      unfold r in e; rewrite e in recvm.
+      destruct recvm as [[_ [_ [u _]]] _]; discriminate.
 
-        intuition.
+      destruct recvm as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); firstorder.
 
-        unfold r in e; rewrite e in recvm.
-        destruct recvm as [[_ [_ [u _]]] _]; discriminate.
+      intuition.
 
-        destruct recvm as [[u1 [u2 _]] _].
-        rewrite u1 in *; rewrite u2 in *.
-        pose proof (noCycle p1 c_p); firstorder.
+      unfold r in e; rewrite e in recvm.
+      destruct recvm as [[_ [_ [u _]]] _]; discriminate.
+    Qed.
 
-        intuition.
+    Theorem st_sendrImpSt: forall {t a r}, mark rch c p a t r -> slt (state c a t) (to r).
+    Proof.
+      intros t a r markr.
+      unfold mark in markr; unfold mkDataTypes.mark in markr.
+      destruct (trans oneBeh t).
 
-        unfold r in e; rewrite e in recvm.
-        destruct recvm as [[_ [_ [u _]]] _]; discriminate.
-      Qed.
+      intuition.
+      intuition.
 
-      Theorem st_sendrImpSt: forall {t a r}, mark rch c p a t r -> slt (state c a t) (to r).
-      Proof.
-        intros t a r markr.
-        unfold mark in markr; unfold mkDataTypes.mark in markr.
-        destruct (trans oneBeh t).
+      destruct markr as [[u1 [_ [_ [_ [u2 [u3 _]]]]]] u4].
+      rewrite <- u1; rewrite u4 in u3; rewrite u3; rewrite u2 in *.
+      unfold state. assumption.
 
-        intuition.
-        intuition.
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
 
-        destruct markr as [[u1 [_ [_ [_ [u2 [u3 _]]]]]] u4].
-        rewrite <- u1; rewrite u4 in u3; rewrite u3; rewrite u2 in *.
-        unfold state. assumption.
+      intuition.
 
-        destruct markr as [[_ [_ [u _]]] _]; discriminate.
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle c_p p1); firstorder.
 
-        intuition.
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
 
-        destruct markr as [[u1 [u2 _]] _].
-        rewrite u1 in *; rewrite u2 in *.
-        pose proof (noCycle c_p p1); firstorder.
+      intuition.
 
-        destruct markr as [[_ [_ [u _]]] _]; discriminate.
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
 
-        intuition.
+      intuition.
+    Qed.
 
-        destruct markr as [[_ [_ [u _]]] _]; discriminate.
+    Theorem st_sendrImpSetWait: forall {t a r}, mark rch c p a t r -> wait c a (S t) = true.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold wait in *.
+      destruct (trans oneBeh t).
 
-        intuition.
-      Qed.
+      intuition.
+      intuition.
 
-      Theorem st_sendrImpSetWait: forall {t a r}, mark rch c p a t r -> wait c a (S t) = true.
-      Proof.
-        intros t a r markr.
-        unfold mark in *; unfold mkDataTypes.mark in *; unfold wait in *.
-        destruct (trans oneBeh t).
+      simpl.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      reflexivity.
+      destruct markr as [[_ [_ [_ [_ [_ [u2 _]]]]]] u1].
+      rewrite u1 in u2.
+      intuition.
+      destruct markr as [[u1 _] _].
+      assert (c = c0) by auto; intuition.
 
-        intuition.
-        intuition.
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
 
-        simpl.
+      intuition.
 
-        sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
-        sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
-        recvmImpResetWait: forall {t a m}, recv rch src dst a t m ->
-                                           ~ toRSComp (wtS a t) (to m) -> wt a (S t) = false;
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem st_sendrImpSetWaitState: forall {t a r},
+                                       mark rch c p a t r -> waitS c a (S t) = to r.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold waitS.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      simpl.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      destruct markr as [[_ [_ [_ [_ [u _]]]]] _].
+      auto.
+      destruct markr as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1; intuition.
+      destruct markr as [[u _] _].
+      assert (c = c0) by auto; intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem st_sendrImpNoPrevWait: forall {t a r}, mark rch c p a t r -> wait c a t = false.
+    Proof.
+      intros t a r markr.
+      unfold mark in *; unfold mkDataTypes.mark in *; unfold waitS.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+
+      simpl.
+      destruct (decTree c c0).
+      destruct (decAddr a a0).
+      rewrite e0 in *; rewrite e1 in *.
+      assumption.
+      destruct markr as [[_ [_ [_ [_ [_ [u1 _]]]]]] u2].
+      rewrite u2 in u1; intuition.
+      destruct markr as [[u _] _].
+      assert (c = c0) by auto; intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      intuition.
+
+      destruct markr as [[u1 [u2 _]] _].
+      rewrite u1 in *; rewrite u2 in *.
+      pose proof (noCycle p1 c_p); intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+
+      destruct markr as [[_ [_ [u _]]] _]; discriminate.
+
+      intuition.
+    Qed.
+
+    Theorem st_recvmImpResetWait: forall {t a m},
+                                    recv rch c p a t m ->
+                                    ~ sgt (waitS c a t) (to m) -> wait c a (S t) = false.
+    Proof.
+      intros t a m recvm notGt.
+      unfold wait; unfold recv in *; unfold mkDataTypes.recv in *.
+      destruct (trans oneBeh t).
+
+      intuition.
+      intuition.
+      intuition.
+
+      pose proof (enqC2P p1 n).
+      simpl.
         waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
                                  exists m, recv mch dst src a t m /\
                                            ~ toRSComp (wtS a t) (to m);

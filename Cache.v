@@ -22,16 +22,10 @@ Record CommonBehavior :=
     sendrImpSetWait: forall {t a r}, mark rch src dst a t r -> wt a (S t) = true;
     sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
     sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
-    recvmImpResetWait: forall {t a m}, recv rch src dst a t m ->
-                                       ~ toRSComp (wtS a t) (to m) -> wt a (S t) = false;
     waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
                              exists m, recv mch dst src a t m /\
                                        ~ toRSComp (wtS a t) (to m);
-    waitSet: forall {t a}, wt a t = false -> wt a (S t) = true ->
-                           exists r, mark rch src dst a t r;
     waitSSet: forall {t a}, wtS a (S t) <> wtS a t -> exists r, mark rch src dst a t r;
-    recvmImpNoSendr: forall {t a m r}, recv mch src dst a t m -> send rch dst src a t r ->
-                                       False;
 
     (*
         sendrImpNoSendr: forall {a t1 t2 r1 r2},
