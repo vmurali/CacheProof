@@ -24,14 +24,20 @@ Record GlobalState :=
     wtS: Cache -> Addr -> State;
     dirWt: Cache -> Cache -> Addr -> bool;
     dirWtS: Cache -> Cache -> Addr -> State;
-    req: Cache -> Stream BaseReq
+    req: Cache -> BaseReq
   }.
 
 Definition dmy := Build_BaseMesg In In zero Initial mch.
 
+Axiom nextReq : forall r c, {nr | forall t: Cache,
+                                    match decTree t c with
+                                      | left _ => idx (nr t) > idx (r t)
+                                      | right _ => nr t = r t
+                                    end}.
+
 Inductive Transition (s: GlobalState) : GlobalState -> Set :=
-| LoadReq: forall {c}, defined c -> leaf c -> dsc (Streams.hd (req s c)) = Ld ->
-                       sle Sh (st s c (lct (Streams.hd (req s c)))) -> 
+| LoadReq: forall {c}, defined c -> leaf c -> dsc (req s c) = Ld ->
+                       sle Sh (st s c (lct (req s c))) -> 
                        Transition s {|
                                     dt := dt s;
                                     ch := ch s;
@@ -41,17 +47,14 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                     wtS := wtS s;
                                     dirWt := dirWt s;
                                     dirWtS := dirWtS s;
-                                    req := fun t => match decTree t c with
-                                                      | left _ => Streams.tl (req s t)
-                                                      | right _ => req s t
-                                                    end
+                                    req := let (k, _) := nextReq (req s) c in k
                                   |}
-| StoreReq: forall {c}, defined c -> leaf c -> dsc (Streams.hd (req s c)) = St ->
-                        (st s c (lct (Streams.hd (req s c))) = Mo) ->
+| StoreReq: forall {c}, defined c -> leaf c -> dsc (req s c) = St ->
+                        (st s c (lct (req s c)) = Mo) ->
                         Transition s {|
                                      dt := fun t w => match decTree t c with
-                                                      | left _ => match decAddr w (lct (Streams.hd (req s t))) with
-                                                                    | left _ => Store (lbl (Streams.hd (req s t)))
+                                                      | left _ => match decAddr w (lct (req s t)) with
+                                                                    | left _ => Store (lbl (req s t))
                                                                     | right _ => dt s t w
                                                                   end
                                                       | right _ => dt s t w
@@ -63,10 +66,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                      wtS := wtS s;
                                      dirWt := dirWt s;
                                      dirWtS := dirWtS s;
-                                     req := fun t => match decTree t c with
-                                                       | left _ => Streams.tl (req s t)
-                                                       | right _ => req s t
-                                                     end
+                                     req := let (k, _) := nextReq (req s) c in k
                                    |}
 | ChildSendReq: forall {p c}, defined p -> defined c -> parent c p ->
                               forall {x a}, slt (st s c a) x -> wt s c a = false ->
@@ -353,7 +353,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                               req := req s
                                            |}.
 
-Parameter reqs: Cache -> Stream BaseReq.
+Parameter initReq: Cache -> BaseReq.
 
 Definition tlStr {A} (l l': Stream A) := l' = Streams.tl l.
 
@@ -374,7 +374,7 @@ Definition initGlobalState :=
      wtS := fun t w => In;
      dirWt := fun t w z => false;
      dirWtS := fun t w z => In;
-     req := reqs
+     req := initReq
   |}.
 
 Record Behavior := {
@@ -610,19 +610,17 @@ Module mkDataTypes <: DataTypes.
 
   Definition deqR c l a d i t := match (trans oneBeh) t with
                                    | LoadReq ca _ _ _ _ =>
-                                     ca = c /\ let r := Streams.hd
-                                                          (req ((sys oneBeh) t) ca) in
+                                     ca = c /\ let r := req ((sys oneBeh) t) ca in
                                                lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
                                    | StoreReq ca _ _ _ _ =>
-                                     ca = c /\ let r := Streams.hd (req ((sys oneBeh) t) ca) in
+                                     ca = c /\ let r := req ((sys oneBeh) t) ca in
                                                lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
                                    | _ => False
                                  end.
 
   Definition enqLd c l sl t := match (trans oneBeh) t with
                                  | LoadReq ca _ _ _ _ =>
-                                   ca = c /\ let r := Streams.hd
-                                                        (req ((sys oneBeh) t) ca) in
+                                   ca = c /\ let r := req ((sys oneBeh) t) ca in
                                              lbl r = l /\ dt ((sys oneBeh) t) c (lct r) = sl /\
                                              dsc r = Ld
                                  | _ => False
@@ -630,8 +628,7 @@ Module mkDataTypes <: DataTypes.
 
   Definition enqSt c l t := match (trans oneBeh) t with
                               | StoreReq ca _ _ _ _ =>
-                                ca = c /\ let r := Streams.hd
-                                                     (req ((sys oneBeh) t) ca) in
+                                ca = c /\ let r := req ((sys oneBeh) t) ca in
                                           lbl r = l /\ dsc r = St
                               | _ => False
                             end.
