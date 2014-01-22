@@ -145,7 +145,7 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     destruct deqr as [c_eq_n [lab [loc [des ind]]]].
     destruct (decTree n c) as [eq | neq].
     rewrite eq.
-    destruct (decAddr a (lct (Streams.hd (req (sys oneBeh t) c)))) as [seq | sneq].
+    destruct (decAddr a (lct (req (sys oneBeh t) c))) as [seq | sneq].
     rewrite lab; reflexivity.
     rewrite loc in *.
     firstorder.
@@ -176,9 +176,9 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     right.
     destruct (decTree n c).
     rewrite e1 in *.
-    destruct (decAddr a (lct (Streams.hd (req (sys oneBeh t) c)))).
-    exists (lbl (Streams.hd (req (sys oneBeh t) c))).
-    exists (idx (Streams.hd (req (sys oneBeh t) c))).
+    destruct (decAddr a (lct (req (sys oneBeh t) c))).
+    exists (lbl (req (sys oneBeh t) c)).
+    exists (idx (req (sys oneBeh t) c)).
     constructor; firstorder.
     firstorder.
     firstorder.
