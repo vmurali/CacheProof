@@ -29,11 +29,7 @@ Record GlobalState :=
 
 Definition dmy := Build_BaseMesg In In zero Initial mch.
 
-Axiom nextReq : forall r c, {nr | forall t: Cache,
-                                    match decTree t c with
-                                      | left _ => idx (nr t) > idx (r t)
-                                      | right _ => nr t = r t
-                                    end}.
+Axiom nextReq: forall r, {nr| idx nr > idx r}.
 
 Inductive Transition (s: GlobalState) : GlobalState -> Set :=
 | LoadReq: forall {c}, defined c -> leaf c -> dsc (req s c) = Ld ->
@@ -47,7 +43,10 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                     wtS := wtS s;
                                     dirWt := dirWt s;
                                     dirWtS := dirWtS s;
-                                    req := let (k, _) := nextReq (req s) c in k
+                                    req := fun t => match decTree t c with
+                                                      | left _ => let (k, _) := nextReq (req s t) in k
+                                                      | _ => req s t
+                                                    end
                                   |}
 | StoreReq: forall {c}, defined c -> leaf c -> dsc (req s c) = St ->
                         (st s c (lct (req s c)) = Mo) ->
@@ -66,7 +65,10 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                      wtS := wtS s;
                                      dirWt := dirWt s;
                                      dirWtS := dirWtS s;
-                                     req := let (k, _) := nextReq (req s) c in k
+                                     req := fun t => match decTree t c with
+                                                       | left _ => let (k, _) := nextReq (req s t) in k
+                                                       | _ => req s t
+                                                     end
                                    |}
 | ChildSendReq: forall {p c}, defined p -> defined c -> parent c p ->
                               forall {x a}, slt (st s c a) x -> wt s c a = false ->

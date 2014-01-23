@@ -146,8 +146,7 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl.
     destruct deqr as [u _].
     rewrite u.
-    destruct (nextReq (req (sys oneBeh t)) c).
-    specialize (y c).
+    destruct (nextReq (req (sys oneBeh t) c)).
     destruct (decTree c c).
     assumption.
     intuition.
@@ -155,8 +154,7 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl.
     destruct deqr as [u _].
     rewrite u.
-    destruct (nextReq (req (sys oneBeh t)) c).
-    specialize (y c).
+    destruct (nextReq (req (sys oneBeh t) c)).
     destruct (decTree c c).
     assumption.
     intuition.
@@ -192,20 +190,18 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
 
     simpl.
     destruct nextReq.
-    specialize (y c).
     destruct (decTree c c0).
     rewrite <- e0 in *.
     destruct (decTree c c); intuition.
-    rewrite y; omega.
+    omega.
 
 
     simpl.
     destruct nextReq.
-    specialize (y c).
     destruct (decTree c c0).
     rewrite <- e1 in *.
     destruct (decTree c c); intuition.
-    rewrite y; omega.
+    omega.
 
     reflexivity.
     reflexivity.
