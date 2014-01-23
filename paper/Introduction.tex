@@ -1,2 +1,75 @@
-\section{Introduction}
+h\section{Introduction}
 \label{sec:Introduction}
+
+Shared memory is a common abstraction for distributed systems as it
+provides an easily understood model of interaction. To achieve this
+abstraction efficiently, many hardware systems implement a cache
+coherence implementation. 
+
+Since the correctness of this abstraction is paramount in the correct
+functioning of the system, significant effort is placed in making sure
+that the cache coherence engine is correct. In practice, this is done
+in two steps. First, a cache coherence protocol is constructed and
+formally verified. This protocol generally directly represents many of
+the key concurrent aspects of an implementation, \eg\ reads and
+writes to the system are broken into local atomic microoperations, but
+ignores implementation details \eg\ buffer sizing and memory access
+times. Second, once the protocol has been verified it is handed to
+hardware experts who fill in the missing implementation details and
+realize it at the Register Transfer Level (RTL) of gates, wires, and
+registers. This effort is not a one time translation, as performance
+properties are not easily estimated; a significant amount of
+performance testing is requires to select a good implementation. 
+
+From a methodological perspective, this two step process represent a
+significant methodological failure. We spent a significant amount of
+time verifying the protocol and then invalidate any correctness
+guarantees to the implementation by performing not only a non-trivial
+translation from the protocol representation to hardware, but also
+the refinement to add missing implementation details.
+
+Previously, it was shown that, because verified protocols are often
+described in as via Term Rewrite Systems (TRS), one could directly
+transliterate a verified protocol into Bluespec, a hardware
+description language on Guarded Atomic Actions, a restriction of
+TRS. This reduces the correctness of the implementation to the
+correctness of the protocol, effectively removing any implementation
+bugs. This requires the protocol include many implementation-level
+details which had previously been elided for simplicity from the
+protocol so that it is realizable; practically, beyond some additional
+descriptional noise in the proof this is not a show stopper.
+
+The issue with this approach is that design of a hardware system
+requires many design tweaks to reach optimal performance as one cannot
+practically know the correct low-level hardware results without
+evaluating the low-level representation. In this protocol
+transliteration scheme, each of these changes can potentially breaks
+correctness and a full reverification of correctness is needed in
+principle. As hardware designers are unlikely to have the expertise or
+skill this effectively nullifies the verification guarantee in design.
+
+To fully realize this approach of design we need to provide not just a
+single proof of correctness, but a proof framework covering any
+variation of a design that might be of interest for performance
+reasons. This would enable implementation level changes without
+compromising on the ability to verify correctness of the design.
+
+In practice, protocol variants rely on a small set of general
+``building block'' properties, \eg\ messages always get from source to
+destination or that the design's reaction to a protocol message
+results in the appropriate messages being sent, about parts of the
+design to be true for the full system correctness. The details of
+these properties hold vary depend on the precise design variant. For
+instance, to show a message is handled in a finite amount of time it
+is sufficient to check that there is a maximum time bound between
+start and completion; this may rely on the number of messages in
+flight which is in turn affected by buffering size.
+
+In this paper, we describe an approach to provide this proof framework
+for any particular cache coherence protocol via the example of a
+MOESI-style protocol. We show of the modular structure of the proof
+and design can be shared and how modification of microarchtectural
+aspects of design directly translation to reverification of our key
+building block properties which are effectively trivial for the
+microarchitectural variations required. 
+
