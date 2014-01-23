@@ -22,6 +22,11 @@ Record CommonBehavior :=
     sendrImpSetWait: forall {t a r}, mark rch src dst a t r -> wt a (S t) = true;
     sendrImpSetWaitState: forall {t a r}, mark rch src dst a t r -> wtS a (S t) = to r;
     sendrImpNoPrevWait: forall {t a r}, mark rch src dst a t r -> wt a t = false;
+    recvmImpResetWait: forall {t a m}, recv mch dst src a t m -> ~ toRSComp (wtS a t) (to m) ->
+    wt a (S t) = false;
+    wait0: forall a, wt a 0 = false;
+    waitSet: forall {t a}, wt a t = false -> wt a (S t) = true ->
+                           exists r, mark rch src dst a t r /\ toRSComp (to r) (st a t);
     waitReset: forall {t a}, wt a t = true -> wt a (S t) = false ->
                              exists m, recv mch dst src a t m /\
                                        ~ toRSComp (wtS a t) (to m);
@@ -31,7 +36,8 @@ Record CommonBehavior :=
     noSendmRecvm: forall {t a m}, mark mch src dst a t m ->
                                   forall {m'}, recv mch dst src a t m' -> False;
     noSendmSendr: forall {t a m}, mark mch src dst a t m ->
-                                  forall {r}, mark rch src dst a t r -> False
+                                  forall {r}, mark rch src dst a t r -> False;
+    noMarkrRecvm: forall {t a m r}, mark rch src dst a t r -> recv mch dst src a t m -> False
   }.
   End CommonBeh.
 
@@ -55,7 +61,9 @@ Record CommonBehavior :=
                                      exists r1, recv rch p c a t' r1 /\
                                                 slt (to r1) (state c a t').
 
-(*    Axiom recvrSendm: forall {r}, recv rch p c a t r -> state c a t > to r -> exists {m}, mark mch c p a t m.*)
+    Axiom cRecvrSendm: forall {a t r}, parent c p -> recv rch p c a t r ->
+                                         slt (to r) (state c a t) ->
+                                         exists {m}, mark mch c p a t m /\ sle (to m) (to r).
 
     Axiom dt: defined p -> defined c -> parent c p -> @CommonBehavior (dir p c) slt p c
     (dwait p c) (dwaitS p c).
@@ -78,7 +86,8 @@ Record CommonBehavior :=
       Axiom sendmNoWait: defined p -> defined c -> parent c p ->
                          forall {t2 m2}, mark mch p c a t2 m2 -> dwait p c a t2 = false.
 
-      (*    Axiom recvrImpSendm: forall {r}, recv rch c p a t r -> exists m, mark mch p c a t m /\ to m >= to r.*)
+      Axiom pRecvrSendm: forall {r}, parent c p -> recv rch c p a t r ->
+                                       exists {m}, mark mch p c a t m /\ sle (to r) (to m).
     End ForT.
 
     Axiom init: defined p -> defined c -> parent c p -> forall {a}, dir p c a 0 = state c a 0.
@@ -272,6 +281,181 @@ Module mkBehaviorHelp (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorAxiom
       rewrite tEqT'.
       reflexivity.
       apply noChange; intuition.
+    Qed.
+
+    Lemma noWaitWaitImpMark:
+      forall {a t1 t2}, t1 < t2 ->
+        wt a t1 = false -> wt a t2 = true ->
+        exists t r, t1 <= t < t2 /\ mark rch src dst a t r /\ toRSComp (to r) (st a t).
+    Proof.
+      intros a t1 t2 cond w1 w2.
+      remember (t2 - t1 - 1) as td.
+      assert (t2 = t1 + S td) by omega.
+      rewrite H in *.
+      clear H Heqtd cond.
+      induction td.
+      assert (t1 + 1 = S t1) by omega.
+      rewrite H in *; clear H.
+      exists t1.
+      assert (t1 <= t1 < S t1) by omega.
+      pose proof (waitSet cb w1 w2) as [r sth].
+      exists r.
+      intuition.
+      assert (t1 + S (S td) = S (t1 + S td)) by omega.
+      rewrite H in *. clear H.
+      assert (H: {wt a (t1 + S td) = true} + {wt a (t1 + S td) <> true}) by decide equality.
+      assert (real: {wt a (t1 + S td) = true} + {wt a (t1 + S td) = false}).
+      destruct H.
+      left; assumption.
+      right.
+      destruct (wt a (t1 + S td)); intuition.
+      clear H.
+      destruct real.
+      specialize (IHtd e).
+      destruct IHtd as [t [r [cond rest]]].
+      assert (t1 <= t < S (t1 + S td)) by omega.
+      exists t; exists r.
+      intuition.
+      assert (t1 <= t1 + S td < S (t1 + S td)) by omega.
+      exists (t1 + S td).
+      pose proof (waitSet cb e w2) as [r sth].
+      exists r.
+      intuition.
+    Qed.
+
+    Theorem noWaitChange:
+      forall {a t1 t2},
+        t1 <= t2 ->
+        (forall y, t1 <= y < t2 ->
+                   ~ (exists r : Mesg, mark rch src dst a y r /\ toRSComp (to r) (st a y))) ->
+        (forall y, t1 <= y < t2 ->
+                   ~ (exists m : Mesg, recv mch dst src a y m /\ ~ toRSComp (wtS a y) (to m))) ->
+        wt a t2 = wt a t1.
+    Proof.
+      intros a t1 t2 cond noMark noRecv.
+      remember (t2 - t1) as td.
+      assert (t2 = t1 + td) by omega.
+      rewrite H in *.
+      clear H Heqtd cond.
+      induction td.
+      assert (t1 + 0 = t1) by omega.
+      rewrite H in *.
+      clear H.
+      reflexivity.
+      assert (t1 + S td = S (t1 + td)) by omega.
+      rewrite H in *.
+      assert (noMark': forall y, t1 <= y < t1 + td ->  ~
+           (exists r : Mesg,
+              mark rch src dst a y r /\ toRSComp (to r) (st a y))) by
+      ( intros y cond; assert (c1: t1 <= y < S (t1 + td)) by omega; generalize noMark c1; clear;
+        firstorder).
+      assert (noRecv': forall y, t1 <= y < t1 + td ->  ~
+           (exists m : Mesg,
+              recv mch dst src a y m /\ ~ toRSComp (wtS a y) (to m))) by
+      ( intros y cond; assert (c1: t1 <= y < S (t1 + td)) by omega; generalize noRecv c1; clear;
+        firstorder).
+      assert (wt a (t1 + td) = wt a t1) by
+          (generalize noMark' noRecv' IHtd; clear; firstorder).
+      rewrite <- H0; clear H H0.
+      pose proof (@waitSet st toRSComp src dst wt wtS cb (t1 + td) a) as wt1.
+      pose proof (@waitReset st toRSComp src dst wt wtS cb (t1 + td) a) as wt2.
+      assert (t1 <= t1 + td < S (t1 + td)) by omega.
+      specialize (noRecv (t1 + td) H).
+      specialize (noMark (t1 + td) H).
+      assert (true = true) by reflexivity; assert (false = false) by reflexivity.
+      destruct (wt a (t1 + td)); destruct (wt a (S (t1 + td))); firstorder.
+    Qed.
+
+    Lemma noWaitSChange:
+      forall {a t1 t2}, t1 <= t2 ->
+        (forall y, t1 <= y < t2 -> forall x, ~ mark rch src dst a y x) ->
+        wtS a t2 = wtS a t1.
+    Proof.
+      intros a t1 t2 noMark.
+      remember (t2 - t1) as td.
+      assert (t2 = t1 + td) by omega.
+      rewrite H in *; clear noMark Heqtd H.
+      induction td.
+      assert (t1 + 0 = t1) by omega.
+      rewrite H; clear H.
+      intros; reflexivity.
+      assert (t1 + S td = S (t1 + td)) by omega.
+      rewrite H in *.
+      intros noSend.
+      assert (spl: forall y, t1 <= y < t1 + td -> forall x, ~ mark rch src dst a y x).
+      intros y cond; assert (L: t1 <= y < S (t1 + td)) by omega;
+      generalize y cond L noSend; clear; firstorder.
+      specialize (IHtd spl).
+      rewrite <- IHtd.
+      assert (t1 <= t1 + td < S (t1 + td)) by omega.
+      specialize (noSend (t1 + td) H0).
+      assert ({wtS a (S (t1 + td)) = wtS a (t1 + td)} +
+              {wtS a (S (t1 + td)) <> wtS a (t1 + td)}) by decide equality.
+      destruct H1.
+      assumption.
+      pose proof (waitSSet cb n).
+      generalize noSend H1; clear; firstorder.
+    Qed.
+
+    Lemma noWaitSChange': forall {a t1 t2},
+                            t1 < t2 ->
+                            (forall y, t1 < y < t2 -> forall x, ~ mark rch src dst a y x) ->
+                            wtS a t2 = wtS a (S t1).
+    Proof.
+      intros a t1 t2.
+      apply (@noWaitSChange a (S t1) t2).
+    Qed.
+
+    Lemma waitImpMarkNotRecv:
+      forall {a t},
+        wt a t = true ->
+        exists sr r, sr < t /\ mark rch src dst a sr r /\
+                     (forall y, sr < y < t -> forall x, ~ mark rch src dst a y x) /\
+                     forall rm m, sr <= rm < t -> recv mch dst src a rm m ->
+                                  toRSComp (wtS a rm) (to m).
+    Proof.
+      intros a t wait.
+      pose proof (wait0 cb a) as wt0.
+      destruct t.
+      rewrite wait in wt0; discriminate.
+      assert (H: 0 < S t) by omega.
+      pose proof (noWaitWaitImpMark H wt0 wait) as [t0 [r0 [cond rest]]].
+      assert (rest': exists t0, t0 < S t /\ exists r, mark rch src dst a t0 r).
+      exists t0; constructor; intuition; exists r0.
+      intuition.
+      pose proof (maxExists' rest') as useful; clear rest rest' r0 t0 cond H.
+      destruct useful as [sr [cond1 [[r markr] rest]]].
+      exists sr; exists r.
+      constructor.
+      assumption.
+      constructor.
+      assumption.
+      constructor.
+      generalize rest; clear; firstorder.
+      destruct (classic (exists y, y < S t /\ sr <= y /\ exists m, recv mch dst src a y m /\
+                                                      ~ toRSComp (wtS a y) (to m)))
+               as [easy | hard].
+      pose proof (maxExists' easy) as [y [y_lt_St [[sr_le_y [m [recvm condx]]] reset]]].
+      assert (forall k, y < k < S t -> ~ exists m, recv mch dst src a k m /\
+                                                   ~ toRSComp (wtS a k) (to m)).
+      intros k cond.
+      assert (sr <= k) by omega.
+      generalize reset k cond H; clear; firstorder.
+      clear easy.
+      assert (forall k, y < k < S t -> ~ exists r, mark rch src dst a k r /\
+                                                   toRSComp (to r) (st a k)).
+      intros k cond.
+      assert (sr < k < S t) by omega.
+      generalize rest k H0; clear; firstorder.
+      pose proof (noWaitChange y_lt_St H0 H) as stuff.
+      pose proof (recvmImpResetWait cb recvm condx) as H1.
+      rewrite H1 in stuff.
+      rewrite wait in stuff.
+      discriminate.
+      intros rm m cond recvm.
+      destruct (classic (toRSComp (wtS a rm) (to m))).
+      assumption.
+      generalize cond recvm H hard; clear; firstorder.
     Qed.
   End CommonBeh.
 End mkBehaviorHelp.
@@ -1663,12 +1847,15 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       firstorder.
     Qed.
 
-    Lemma vol: forall {a t}, forall {t1 r1}, mark rch p c a t1 r1 ->
-                                             forall {t2 m2}, mark mch c p a t2 m2 ->
-                                                             forall {t3}, t3 <= t -> t1 <= t3 -> recv mch c p a t3 m2 ->
-                                                                          (forall {t4}, t4 <= t2 -> ~ recv rch p c a t4 r1) ->
-                                                                          (forall {t5}, t1 < t5 <= t3 -> forall r, ~ mark rch p c a t5 r) ->
-                                                                          forall r3, recv rch p c a t2 r3 -> slt (to r3) (state c a t2) -> False.
+    Lemma vol: forall {a t}, forall {t1 r1},
+                 mark rch p c a t1 r1 ->
+                 forall {t2 m2},
+                   mark mch c p a t2 m2 ->
+                   forall {t3}, t3 <= t -> t1 <= t3 -> recv mch c p a t3 m2 ->
+                                (forall {t4}, t4 <= t2 -> ~ recv rch p c a t4 r1) ->
+                                (forall {t5}, t1 < t5 <= t3 -> forall r, ~ mark rch p c a t5 r) ->
+                                forall r3, recv rch p c a t2 r3 ->
+                                           slt (to r3) (state c a t2) -> False.
     Proof.
       intros a.
       induction t.
@@ -2340,6 +2527,164 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       pose proof (pSendCSameState markm recvm triv) as g3.
       rewrite g3 in g2; rewrite <- g1 in g2.
       destruct (state c a t); destruct (state c a (S rm)); unfold slt in *; auto.
+    Qed.
+
+    Theorem cWaitImpNotRecvOrSent:
+      forall {t a},
+        wait c a t = true ->
+        exists r sr,
+          sr < t /\ mark rch c p a sr r /\
+          ((exists rr, sr <= rr < t /\ recv rch c p a rr r /\
+                       exists sm m, sm < t /\ mark mch p c a sm m /\ sle (to r) (to m) /\
+                                 forall rm, rm < t -> ~ recv mch p c a rm m) \/
+           forall rr, rr < t -> ~ recv rch c p a rr r).
+    Proof.
+      intros t a wt.
+      pose proof (waitImpMarkNotRecv st wt) as [sr [r [sr_lt_t [markr [nomore norecvm]]]]].
+      exists r; exists sr.
+      constructor.
+      assumption.
+      constructor.
+      assumption.
+      destruct (classic (exists rr, sr <= rr < t /\ recv rch c p a rr r)) as [[rr [cond recvr]] | noRecv].
+      left.
+      exists rr.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      pose proof (pRecvrSendm isParent recvr) as [m [markm cond2]].
+      exists rr; exists m.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      pose proof (recvImpMarkBefore recvr markr).
+      unfold not; intros rm rm_lt_t recvm.
+      pose proof (recvImpMarkBefore recvm markm).
+      assert (sr <= rm) by omega.
+      assert (sr <= rm < t) by omega.
+      specialize (norecvm rm m H2 recvm).
+      assert (sr = rm \/ sr < rm < t) by omega.
+      destruct H3.
+      rewrite H3 in *.
+      assert (rm = rm) by omega.
+      pose proof (noMarkrRecvm st markr recvm).
+      intuition.
+      assert (sr < rm) by omega.
+      assert (forall y, sr < y < rm -> forall x, ~ mark rch c p a y x) by
+          (
+            intros y condx; assert (K: sr < y < t) by omega; generalize nomore K; clear;
+            firstorder).
+      pose proof (noWaitSChange' st H4 H5) as waitEq.
+      pose proof (sendrImpSetWaitState st markr) as iseq.
+      rewrite iseq in waitEq.
+      rewrite waitEq in norecvm.
+      unfold sgt in norecvm.
+      pose proof (slt_slei_false norecvm cond2).
+      intuition.
+      right.
+      unfold not; intros rr cond recvr.
+      pose proof (recvImpMarkBefore recvr markr).
+      generalize noRecv cond recvr H; clear; firstorder.
+    Qed.
+
+    Theorem pWaitImpNotRecvOrSent:
+      forall {t a},
+        dwait p c a t = true ->
+        exists r sr,
+          sr < t /\ mark rch p c a sr r /\
+          ((exists rr, sr <= rr < t /\ recv rch p c a rr r /\
+                       exists sm m, sm < t /\ mark mch c p a sm m /\ sle (to m) (to r) /\
+                                 forall rm, rm < t -> ~ recv mch c p a rm m) \/
+           forall rr, rr < t -> ~ recv rch p c a rr r).
+    Proof.
+      intros t a dwt.
+      pose proof (waitImpMarkNotRecv dt dwt) as [sr [r [sr_lt_t [markr [nomore norecvm]]]]].
+      exists r; exists sr.
+      constructor.
+      assumption.
+      constructor.
+      assumption.
+      destruct (classic (exists rr, sr <= rr < t /\ recv rch p c a rr r)) as [[rr [cond recvr]] | noRecv].
+      left.
+      exists rr.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      assert (opts: slt (to r) (state c a rr) \/ sle (state c a rr) (to r)) by
+          ( destruct (to r); destruct (state c a rr); unfold slt; unfold sle;
+            auto).
+      destruct opts.
+      pose proof (cRecvrSendm isParent recvr H) as [m [markm cond2]].
+      exists rr; exists m.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      pose proof (recvImpMarkBefore recvr markr).
+      unfold not; intros rm rm_lt_t recvm.
+      pose proof (recvImpMarkBefore recvm markm).
+      assert (sr <= rm) by omega.
+      assert (sr <= rm < t) by omega.
+      specialize (norecvm rm m H3 recvm).
+      assert (sr = rm \/ sr < rm < t) by omega.
+      destruct H4.
+      rewrite H4 in *.
+      assert (rm = rm) by omega.
+      pose proof (noMarkrRecvm dt markr recvm).
+      intuition.
+      assert (sr < rm) by omega.
+      assert (forall y, sr < y < rm -> forall x, ~ mark rch p c a y x) by
+          (
+            intros y condx; assert (K: sr < y < t) by omega; generalize nomore K; clear;
+            firstorder).
+      pose proof (noWaitSChange' dt H5 H6) as waitEq.
+      pose proof (sendrImpSetWaitState dt markr) as iseq.
+      rewrite iseq in waitEq.
+      rewrite waitEq in norecvm.
+      unfold sgt in norecvm.
+      pose proof (slt_slei_false norecvm cond2).
+      intuition.
+      pose proof (cReqRespSent markr recvr H) as [t3 [t3_lt_rr [m [markm [cond2 rest]]]]].
+      exists t3; exists m.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+      constructor.
+      intuition.
+
+      unfold not; intros rm rm_lt_t recvm.
+      assert (rm < sr \/ sr <= rm) by omega.
+      destruct H0.
+      generalize rest H0 recvm; clear; firstorder.
+      specialize (norecvm rm m (conj H0 rm_lt_t) recvm).
+      assert (sr = rm \/ sr < rm < t) by omega.
+      destruct H1.
+      rewrite H1 in *.
+      pose proof (noMarkrRecvm dt markr recvm).
+      intuition.
+      assert (sr < rm) by omega.
+      assert (forall y, sr < y < rm -> forall x, ~ mark rch p c a y x).
+      intros y condx.
+      assert (sr < y < t) by omega.
+      generalize nomore H3; clear; firstorder.
+      pose proof (noWaitSChange dt H2 H3).
+      rewrite H4 in norecvm.
+      pose proof (sendrImpSetWaitState dt markr) as iseq.
+      rewrite iseq in norecvm.
+      pose proof (slt_slei_false norecvm cond2); firstorder.
+
+      right.
+      unfold not; intros rr cond recvr.
+      pose proof (recvImpMarkBefore recvr markr).
+      generalize noRecv cond recvr H; clear; firstorder.
     Qed.
   End Pair.
 End mkBehaviorTheorems.
