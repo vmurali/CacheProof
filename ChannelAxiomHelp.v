@@ -1903,3 +1903,240 @@ Proof.
   exists t.
   intuition.
 Qed.
+
+Theorem c2pRecvSame: forall {s p c t m},
+                       parent c p ->
+                       recv s c p t m ->
+                       s = recvc t.
+Proof.
+  intros s p c t m c_p recvm.
+  unfold recv in *; unfold recvc.
+  destruct (trans oneBeh t).
+  intuition.
+  intuition.
+
+  intuition.
+
+  pose proof (enqC2P p1 n).
+  rewrite H in recvm.
+  firstorder.
+
+  unfold m0 in e.
+  rewrite e in recvm.
+  firstorder.
+
+  intuition.
+
+  destruct recvm as [u1 [u2 _]].
+  rewrite <- u1 in *; rewrite <- u2 in *.
+  pose proof (noCycle c_p p1); intuition.
+
+  pose proof (enqC2P p1 n).
+  rewrite H in recvm.
+  firstorder.
+
+  intuition.
+
+  destruct recvm as [u1 [u2 _]].
+  rewrite <- u1 in *; rewrite <- u2 in *.
+  pose proof (noCycle c_p p1); intuition.
+Qed.
+
+
+Theorem c2pMarkSame: forall {s p c t m},
+                       parent c p ->
+                       mark s c p t m ->
+                       s = markc t.
+Proof.
+  intros s p c t m c_p recvm.
+  unfold mark in *; unfold markc.
+  destruct (trans oneBeh t).
+  intuition.
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  destruct recvm as [u1 [u2 _]].
+  rewrite <- u1 in *; rewrite <- u2 in *.
+  pose proof (noCycle c_p p1); intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+Qed.
+
+Theorem p2cMarkMch: forall {s p c t m},
+                       parent c p ->
+                       mark s p c t m ->
+                       mch = markc t.
+Proof.
+  intros s p c t m c_p recvm.
+  unfold mark in *; unfold markc.
+  destruct (trans oneBeh t).
+  intuition.
+  intuition.
+
+  destruct recvm as [u1 [u2 _]].
+  rewrite <- u1 in *; rewrite <- u2 in *.
+  pose proof (noCycle c_p p1); intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+
+  intuition.
+Qed.
+
+Theorem p2cRecvMch: forall {s p c t m},
+                       parent c p ->
+                       recv s p c t m ->
+                       mch = recvc t.
+Proof.
+  intros s p c t m c_p recvm.
+  unfold recv in *; unfold recvc.
+  destruct (trans oneBeh t); intuition.
+  rewrite <- H in *; rewrite <- H1 in *.
+  pose proof (noCycle c_p p1); intuition.
+Qed.
+
+Theorem cRecvImpNotIn: forall {s p c t rm m},
+                         rm < t ->
+                         parent c p ->
+                         recv s c p rm m ->
+                         ~ In (Build_BaseMesg (from m) (to m) (addr m) (dataM m) s, msgId m)
+                           (combine (ch (sys oneBeh t) s c p) (labelCh t s c p)).
+Proof.
+  unfold not; intros s p c t rm m rm_lt_t c_p recvm isIn.
+  pose proof (recvNotIn recvm) as sth.
+  pose proof (c2pRecvSame c_p recvm) as H.
+  rewrite <- H in sth.
+  assert (t = S rm \/ S rm < t) by omega.
+  destruct H0.
+  rewrite <- H0 in *.
+  intuition.
+  pose proof (inImpSent H0 isIn sth) as [ti [cond [H2 _]]].
+  simpl in *.
+  pose proof (recvImpSend' recvm) as [ti' [cond' H2']].
+  assert (m = (Build_Mesg (from m) (to m) (addr m) (dataM m) (msgId m))).
+  destruct m.
+  reflexivity.
+  rewrite <- H1 in H2.
+  pose proof (uniqMark2 H2' H2).
+  omega.
+Qed.
+
+Theorem pRecvImpNotIn: forall {s p c t rm m},
+                         rm < t ->
+                         parent c p ->
+                         recv s p c rm m ->
+                         ~ In (Build_BaseMesg (from m) (to m) (addr m) (dataM m) s, msgId m)
+                           (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)).
+Proof.
+  unfold not; intros s p c t rm m rm_lt_t c_p recvm isIn.
+  pose proof (recvNotIn recvm) as sth.
+  pose proof (p2cRecvMch c_p recvm) as H.
+  rewrite <- H in sth.
+  assert (t = S rm \/ S rm < t) by omega.
+  destruct H0.
+  rewrite <- H0 in *.
+  intuition.
+  pose proof (inImpSent H0 isIn sth) as [ti [cond [H2 _]]].
+  simpl in *.
+  pose proof (recvImpSend' recvm) as [ti' [cond' H2']].
+  assert (m = (Build_Mesg (from m) (to m) (addr m) (dataM m) (msgId m))).
+  destruct m.
+  reflexivity.
+  rewrite <- H1 in H2.
+  pose proof (uniqMark2 H2' H2).
+  omega.
+Qed.
+
+Theorem cSendNotRecvImpIn:
+  forall {s p c t sm m},
+    sm < t ->
+    parent c p ->
+    send s c p sm m ->
+    (forall y, sm < y < t -> ~ recv s c p y m) ->
+    In (Build_BaseMesg (from m) (to m) (addr m) (dataM m) s, msgId m)
+      (combine (ch (sys oneBeh t) s c p) (labelCh t s c p)).
+Proof.
+  intros s p c t sm m sm_lt_t c_p sendm norecvm.
+  destruct (classic (In
+     ({|
+      fromB := from m;
+      toB := to m;
+      addrB := addr m;
+      dataBM := dataM m;
+      type := s |}, msgId m)
+     (combine (ch (sys oneBeh t) s c p) (labelCh t s c p)))).
+  assumption.
+  simpl in *.
+  pose proof (enqImpIn sendm).
+  pose proof (c2pMarkSame c_p sendm).
+  rewrite <- H1 in H0.
+  assert (S sm = t \/ S sm < t) by omega.
+  destruct H2.
+  rewrite H2 in *.
+  intuition.
+  pose proof (notInImpExRecv H2 H H0) as [rt [condrt [stf _]]].
+  simpl in stf.
+  assert (m = Build_Mesg (from m) (to m) (addr m) (dataM m) (msgId m)) by
+      (destruct m; reflexivity).
+  rewrite <- H3 in stf.
+  specialize (norecvm rt condrt stf).
+  intuition.
+Qed.
+
+
+Theorem pSendNotRecvImpIn:
+  forall {s p c t sm m},
+    sm < t ->
+    parent c p ->
+    send s p c sm m ->
+    (forall y, sm < y < t -> ~ recv s p c y m) ->
+    In (Build_BaseMesg (from m) (to m) (addr m) (dataM m) s, msgId m)
+      (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)).
+Proof.
+  intros s p c t sm m sm_lt_t c_p sendm norecvm.
+  destruct (classic (In
+     ({|
+      fromB := from m;
+      toB := to m;
+      addrB := addr m;
+      dataBM := dataM m;
+      type := s |}, msgId m)
+     (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)))).
+  assumption.
+  simpl in *.
+  pose proof (enqImpIn sendm).
+  pose proof (p2cMarkMch c_p sendm).
+  rewrite <- H1 in H0.
+  assert (S sm = t \/ S sm < t) by omega.
+  destruct H2.
+  rewrite H2 in *.
+  intuition.
+  pose proof (notInImpExRecv H2 H H0) as [rt [condrt [stf _]]].
+  simpl in stf.
+  assert (m = Build_Mesg (from m) (to m) (addr m) (dataM m) (msgId m)) by
+      (destruct m; reflexivity).
+  rewrite <- H3 in stf.
+  specialize (norecvm rt condrt stf).
+  intuition.
+Qed.
+
