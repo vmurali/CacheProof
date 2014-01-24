@@ -3,33 +3,34 @@ Require Import Coq.Logic.Classical Rules DataTypes MsiState L1 Omega Coq.Relatio
 Module mkL1Axioms : L1Axioms mkDataTypes.
   Import mkDataTypes.
 
-  Theorem deqLeaf: forall {c l a d i t}, deqR c l a d i t -> leaf c.
+  Theorem deqLeaf: forall {c i t}, deqR c i t -> leaf c.
   Proof.
-    intros c l a d i t deqr.
+    intros c i t deqr.
     unfold deqR in deqr.
     destruct (trans oneBeh t);
     (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]);
     assert (c = c0) by auto; firstorder.
   Qed.
 
-  Theorem deqDef: forall {c l a d i t}, deqR c l a d i t -> defined c.
+  Theorem deqDef: forall {c i t}, deqR c i t -> defined c.
   Proof.
-    intros c l a d i t deqr.
+    intros c i t deqr.
     unfold deqR in deqr.
     destruct (trans oneBeh t);
-    (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]); assert (c = c0) by auto; firstorder.
+    (simpl in *; destruct (decTree c c0) as [eq|notEq]; [rewrite eq in *; firstorder| firstorder]);
+    assert (c = c0) by auto; firstorder.
   Qed.
 
-  Theorem uniqDeqProc: forall {c l1 a1 d1 i1 t l2 a2 d2 i2},
-                         deqR c l1 a1 d1 i1 t -> deqR c l2 a2 d2 i2 t ->
-                         l1 = l2.
+  Theorem uniqDeqProc: forall {c i1 t i2},
+                       deqR c i1 t -> deqR c i2 t ->
+                       i1 = i2.
   Proof.
-    intros c l1 a1 d1 i1 t l2 a2 d2 i2 deq1 deq2.
+    intros c i1 t i2 deq1 deq2.
     unfold deqR in *.
     destruct (trans oneBeh t).
-    simpl in *; destruct deq1 as [_ [use1 _]]; destruct deq2 as [_ [use2 _]];
+    simpl in *; destruct deq1 as [_ use1]; destruct deq2 as [_ use2];
                                            rewrite use1 in use2; firstorder.
-    simpl in *; destruct deq1 as [_ [use1 _]]; destruct deq2 as [_ [use2 _]];
+    simpl in *; destruct deq1 as [_ use1]; destruct deq2 as [_ use2];
                                            rewrite use1 in use2; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -41,21 +42,30 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl in *; firstorder.
   Qed.
 
-  Theorem processDeq: forall {c l a d i t}, deqR c l a d i t ->
-                                            match d with
-                                              | Ld => sle Sh (state c a t)
-                                              | St => state c a t = Mo
-                                            end.
+  Theorem processDeq: forall {c i t}, deqR c i t ->
+                                      let q := reqFn c i in
+                                      match desc q with
+                                        | Ld => sle Sh (state c (loc q) t)
+                                        | St => state c (loc q) t = Mo
+                                      end.
   Proof.
-    intros c l a d i t deqr.
+    intros c i t deqr.
     unfold state.
     unfold deqR in *.
     destruct (trans oneBeh t).
 
-    destruct deqr as [eq [_ [use1 [use2 _]]]];
-      rewrite <- eq in *; rewrite use1 in *; rewrite use2 in *; rewrite e; assumption.
-    destruct deqr as [eq [_ [use1 [use2 _]]]];
-      rewrite <- eq in *; rewrite use1 in *; rewrite use2 in *; rewrite e; assumption.
+    destruct deqr as [eq u1].
+    rewrite eq in *.
+    rewrite u1 in *.
+    rewrite e in *.
+    assumption.
+
+    destruct deqr as [eq u1].
+    rewrite eq in *.
+    rewrite u1 in *.
+    rewrite e in *.
+    assumption.
+
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -66,22 +76,23 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl in *; firstorder.
   Qed.
 
-  Theorem deqImpEnq: forall {c l a d i t}, deqR c l a d i t ->
-                                           match d with
-                                             | Ld => enqLd c l (data c a t) t
-                                             | St => enqSt c l t
-                                           end.
+
+  Theorem deqImpEnq: forall {c i t}, deqR c i t ->
+                                     match desc (reqFn c i) with
+                                       | Ld => enqLd c i (data c (loc (reqFn c i)) t) t
+                                       | St => enqSt c i t
+                                     end.
   Proof.
-    intros c l a d i t deqr.
+    intros c i t deqr.
     unfold state.
     unfold deqR in *; unfold enqLd; unfold enqSt; unfold data.
     destruct (trans oneBeh t).
-    destruct deqr as [eq [use0 [use1 [use2 _]]]]; rewrite <- eq in *; rewrite use1 in *;
-                 rewrite use2 in *; rewrite use0 in *; rewrite e;
-                 constructor; firstorder.
-    destruct deqr as [eq [use0 [use1 [use2 _]]]]; rewrite <- eq in *; rewrite use1 in *;
-                 rewrite use2 in *; rewrite use0 in *; rewrite e;
-                 constructor; firstorder.
+    destruct deqr as [eq u].
+    rewrite eq in *; rewrite u in *; rewrite e in *.
+    intuition.
+    destruct deqr as [eq u].
+    rewrite eq in *; rewrite u in *; rewrite e in *.
+    intuition.
     simpl in *; firstorder.
     simpl in *; firstorder.
     simpl in *; firstorder.
@@ -92,73 +103,35 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl in *; firstorder.
   Qed.
 
-  Theorem enqLdImpDeq: forall {c l st t}, enqLd c l st t -> exists a i, deqR c l a Ld i t
-                                                                        /\ data c a t = st.
+  Theorem enqLdImpDeq: forall {c i st t}, enqLd c i st t -> deqR c i t /\ desc (reqFn c i) = Ld /\
+                                                          data c (loc (reqFn c i)) t = st.
   Proof.
-    intros c l st t enql.
+    intros c i st t enql.
     unfold enqLd in *; unfold deqR; unfold data.
     destruct (trans oneBeh t).
-    simpl in *; destruct enql as [eq [use0 [use1 use2]]];
-      exists (lct (req (sys oneBeh t) c));
-      exists (idx (req (sys oneBeh t) c));
-      rewrite <- eq in *;
-      rewrite use1 in *; rewrite use2 in *;
-      rewrite use0 in *; constructor; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
+    destruct enql as [eq [u1 u2]].
+    rewrite eq in *; rewrite u1 in *; rewrite u2 in *.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
   Qed.
     
-  Theorem enqStImpDeq: forall {c l t}, enqSt c l t -> exists a i, deqR c l a St i t.
+  Theorem enqStImpDeq: forall {c i t}, enqSt c i t -> deqR c i t /\ desc (reqFn c i) = St.
   Proof.
-    intros c l t enql.
+    intros c i t enql.
     unfold enqSt in *; unfold deqR; unfold data.
     destruct (trans oneBeh t).
-    simpl in *; firstorder.
-    destruct enql as [ef [use1 use2]];
-      exists (lct (req (sys oneBeh t) c0));
-      exists (idx (req (sys oneBeh t) c0));
-      rewrite ef in *; rewrite use1; rewrite use2; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-    simpl in *; firstorder.
-  Qed.
-
-  Theorem nextHigh: forall {c l a d i t},
-                      deqR c l a d i t ->
-                      idx (req (sys oneBeh t) c) < idx (req (sys oneBeh (S t)) c).
-  Proof.
-    intros c l a d i t deqr.
-    unfold deqR in *.
-    destruct (trans oneBeh t).
-
-    simpl.
-    destruct deqr as [u _].
-    rewrite u.
-    destruct (nextReq (req (sys oneBeh t) c)).
-    destruct (decTree c c).
-    assumption.
     intuition.
-
-    simpl.
-    destruct deqr as [u _].
-    rewrite u.
-    destruct (nextReq (req (sys oneBeh t) c)).
-    destruct (decTree c c).
-    assumption.
+    destruct enql as [eq u1].
+    rewrite eq in *; rewrite u1 in *.
     intuition.
-
     intuition.
     intuition.
     intuition.
@@ -169,70 +142,128 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     intuition.
   Qed.
 
-  Theorem futureHigh: forall {c l a d i t1 t2}, t1 < t2 ->
-                        deqR c l a d i t1 ->
-                        idx (req (sys oneBeh t1) c) < idx (req (sys oneBeh t2) c).
+  Theorem reqGe: forall {c t1 t2}, t1 <= t2 -> req (sys oneBeh t2) c >= req (sys oneBeh t1) c.
   Proof.
-    intros c l a d i t1 t2 cond deqr1.
-    remember (t2 - t1 - 1) as td.
-    assert (t2 = t1 + S td) by omega.
-    rewrite H in *; clear Heqtd H t2 cond.
+    intros c t1 t2 le.
+    remember (t2 - t1) as td.
+    assert (t2 = t1 + td) by omega.
+    rewrite H in *; clear le Heqtd H.
     induction td.
-    assert (t1 + 1 = S t1) by omega.
+    assert (t1 + 0 = t1) by omega.
     rewrite H.
-    apply (nextHigh deqr1).
-    assert (t1 + S (S td) = S (t1 + S td)) by omega.
+    omega.
+    assert (t1 + S td = S (t1 + td)) by omega.
     rewrite H; clear H.
-
-    assert (idx (req (sys oneBeh (t1 + S td)) c) <= idx (req (sys oneBeh (S (t1 + S td))) c)).
-
-    destruct (trans oneBeh (t1 + S td)).
+    assert (req (sys oneBeh (S (t1 + td))) c >= req (sys oneBeh (t1 + td)) c).
+    destruct (trans oneBeh (t1 + td)).
 
     simpl.
-    destruct nextReq.
-    destruct (decTree c c0).
-    rewrite <- e0 in *.
-    destruct (decTree c c); intuition.
-    omega.
-
-
+    destruct (decTree c c0); omega.
     simpl.
-    destruct nextReq.
-    destruct (decTree c c0).
-    rewrite <- e1 in *.
-    destruct (decTree c c); intuition.
+    destruct (decTree c c0); omega.
+    simpl.
     omega.
-
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-    reflexivity.
-
-    omega.
+    simpl; omega.
+    simpl; omega.
+    simpl; omega.
+    simpl; omega.
+    simpl; omega.
+    simpl; omega.
+    simpl; omega.
+    simpl; omega.
   Qed.
 
-  Theorem deqIdx: forall {c l a d i t}, deqR c l a d i t -> idx (req (sys oneBeh t) c) = i.
+  Theorem reqGt: forall {c i t1 t2}, t1 < t2 -> deqR c i t1 ->
+                                     req (sys oneBeh t2) c > i.
   Proof.
-    intros c l a d i t deqr.
+    intros c i t1 t2 cond deqr.
+    assert (S t1 <= t2) by omega.
+    assert (req (sys oneBeh (S t1)) c > i).
     unfold deqR in *.
-    destruct (trans oneBeh t); intuition.
-    rewrite H in *; intuition.
-    rewrite H in *; intuition.
+    destruct (trans oneBeh t1).
+    simpl.
+    destruct deqr as [eq sth].
+    rewrite eq in *.
+    destruct (decTree c c).
+    rewrite sth; omega.
+    firstorder.
+    simpl.
+    destruct deqr as [eq sth].
+    rewrite eq in *.
+    destruct (decTree c c).
+    rewrite sth; omega.
+    firstorder.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    pose proof (@reqGe c _ _ H).
+    omega.
   Qed.
 
-  Theorem deqOrder: forall {c l1 a1 d1 i1 t1 l2 a2 d2 i2 t2},
-                      deqR c l1 a1 d1 i1 t1 -> deqR c l2 a2 d2 i2 t2 ->
+  Theorem uniqDeqProc2: forall {c i t1 t2},
+                        deqR c i t1 -> deqR c i t2 -> t1 = t2.
+  Proof.
+    intros c i t1 t2 deq1 deq2.
+    unfold Time in *.
+    assert (t1 = t2 \/ t1 < t2 \/ t2 < t1) by omega.
+    destruct H as [e1 | [e2 | e3]].
+    assumption.
+    pose proof (reqGt e2 deq1).
+    unfold deqR in deq2.
+    destruct (trans oneBeh t2).
+    destruct deq2 as [_ u2].
+    omega.
+    destruct deq2 as [_ u2].
+    omega.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    pose proof (reqGt e3 deq2).
+    unfold deqR in deq1.
+    destruct (trans oneBeh t1).
+    destruct deq1 as [_ u2].
+    omega.
+    destruct deq1 as [_ u2].
+    omega.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+  Qed.
+
+  Theorem deqOrder: forall {c i1 t1 i2 t2},
+                      deqR c i1 t1 -> deqR c i2 t2 ->
                       i1 < i2 -> ~ t1 > t2.
   Proof.
-    unfold not; intros c l1 a1 d1 i1 t1 l2 a2 d2 i2 t2 deq1 deq2 i1_lt_i2 t1_gt_t2.
-    pose proof (futureHigh t1_gt_t2 deq2) as idxLt.
-    pose proof (deqIdx deq1) as u1.
-    pose proof (deqIdx deq2) as u2.
-    rewrite u1 in *; rewrite u2 in *.
-    omega.
+    unfold not; intros c i1 t1 i2 t2 deq1 deq2 iLess t2Less.
+    pose proof (reqGt t2Less deq2).
+    unfold deqR in deq1.
+    destruct (trans oneBeh t1).
+    destruct deq1 as [_ u]; omega.
+    destruct deq1 as [_ u]; omega.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
   Qed.
+
 End mkL1Axioms.

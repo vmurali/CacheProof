@@ -386,7 +386,7 @@ Proof.
                           fromB := st (sys oneBeh t) p a;
                           toB := x;
                           addrB := a;
-                          dataBM := Initial; type := rch |}, t)) by firstorder.
+                          dataBM := initData zero; type := rch |}, t)) by firstorder.
   pose proof (eachProd L) as [L1 L2].
   rewrite L1; rewrite L2; simpl; firstorder.
   firstorder.
@@ -456,7 +456,7 @@ Proof.
                           fromB := dirSt (sys oneBeh t) p c a;
                           toB := x;
                           addrB := a;
-                          dataBM := Initial; type := rch |}, t)) by firstorder.
+                          dataBM := initData zero; type := rch |}, t)) by firstorder.
   pose proof (eachProd L) as [L1 L2]; clear L.
   rewrite L1; rewrite L2; simpl; firstorder.
   firstorder.
@@ -1515,7 +1515,7 @@ Proof.
                {(Build_BaseMesg (from m1) (to m1) (addr m1) (dataM m1) s1, msgId m1) <>
                 (Build_BaseMesg (from m2) (to m2) (addr m2) (dataM m2) s2, msgId m2)}).
   repeat decide equality.
-  apply decLabel.
+  apply decData.
   apply decAddr.
   destruct mDec as [same|diff].
   rewrite <- same in *.

@@ -4,19 +4,12 @@ Record BaseMesg :=
   { fromB: State;
     toB: State;
     addrB: Addr;
-    dataBM: StLabel;
+    dataBM: Data;
     type: ChannelType
   }.
 
-Record BaseReq :=
-  { lbl: Label;
-    lct: Addr;
-    dsc: DataTypes.Desc;
-    idx: Index
-  }.
-
 Record GlobalState :=
-  { dt: Cache -> Addr -> StLabel;
+  { dt: Cache -> Addr -> Data;
     ch: ChannelType -> Cache -> Cache -> list BaseMesg;
     st: Cache -> Addr -> State;
     dirSt: Cache -> Cache -> Addr -> State;
@@ -24,16 +17,14 @@ Record GlobalState :=
     wtS: Cache -> Addr -> State;
     dirWt: Cache -> Cache -> Addr -> bool;
     dirWtS: Cache -> Cache -> Addr -> State;
-    req: Cache -> BaseReq
+    req: Cache -> nat
   }.
 
-Definition dmy := Build_BaseMesg In In zero Initial mch.
-
-Axiom nextReq: forall r, {nr| idx nr > idx r}.
+Definition dmy := Build_BaseMesg In In zero (initData zero) mch.
 
 Inductive Transition (s: GlobalState) : GlobalState -> Set :=
-| LoadReq: forall {c}, defined c -> leaf c -> dsc (req s c) = Ld ->
-                       sle Sh (st s c (lct (req s c))) -> 
+| LoadReq: forall {c}, defined c -> leaf c -> desc (reqFn c (req s c)) = Ld ->
+                       sle Sh (st s c (loc (reqFn c (req s c)))) -> 
                        Transition s {|
                                     dt := dt s;
                                     ch := ch s;
@@ -44,16 +35,16 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                     dirWt := dirWt s;
                                     dirWtS := dirWtS s;
                                     req := fun t => match decTree t c with
-                                                      | left _ => let (k, _) := nextReq (req s t) in k
+                                                      | left _ => S (req s t)
                                                       | _ => req s t
                                                     end
                                   |}
-| StoreReq: forall {c}, defined c -> leaf c -> dsc (req s c) = St ->
-                        (st s c (lct (req s c)) = Mo) ->
+| StoreReq: forall {c}, defined c -> leaf c -> desc (reqFn c (req s c)) = St ->
+                        (st s c (loc (reqFn c (req s c))) = Mo) ->
                         Transition s {|
                                      dt := fun t w => match decTree t c with
-                                                      | left _ => match decAddr w (lct (req s t)) with
-                                                                    | left _ => Store (lbl (req s t))
+                                                      | left _ => match decAddr w (loc (reqFn t (req s t))) with
+                                                                    | left _ => dataQ (reqFn t (req s t))
                                                                     | right _ => dt s t w
                                                                   end
                                                       | right _ => dt s t w
@@ -66,7 +57,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                      dirWt := dirWt s;
                                      dirWtS := dirWtS s;
                                      req := fun t => match decTree t c with
-                                                       | left _ => let (k, _) := nextReq (req s t) in k
+                                                       | left _ => S (req s t)
                                                        | _ => req s t
                                                      end
                                    |}
@@ -80,7 +71,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                                    | rch, left _, left _ =>
                                                                        (Build_BaseMesg
                                                                           (st s w a)
-                                                                          x a Initial rch)
+                                                                          x a (initData zero) rch)
                                                                          :: ch s t w z
                                                                    | _, _, _ => ch s t w z
                                                                  end;
@@ -196,7 +187,7 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                                                     | mch, left _, left _ =>
                                                                         (Build_BaseMesg
                                                                            (dirSt s w z a)
-                                                                           x a Initial rch)
+                                                                           x a (initData zero) rch)
                                                                           :: ch s t w z
                                                                     | _, _, _ => ch s t w z
                                                                   end;
@@ -355,17 +346,8 @@ Inductive Transition (s: GlobalState) : GlobalState -> Set :=
                                               req := req s
                                            |}.
 
-Parameter initReq: Cache -> BaseReq.
-
-Definition tlStr {A} (l l': Stream A) := l' = Streams.tl l.
-
-Definition subStr := clos_refl_trans (Stream BaseReq) tlStr.
-
-Axiom reqsGood: forall {l1 l2}, subStr l1 l2 -> l1 <> l2 ->
-                                idx (Streams.hd l1) < idx (Streams.hd l2).
-
 Definition initGlobalState :=
-  {| dt := fun t w => Initial;
+  {| dt := fun t w => if (decTree t hier) then initData w else initData zero;
      ch := fun t w z => nil;
      st := fun t w => match decTree t hier with
                         | left _ => Mo
@@ -376,7 +358,7 @@ Definition initGlobalState :=
      wtS := fun t w => In;
      dirWt := fun t w z => false;
      dirWtS := fun t w z => In;
-     req := initReq
+     req := fun t => 0
   |}.
 
 Record Behavior := {
@@ -501,7 +483,7 @@ Module mkDataTypes <: DataTypes.
                                          c = src /\ p = dst /\ chn = rch /\
                                          from m = (st ((sys oneBeh) t) c a) /\
                                          to m = x /\ addr m = a /\
-                                         dataM m = Initial /\
+                                         dataM m = initData zero /\
                                          msgId m = t
                                        | ParentRecvReq p c _ _ _ _ _ _ _ _ =>
                                          p = src /\ c = dst /\ chn = mch /\
@@ -516,7 +498,7 @@ Module mkDataTypes <: DataTypes.
                                          p = src /\ c = dst /\ chn = rch /\
                                          from m = (dirSt ((sys oneBeh) t) p c a) /\
                                          to m = x /\ addr m = a /\
-                                         dataM m = Initial /\
+                                         dataM m = initData zero /\
                                          msgId m = t
                                        | ChildRecvReq p c _ _ _ _ _ _ _ =>
                                          c = src /\ p = dst /\ chn = mch /\
@@ -610,28 +592,24 @@ Module mkDataTypes <: DataTypes.
   Definition proc := recv.
   Definition deq := recv.
 
-  Definition deqR c l a d i t := match (trans oneBeh) t with
+  Definition deqR c i t := match (trans oneBeh) t with
                                    | LoadReq ca _ _ _ _ =>
-                                     ca = c /\ let r := req ((sys oneBeh) t) ca in
-                                               lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
+                                     ca = c /\ req (sys oneBeh t) c = i
                                    | StoreReq ca _ _ _ _ =>
-                                     ca = c /\ let r := req ((sys oneBeh) t) ca in
-                                               lbl r = l /\ lct r = a /\ dsc r = d /\ idx r = i
+                                     ca = c /\ req (sys oneBeh t) c = i
                                    | _ => False
                                  end.
 
-  Definition enqLd c l sl t := match (trans oneBeh) t with
+  Definition enqLd c i sl t := match (trans oneBeh) t with
                                  | LoadReq ca _ _ _ _ =>
-                                   ca = c /\ let r := req ((sys oneBeh) t) ca in
-                                             lbl r = l /\ dt ((sys oneBeh) t) c (lct r) = sl /\
-                                             dsc r = Ld
+                                   ca = c /\ req (sys oneBeh t) c = i /\
+                                   dt (sys oneBeh t) c (loc (reqFn c i)) = sl
                                  | _ => False
                                end.
 
-  Definition enqSt c l t := match (trans oneBeh) t with
+  Definition enqSt c i t := match (trans oneBeh) t with
                               | StoreReq ca _ _ _ _ =>
-                                ca = c /\ let r := req ((sys oneBeh) t) ca in
-                                          lbl r = l /\ dsc r = St
+                                ca = c /\ req (sys oneBeh t) c = i
                               | _ => False
                             end.
   

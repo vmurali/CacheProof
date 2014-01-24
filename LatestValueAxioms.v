@@ -119,7 +119,7 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     destruct recvm as [[_ [_ [use _]]] _]; discriminate.
   Qed.
 
-  Theorem initLatest: forall a, data hier a 0 = Initial /\ state hier a 0 = Mo.
+  Theorem initLatest: forall a, data hier a 0 = initData a /\ state hier a 0 = Mo.
   Proof.
     intros a.
     unfold data; unfold state.
@@ -132,24 +132,26 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     firstorder.
   Qed.
 
-  Theorem deqImpData: forall {n a t l i}, defined n -> deqR n l a St i t ->
-                                          data n a (S t) = Store l.
+  Theorem deqImpData: forall {n t i}, defined n -> deqR n i t -> desc (reqFn n i) = St ->
+                                          data n (loc (reqFn n i)) (S t) = dataQ (reqFn n i).
   Proof.
-    intros n a t l i defn deqr.
+    intros n t i defn deqr isSt.
     unfold deqR in *; unfold data.
     destruct (trans oneBeh t).
-    destruct deqr as [_ [_ [_ [eq _]]]].
-    rewrite e in eq.
+    destruct deqr as [eq reqI].
+    rewrite <- eq in *.
+    rewrite reqI in e.
+    rewrite e in isSt.
     discriminate.
     simpl.
-    destruct deqr as [c_eq_n [lab [loc [des ind]]]].
+    destruct deqr as [seq reqi].
     destruct (decTree n c) as [eq | neq].
-    rewrite eq.
-    destruct (decAddr a (lct (req (sys oneBeh t) c))) as [seq | sneq].
-    rewrite lab; reflexivity.
-    rewrite loc in *.
+    rewrite seq in *.
+    rewrite reqi in *.
+    destruct (decAddr (loc (reqFn n i)) (loc (reqFn n i))).
+    reflexivity.
     firstorder.
-    rewrite c_eq_n in neq; firstorder.
+    assert (n = c) by auto; firstorder.
     firstorder.
     firstorder.
     firstorder.
@@ -166,26 +168,30 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
                     (exists m, (exists p, defined p /\ parent n p /\ recv mch p n a t m /\ from m = MsiState.In) \/
                                (exists c, defined c /\ parent c n /\ recv mch c n a t m /\
                                           slt Sh (from m))) \/
-                    exists l i, deqR n l a St i t.
+                    exists i, deqR n i t /\ loc (reqFn n i) = a /\ desc (reqFn n i) = St.
   Proof.
     intros n a t defn dtNeq.
     unfold data in *; unfold recv in *; unfold deqR in *; unfold mkDataTypes.recv in *.
     destruct (trans oneBeh t).
+
     simpl in *. firstorder.
+
     simpl in *.
     right.
     destruct (decTree n c).
+    destruct (decAddr a (loc (reqFn n (req (sys oneBeh t) n)))).
     rewrite e1 in *.
-    destruct (decAddr a (lct (req (sys oneBeh t) c))).
-    exists (lbl (req (sys oneBeh t) c)).
-    exists (idx (req (sys oneBeh t) c)).
-    constructor; firstorder.
+    exists (req (sys oneBeh t) c).
+    firstorder; auto.
     firstorder.
     firstorder.
+
     simpl in *.
     firstorder.
+
     simpl in *.
     firstorder.
+
     simpl in *.
     left.
     exists (Build_Mesg (fromB m) (toB m) (addrB m) (dataBM m) (List.last (labelCh t mch p c) 0)).
@@ -225,11 +231,11 @@ Module mkLatestValueAxioms (ch: ChannelPerAddr mkDataTypes).
     simpl in *; firstorder.
   Qed.
 
-  Theorem deqImpNoSend: forall {c l a d i t},
-                          defined c -> deqR c l a d i t ->
-                          forall {m p}, defined p -> ~ mark mch c p a t m.
+  Theorem deqImpNoSend: forall {c i t},
+                          defined c -> deqR c i t ->
+                          forall {m p}, defined p -> ~ mark mch c p (loc (reqFn c i)) t m.
   Proof.
-    unfold not; intros c l a d i t defc deqr m p defp markm.
+    unfold not; intros c i t defc deqr m p defp markm.
     unfold deqR in *; unfold mark in *; unfold mkDataTypes.mark in *.
 
     destruct (trans oneBeh t); firstorder.

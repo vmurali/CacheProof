@@ -470,7 +470,7 @@ Record CommonBehavior :=
       simpl in *.
       destruct (decTree c c0).
       destruct (decAddr a a0).
-      exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0 Initial t).
+      exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0 (initData zero) t).
       simpl.
       rewrite e0 in *; rewrite e1 in *.
       pose proof (uniqParent defc defp d c_p p1) as peq.
@@ -584,7 +584,7 @@ Record CommonBehavior :=
       simpl in *.
       destruct (decTree c c0).
       destruct (decAddr a a0).
-      exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0 Initial t).
+      exists (Build_Mesg (st (sys oneBeh t) c0 a0) x a0 (initData zero) t).
       simpl.
       rewrite e0 in *.
       pose proof (uniqParent defc defp d c_p p1) as peq.
@@ -1355,7 +1355,7 @@ Record CommonBehavior :=
       destruct (decTree p p0).
       destruct (decTree c c0).
       destruct (decAddr a a0).
-      exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a0) x a0 Initial t).
+      exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a0) x a0 (initData zero) t).
       simpl.
       rewrite e0 in *; rewrite e1 in *; rewrite e2 in *.
       intuition.
@@ -1478,7 +1478,7 @@ Record CommonBehavior :=
       destruct (decTree p p0).
       destruct (decTree c c0).
       destruct (decAddr a a0).
-      exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a0) x a0 Initial t).
+      exists (Build_Mesg (dirSt (sys oneBeh t) p0 c0 a0) x a0 (initData zero) t).
       simpl.
       rewrite e0 in *.
       rewrite e1 in *.

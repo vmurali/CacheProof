@@ -1,4 +1,4 @@
-Require Import MsiState Tree Coq.Lists.Streams.
+Require Import MsiState Tree.
 
 Export Tree.
 
@@ -34,35 +34,49 @@ Proof.
   intros. decide equality.
 Qed.
 
-Parameter Label : Set.
-Axiom decLabel: forall (l1 l2: Label), {l1 = l2} + {l1 <> l2}.
-Inductive StLabel := Initial | Store : Label -> StLabel.
+Parameter Data: Set.
+Axiom decData: forall (d1 d2: Data), {d1 = d2} + {d1 <> d2}.
+
+Definition Label := (Cache * Index)%type.
+Theorem decLabel: forall (l1 l2: Label), {l1 = l2} + {l1 <> l2}.
+Proof.
+  intros l1 l2.
+  decide equality.
+  decide equality.
+  apply (decTree a c).
+Qed.
 
 Definition MLabel := Time.
 Record Mesg := {
               from: State;
               to: State;
               addr: Addr;
-              dataM: StLabel;
+              dataM: Data;
               msgId: MLabel
             }.
 
+Record Req := { loc: Addr;
+                desc: Desc;
+                dataQ: Data
+              }.
 
+Parameter reqFn: Cache -> Index -> Req.
+Parameter initData: Addr -> Data.
 
 Module Type DataTypes.
   Parameter state: Cache -> Addr -> Time -> State.
   Parameter dir: Cache -> Cache -> Addr -> Time -> State.
 
-  Parameter data: Cache -> Addr -> Time -> StLabel.
+  Parameter data: Cache -> Addr -> Time -> Data.
 
   Parameter wait: Cache -> Addr -> Time -> bool.
   Parameter waitS: Cache -> Addr -> Time -> State.
   Parameter dwait: Cache -> Cache -> Addr -> Time -> bool.
   Parameter dwaitS: Cache -> Cache -> Addr -> Time -> State.
 
-  Parameter deqR: Cache -> Label -> Addr -> Desc -> Index -> Time -> Prop.
-  Parameter enqLd: Cache -> Label -> StLabel -> Time -> Prop.
-  Parameter enqSt: Cache -> Label -> Time -> Prop.
+  Parameter deqR: Cache -> Index -> Time -> Prop.
+  Parameter enqLd: Cache -> Index -> Data -> Time -> Prop.
+  Parameter enqSt: Cache -> Index -> Time -> Prop.
 
   Parameter mark: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.
   Parameter send: ChannelType -> Cache -> Cache -> Time -> Mesg -> Prop.

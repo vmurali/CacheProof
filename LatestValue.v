@@ -1,5 +1,5 @@
 Require Import DataTypes Useful Channel Cache Compatible L1 Coq.Logic.Classical
-Coq.Relations.Operators_Properties Coq.Relations.Relation_Operators List MsiState.
+Coq.Relations.Operators_Properties Coq.Relations.Relation_Operators List MsiState L1.
 (*Require List.*)
 
 Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
@@ -18,10 +18,11 @@ Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
                      parent c n ->
                      recv mch c n a t m -> slt Sh (from m) -> data n a (S t) = dataM m.
 
-  Axiom initLatest: forall a, data hier a 0 = Initial /\ state hier a 0 = Mo.
+  Axiom initLatest: forall a, data hier a 0 = initData a /\ state hier a 0 = Mo.
 
-  Axiom deqImpData: forall {n a t l i}, defined n -> deqR n l a St i t ->
-                                        data n a (S t) = Store l.
+  Axiom deqImpData: forall {n t i}, defined n -> deqR n i t ->
+                                    desc (reqFn n i) = St ->
+                                    data n (loc (reqFn n i)) (S t) = dataQ (reqFn n i).
 
   Axiom changeData:
     forall {n a t}, defined n ->
@@ -29,15 +30,16 @@ Module Type LatestValueAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
       (exists m, (exists p, defined p /\ parent n p /\ recv mch p n a t m /\ from m = MsiState.In) \/
                  (exists c, defined c /\ parent c n /\ recv mch c n a t m /\
                             slt Sh (from m))) \/
-      exists l i, deqR n l a St i t.
+      exists i, deqR n i t /\ loc (reqFn n i) = a /\ desc (reqFn n i) = St.
 
 
-  Axiom deqImpNoSend: forall {c l a d i t}, defined c -> deqR c l a d i t ->
-                                            forall {m p}, defined p -> ~ mark mch c p a t m.
+  Axiom deqImpNoSend: forall {c i t}, defined c -> deqR c i t -> 
+                                      forall {m p}, defined p ->
+                                                    ~ mark mch c p (loc (reqFn c i)) t m.
 End LatestValueAxioms.
 
 Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorAxioms dt ch)
-       (l1: L1Axioms dt) (comp: CompatBehavior dt ch) (lv: LatestValueAxioms dt ch).
+       (l1: L1Axioms dt) (comp: CompatBehavior dt ch) (lv: LatestValueAxioms dt ch): L1Theorems dt.
   Module mbt := mkBehaviorTheorems dt ch c.
   Module cbt := mkCompat dt ch comp c.
   Import dt ch c l1 comp lv mbt cbt.
@@ -70,15 +72,19 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
   Theorem leafGood: forall {p n a t}, defined p -> defined n -> parent n p ->
                                       slt MsiState.In (dir p n a t) -> slt (state n a t) Mo ->
-                                      forall {c l i}, 
-                                        defined c -> ~ deqR c l a St i t.
+                                      forall {c i}, 
+                                        defined c ->
+                                        deqR c i t -> desc (reqFn c i) = St ->
+                                        loc (reqFn c i) = a -> False.
   Proof.
-    unfold not; intros p n a t defP defN n_p pGtI nLtM c l i defC deqSt.
+    unfold not; intros p n a t defP defN n_p pGtI nLtM c i defC deqSt isSt locA.
     pose proof (deqLeaf deqSt) as leafC.
     pose proof (processDeq deqSt) as st; simpl in st.
     destruct (classic (descendent c p)) as [c_p | c_ne_p].
     destruct (classic (descendent c n)) as [c_n | c_ne_n].
     pose proof (@descSle c n defC defN c_n a t) as low.
+    rewrite isSt in st.
+    rewrite locA in st.
     rewrite st in low.
     apply (slt_slei_false nLtM low).
     pose proof (clos_rt_rtn1 Tree parent c p c_p) as trans.
@@ -95,6 +101,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     pose proof (compatible defP a t defY H) as [_ good].
     specialize (good n defN y_ne_n n_p).
     pose proof (@descSle c y defC defY c_y a t) as low.
+    rewrite isSt in st; rewrite locA in st.
     rewrite st in low.
     pose proof (conservative defP defY H a t) as stuff.
     unfold sle in *; destruct (dir z y a t); destruct (dir z n a t); 
@@ -106,6 +113,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     firstorder.
     apply (parentLeafFalse leafC H).
     pose proof (@nonDescCompat c p defC defP c_ne_p sec a t) as contra.
+    rewrite isSt in st; rewrite locA in st.
     rewrite st in contra.
     pose proof (compatible defP a t defN n_p) as [good _].
     destruct (dir p n a t); destruct (state p a t); unfold slt in *; unfold sle in *;
@@ -114,10 +122,12 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
   Theorem leafGood2: forall {p n a t}, defined p -> defined n -> parent n p ->
                                        forall {m}, mark mch p n a t m ->
-                                                   forall {c l i}, 
-                                                     defined c -> ~ deqR c l a St i t.
+                                                   forall {c i}, 
+                                                     defined c ->
+                                                     deqR c i t -> desc (reqFn c i) = St ->
+                                                     loc (reqFn c i) = a -> False.
   Proof.
-    unfold not; intros p n a t defP defN n_p m markm c l i defC deqSt.
+    unfold not; intros p n a t defP defN n_p m markm c i defC deqSt isSt locA.
     pose proof (pSendUpgrade defP defN n_p markm) as dir_n_lt_M.
     pose proof (sendCCond defP defN n_p markm) as [st_hg othersCompat].
     pose proof (sendmChange (dt defP defN n_p) markm) as rew.
@@ -128,6 +138,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     destruct (classic (descendent c n)) as [c_n | c_ne_n].
     pose proof (@descSle c n defC defN c_n a t) as low.
     pose proof (conservative defP defN n_p a t) as sth.
+    rewrite isSt in st; rewrite locA in st.
     rewrite st in *.
     destruct (state n a t); destruct (dir p n a t); destruct (dir p n a (S t));
     unfold sle in *; unfold slt in *; auto.
@@ -145,6 +156,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     specialize (othersCompat y defY y_ne_n H).
     pose proof (@descSle c y defC defY c_y a t) as low.
     pose proof (conservative defP defY H a t) as stuff.
+    rewrite isSt in st; rewrite locA in st.
     rewrite st in *.
     unfold sle in *; unfold slt in *; destruct (dir z n a (S t)); destruct (dir z n a t);
     destruct (dir z y a t); destruct (state y a t); auto.
@@ -155,6 +167,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     firstorder.
     apply (parentLeafFalse leafC H).
     pose proof (@nonDescCompat c p defC defP c_ne_p sec a t) as contra.
+    rewrite isSt in st; rewrite locA in st.
     rewrite st in contra.
     unfold sle in *; unfold slt in *; destruct (dir p n a t); destruct (dir p n a (S t));
     destruct (state p a t); auto.
@@ -162,12 +175,15 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
   Theorem leafGood3: forall {p n a t}, defined p -> defined n -> parent n p ->
                                        forall {m}, mark mch n p a t m ->
-                                                   forall {c l i}, 
-                                                     defined c -> ~ deqR c l a St i t.
+                                                   forall {c i}, 
+                                                     defined c ->
+                                                     deqR c i t -> desc (reqFn c i) = St ->
+                                                     loc (reqFn c i) = a -> False.
   Proof.
-    unfold not; intros p n a t defP defN n_p m markm c l i defC deqSt.
+    unfold not; intros p n a t defP defN n_p m markm c i defC deqSt isSt locA.
     destruct (classic (c = n)) as [eq|notEq].
     rewrite eq in *.
+    rewrite <- locA in markm.
     apply (deqImpNoSend defN deqSt defP markm).
     destruct (classic (descendent c n)) as [c_n | c_no_n].
     pose proof (@sendPCond n a t p defN defP n_p m markm) as dirLower.
@@ -176,6 +192,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     pose proof (sendmChange (st defP defN n_p) markm) as stEq.
     rewrite stEq in dgd.
     pose proof (processDeq deqSt) as eqSth; simpl in *.
+    rewrite isSt in eqSth; rewrite locA in eqSth.
     rewrite eqSth in *.
     destruct (state n a t); destruct (to m); unfold slt in *; unfold sle in *; auto.
     assert (n_no_c: ~ descendent n c).
@@ -184,12 +201,13 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     destruct trans.
     assert (n = n) by reflexivity; firstorder.
     pose proof (deqLeaf deqSt) as leaf_z.
-    unfold parent in *; unfold leaf in *. destruct z. destruct l1.
+    unfold parent in *; unfold leaf in *. destruct z. destruct l0.
     unfold List.In in H. assumption.
     assumption.
     pose proof (@nonDescCompat n c defN defC n_no_c c_no_n a t) as stNow.
     pose proof (cSendDowngrade defP defN n_p markm) as dgd.
     pose proof (processDeq deqSt) as eqSth; simpl in *;
+    rewrite isSt in eqSth; rewrite locA in eqSth.
     rewrite eqSth in *.
     unfold sle in *; unfold slt in *; destruct (state n a t); destruct (state n a (S t));
     auto.
@@ -199,38 +217,40 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     forall {a t n}, defined n ->
                     sle Sh (state n a t) ->
                     (forall {c}, defined c -> parent c n -> sle (dir n c a t) Sh) ->
-                    (data n a t = Initial /\
+                    (data n a t = initData a /\
                      forall {ti}, 0 <= ti < t ->
-                                  forall {ci li ii}, defined ci ->
-                                                     ~ deqR ci li a St ii ti) \/
-                      (exists lb,
-                         data n a t = Store lb /\
-                         exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
-                                         forall {ti}, tb < ti < t ->
-                                                      forall {ci li ii},
-                                                        defined ci ->
-                                                        ~ deqR ci li a St ii ti).
+                                  forall {ci ii}, defined ci ->
+                                                  ~ (deqR ci ii ti /\ loc (reqFn ci ii) = a /\
+                                                     desc (reqFn ci ii) = St)) \/
+    (exists cb ib tb, defined cb /\ tb < t /\ deqR cb ib tb /\ desc (reqFn cb ib) = St /\
+                      loc (reqFn cb ib) = a /\
+                      data n a t = dataQ (reqFn cb ib) /\
+                      forall {ti}, tb < ti < t ->
+                                   forall {ci ii},
+                                     defined ci ->
+                                     ~ (deqR ci ii ti /\ loc (reqFn ci ii) = a /\
+                                        desc (reqFn ci ii) = St)
+    ).
     Proof.
       intros a.
-      pose (fun t =>
-              forall n,
-                defined n ->
-                sle Sh (state n a t) ->
-                (forall c, defined c -> parent c n -> sle (dir n c a t) Sh) ->
-                (data n a t = Initial /\
-                    forall ti : nat,
-                      0 <= ti < t ->
-                      forall (ci : Cache) (li : Label) (ii : Index),
-                        defined ci -> ~ deqR ci li a St ii ti) \/
-                (exists lb, data n a t = Store lb /\
-                    exists (cb : Cache) (ib : Index) (tb : nat),
-                      defined cb /\ tb < t /\
-                      deqR cb lb a St ib tb /\
-                      (forall ti : nat,
-                         tb < ti < t ->
-                         forall (ci : Cache) (li : Label) (ii : Index),
-                           defined ci -> ~ deqR ci li a St ii ti))
-           ) as P.
+      pose (fun t => forall n,
+              defined n ->
+                    sle Sh (state n a t) ->
+                    (forall {c}, defined c -> parent c n -> sle (dir n c a t) Sh) ->
+                    (data n a t = initData a /\
+                     forall {ti}, 0 <= ti < t ->
+                                  forall {ci ii}, defined ci ->
+                                                  ~ (deqR ci ii ti /\ loc (reqFn ci ii) = a /\
+                                                     desc (reqFn ci ii) = St)) \/
+    (exists cb ib tb, defined cb /\ tb < t /\ deqR cb ib tb /\ desc (reqFn cb ib) = St /\
+                      loc (reqFn cb ib) = a /\
+                      data n a t = dataQ (reqFn cb ib) /\
+                      forall {ti}, tb < ti < t ->
+                                   forall {ci ii},
+                                     defined ci ->
+                                     ~ (deqR ci ii ti /\ loc (reqFn ci ii) = a /\
+                                        desc (reqFn ci ii) = St)
+           )) as P.
       pose proof (initLatest a) as [hierInit hierM].
       apply (@ind P).
       unfold P in *; clear P.
@@ -292,29 +312,40 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
 
       assert (noStore: forall co, defined co ->
-                                  co <> n -> forall l i, ~ deqR co l a St i t).
-      unfold not; intros co defCo co_ne_n l i deqSt.
+                                  co <> n -> forall i,
+                                               ~ (deqR co i t /\
+                                                  loc (reqFn co i) = a /\
+                                                  desc (reqFn co i) = St
+             )).
+      unfold not; intros co defCo co_ne_n i [deqSt [locA isSt]].
       pose proof (deqLeaf deqSt) as leafCo.
       specialize (noneElse co defCo leafCo co_ne_n).
       pose proof (processDeq deqSt) as use; simpl in use.
+      rewrite locA in use; rewrite isSt in use.
       rewrite use in noneElse; unfold sle in *; auto.
 
 
-      destruct (classic (exists l i, deqR n l a St i t)) as [[l [i deqSt]] | noNStore].
+      destruct (classic (exists i, deqR n i t /\ loc (reqFn n i) = a /\
+               desc (reqFn n i) = St)) as [[i [deqSt [locA isSt]]] | noNStore].
 
       pose proof (deqImpData defN deqSt) as st.
+      rewrite locA in st; rewrite isSt in st.
       rewrite st.
       assert (triv: t < S t) by omega.
       assert (triv2: forall ti, t < ti < S t -> False) by (intros ti cond; omega).
       right.
-      exists l.
-      constructor. reflexivity.
-      generalize defN triv deqSt triv2; clear; firstorder.
-      assert (good: forall c l i, defined c -> ~ deqR c l a St i t).
-      intros c l i defC.
+      exists n; exists i; exists t.
+      generalize defN triv deqSt isSt locA st triv2; clear; firstorder.
+      reflexivity.
+
+
+      assert (good: forall c i, defined c ->
+                                ~ (deqR c i t /\ loc (reqFn c i) = a /\
+                                   desc (reqFn c i) = St)).
+      unfold not. intros c i defC [deqc [locA isSt]].
       destruct (classic (c = n)) as [eq|notEq].
-      rewrite eq in *; generalize noNStore; clear; firstorder.
-      generalize noStore defC notEq noStore; clear; firstorder.
+      rewrite eq in *; generalize noNStore deqc locA isSt; clear; firstorder.
+      generalize noStore defC notEq deqc locA isSt; clear; firstorder.
 
 
       destruct (classic (data n a (S t) = data n a t)) as [dataEq| dataNeq].
@@ -331,14 +362,18 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       rewrite rew.
       assumption.
 
-      destruct condResti as [stEq [cb [ib [tb [defCb [tb_lt_t [deqSt rest]]]]]]].
+      destruct condResti as [ib [tb [defCb [tb_lt_t [deqSt [isSt [locA [dEq rest]]]]]]]].
       right.
-      exists resti.
+      exists resti; exists ib; exists tb.
       constructor. assumption.
-      exists cb; exists ib; exists tb; constructor.
-      assumption.
       constructor.
       omega.
+      constructor.
+      assumption.
+      constructor.
+      assumption.
+      constructor.
+      assumption.
       constructor.
       assumption.
       intros ti cond.
@@ -365,7 +400,7 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       pose proof (slt_slei_false mNotIn condDir') as f.
       firstorder.
 
-      specialize (noNStore bad); firstorder.
+      generalize noNStore bad; clear; firstorder.
 
       destruct (classic (state n a t = MsiState.In \/ exists c, defined c /\ parent c n /\
                                                        slt Sh (dir n c a t)))
@@ -405,21 +440,27 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
                                                 apply (cLow ts H)).
 
       assert (noDeq1: forall t0, ts < t0 <= t ->
-                                 forall c l i, defined c -> ~ deqR c l a St i t0).
+                                 forall c i, defined c -> ~ (deqR c i t0
+                                                            /\ loc (reqFn c i) = a /\
+                                                            desc (reqFn c i) = St)).
       intros t0 cond.
       specialize (pHigh t0 cond).
       specialize (cLow1 t0 cond).
-      apply (@leafGood p n a t0 defP defN n_p pHigh cLow1).
+      pose proof (@leafGood p n a t0 defP defN n_p pHigh cLow1) as H.
+      generalize H; clear; firstorder.
 
       pose proof (@leafGood2 p n a ts defP defN n_p m markm) as noDeq2.
 
       assert (goodT: forall t0, ts <= t0 <= t ->
-                                forall c l i, defined c -> ~ deqR c l a St i t0).
+                                forall c i, defined c -> ~ (deqR c i t0 /\
+                                                            loc (reqFn c i) = a /\
+                                                            desc (reqFn c i) = St)).
       intros t0 cond.
       assert (H: ts < t0 <= t \/ t0 = ts) by omega.
       destruct H as [c1|c2].
       apply (noDeq1 t0 c1).
-      rewrite c2 in *; assumption.
+      rewrite c2 in *.
+      generalize noDeq2; clear; firstorder.
 
 
       pose proof (cRecvmCond defP defN n_p recvm) as stEq.
@@ -466,12 +507,13 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
 
 
       right.
-      destruct condRest as [stResti [cb [ib [tb [defCb [tb_lt_ts [deqSt rest]]]]]]].
-      exists resti.
-      constructor. assumption.
-      exists cb; exists ib; exists tb.
+      destruct condRest as [ib [tb [defCb [tb_lt_ts [deqSt [isSt [locA [dtEq rest]]]]]]]].
+      exists resti; exists ib; exists tb.
       constructor. assumption. constructor.
       assert (tb < S t) by omega. assumption.
+      constructor. assumption.
+      constructor. assumption.
+      constructor. assumption.
       constructor. assumption.
       intros ti cond; assert (H: tb < ti < ts \/ ts <= ti <= t) by omega;
       destruct H as [ind|tough].
@@ -516,22 +558,28 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
                                                 apply (pHigh ts H)).
 
       assert (noDeq1: forall t0, ts < t0 <= t ->
-                                 forall c l i, defined c -> ~ deqR c l a St i t0).
+                                 forall c i, defined c -> ~ (deqR c i t0 /\
+                                                             loc (reqFn c i) = a /\
+                                                             desc (reqFn c i) = St)).
       intros t0 cond.
       specialize (cLow t0 cond).
       specialize (pHigh1 t0 cond).
-      apply (@leafGood n c a t0 defN defC c_n pHigh1 cLow).
+      pose proof (@leafGood n c a t0 defN defC c_n pHigh1 cLow) as H.
+      generalize H; clear; firstorder.
 
 
       pose proof (@leafGood3 n c a ts defN defC c_n m markm) as noDeq2.
 
       assert (goodT: forall t0, ts <= t0 <= t ->
-                                forall c l i, defined c -> ~ deqR c l a St i t0).
+                                forall c i, defined c -> ~ (deqR c i t0 /\
+                                                            loc (reqFn c i) = a /\
+                                                            desc (reqFn c i) = St)).
       intros t0 cond.
       assert (H: ts < t0 <= t \/ t0 = ts) by omega.
       destruct H as [c1|c2].
       apply (noDeq1 t0 c1).
-      rewrite c2 in *; assumption.
+      rewrite c2 in *.
+      generalize noDeq2; clear; firstorder.
 
 
 
@@ -571,12 +619,13 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
       apply (goodT ti tough).
 
       right.
-      destruct condRest as [dataIsEq [cb [ib [tb [defCb [tb_lt_ts [deqSt rest]]]]]]].
-      exists resti.
-      constructor. assumption.
-      exists cb; exists ib; exists tb.
+      destruct condRest as [ib [tb [defCb [tb_lt_ts [deqSt [isSt [locA [dtEq rest]]]]]]]].
+      exists resti; exists ib; exists tb.
       constructor. assumption. constructor.
       assert (tb < S t) by omega. assumption.
+      constructor. assumption.
+      constructor. assumption.
+      constructor. assumption.
       constructor. assumption.
       intros ti cond; assert (H: tb < ti < ts \/ ts <= ti <= t) by omega;
       destruct H as [ind|tough].
@@ -600,16 +649,24 @@ Module LatestValueTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (c: BehaviorA
     Qed.
 
   Theorem latestValue:
-  forall {c a t}, defined c ->
+  forall {c a t},
+    defined c ->
     leaf c ->
     sle Sh (state c a t) ->
-    (data c a t = Initial /\
-     forall {ti}, 0 <= ti < t -> forall {ci li ii}, 
-                                                 defined ci -> ~ deqR ci li a St ii ti) \/
-    (exists lb, data c a t = Store lb /\
-        exists cb ib tb, defined cb /\ tb < t /\ deqR cb lb a St ib tb /\
-                         forall {ti}, tb < ti < t -> forall {ci li ii},
-                                                       defined ci -> ~ deqR ci li a St ii ti).
+    (data c a t = initData a /\
+     forall {ti}, 0 <= ti < t -> forall {ci ii},
+                                   defined ci ->
+                                   ~ (deqR ci ii ti /\ loc (reqFn ci ii) = a /\
+                                      desc (reqFn ci ii) = St)) \/
+    (exists cb ib tb, defined cb /\ tb < t /\ deqR cb ib tb /\ desc (reqFn cb ib) = St /\
+                      loc (reqFn cb ib) = a /\
+                      data c a t = dataQ (reqFn cb ib) /\
+                      forall {ti}, tb < ti < t ->
+                                   forall {ci ii},
+                                     defined ci ->
+                                     ~ (deqR ci ii ti /\ loc (reqFn ci ii) = a /\
+                                        desc (reqFn ci ii) = St)
+    ).
   Proof.
     intros c a t cDef leafC more.
     assert (cond: forall {c'}, defined c' -> parent c' c -> sle (dir c c' a t) Sh).
