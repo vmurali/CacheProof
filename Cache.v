@@ -3351,5 +3351,118 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       assert (forall y, y < t -> ~ recv mch c p a y x) by (generalize H; clear; firstorder).
       firstorder.
     Qed.
+
+    Theorem cRespBadExCGoodResp:
+      forall {a t sr r},
+        sr < t ->
+        mark mch c p a sr r ->
+        (forall y, y < t -> ~ recv mch c p a y r) ->
+        from r <> dir p c a t ->
+         exists sm,
+           sm < sr /\
+           exists m,
+             mark mch c p a sm m /\ from m = dir p c a t /\
+             (forall y, y < t -> ~ recv mch c p a y m) /\
+             forall sm',
+               sm' < sm ->
+               forall m',
+                 mark mch c p a sm' m' ->
+                 exists y, y < t /\ recv mch c p a y m'.
+    Proof.
+      intros a t sr r sr_lt_t markr norecvr noDt.
+      pose proof (cRespBadExCResp sr_lt_t markr norecvr) as exResp.
+      assert (ex: exists sm, sm < sr /\
+                         exists m,
+                           mark mch c p a sm m /\ forall y, y < t -> ~ recv mch c p a y m) by
+          (generalize noDt exResp; clear; firstorder).
+      pose proof (minExists ex) as [sm [[sm_lt_sr [m [markm norecvm]]] noBefore]].
+      assert (sm_lt_t: sm < t) by omega.
+      pose proof (cRespBadExCResp sm_lt_t markm norecvm) as use.
+      assert (noB: ~ exists y, y < sm /\ (exists m, mark mch c p a y m /\
+                                                    forall y, y < t -> ~ recv mch c p a y m))
+        by
+          (unfold not; intros [y [y_lt_sm bad]];
+           assert (y_lt_sr: y < sr) by omega;
+           generalize noBefore y_lt_sr y_lt_sm bad; clear; firstorder).
+      assert (eq: from m = dir p c a t) by (generalize use noB; clear; firstorder).
+      exists sm.
+      constructor. intuition.
+      exists m.
+      constructor.
+      intuition.
+      constructor. intuition.
+      constructor. intuition.
+      intros sm' sm'_lt_sm m' markm'.
+      destruct (classic (exists y, y < t /\ recv mch c p a y m')).
+      intuition.
+      assert (forall y0, y0 < t -> ~ recv mch c p a y0 m') by
+          (generalize H;
+           clear; firstorder).
+      generalize noB markm' sm'_lt_sm H0; clear; firstorder.
+    Qed.
+
+    Theorem cRespExCGoodResp:
+      forall {a t sr r},
+        sr < t ->
+        mark mch c p a sr r ->
+        (forall y, y < t -> ~ recv mch c p a y r) ->
+         exists sm,
+           sm <= sr /\
+           exists m,
+             mark mch c p a sm m /\ from m = dir p c a t /\
+             (forall y, y < t -> ~ recv mch c p a y m) /\
+             forall sm',
+               sm' < sm ->
+               forall m',
+                 mark mch c p a sm' m' ->
+                 exists y, y < t /\ recv mch c p a y m'.
+    Proof.
+      intros a t sr r sr_lt_t markr norecvr.
+      assert (opts: {from r = dir p c a t} + {from r <> dir p c a t}) by decide equality.
+      destruct opts as [eq|neq].
+      pose proof (cRespGoodNoEarlier sr_lt_t markr norecvr) as stf.
+      specialize (stf eq).
+      assert (sth: sr <= sr) by omega.
+      exists sr.
+      constructor. assumption.
+      exists r.
+      firstorder.
+      pose proof (cRespBadExCGoodResp sr_lt_t markr norecvr neq) as [sm [cond rest]].
+      assert (le: sm <= sr) by omega.
+      exists sm.
+      constructor. assumption.
+      assumption.
+    Qed.
+
+    Theorem cReqBadExCGoodResp:
+      forall {a t sr r},
+        sr < t ->
+        mark rch c p a sr r ->
+        (forall y, y < t -> ~ recv rch c p a y r) ->
+        ~ (sle (dir p c a t) (from r)) ->
+         exists sm,
+           sm < t /\
+           exists m,
+             mark mch c p a sm m /\ from m = dir p c a t /\
+             (forall y, y < t -> ~ recv mch c p a y m) /\
+             forall sm',
+               sm' < sm ->
+               forall m',
+                 mark mch c p a sm' m' ->
+                 exists y, y < t /\ recv mch c p a y m'.
+    Proof.
+      intros a t sr r sr_lt_t markr norecvr notGd.
+      pose proof (cReqBadExCResp sr_lt_t markr norecvr) as sth.
+      assert (exResp: exists sm, sm < t /\ exists m, mark mch c p a sm m /\
+                                                     forall y, y < t ->
+                                                               ~ recv mch c p a y m) by
+          firstorder.
+      destruct exResp as [sm [sm_lt_t [m [markm norecvm]]]].
+      pose proof (cRespExCGoodResp sm_lt_t markm norecvm) as [sm0 [cond rest]].
+      exists sm0.
+      constructor.
+      omega.
+      assumption.
+    Qed.
   End Pair.
 End mkBehaviorTheorems.
