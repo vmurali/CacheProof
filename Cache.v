@@ -1,4 +1,4 @@
-Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical MsiState.
+Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical MsiState ChannelAxiomHelp.
 
 
 Module Type BehaviorAxioms (dt: DataTypes) (ch: ChannelPerAddr dt).
@@ -2685,6 +2685,671 @@ Module mkBehaviorTheorems (dt: DataTypes) (ch: ChannelPerAddr dt) (st: BehaviorA
       unfold not; intros rr cond recvr.
       pose proof (recvImpMarkBefore recvr markr).
       generalize noRecv cond recvr H; clear; firstorder.
+    Qed.
+
+    Theorem whenChildHigh2: forall {a t1 t2},
+                              t1 <= t2 ->
+                              slt (state c a t1) (state c a t2) ->
+                              exists t, t1 <= t < t2 /\ exists m, recv mch p c a t m /\
+                                                                  sle (state c a t2) (to m).
+    Proof.
+      intros a t1 t2 cond sltSt.
+      assert (H: t1 = t2 \/ t1 < t2) by omega.
+      destruct H.
+      rewrite H in *.
+      destruct (state c a t2); unfold slt in *; intuition.
+      clear cond.
+      remember (t2 - t1 - 1) as td.
+      assert (t2 = S (td + t1)) by omega.
+      rewrite H0 in *; clear H0 Heqtd H.
+      pose proof (whenChildHigh' sltSt) as [t3 [cond rest]].
+      exists (t3 + t1).
+      assert (t1 <= t3 + t1 < S (td + t1)) by omega.
+      firstorder.
+    Qed.
+
+    Theorem pReqRespCDropReq: forall {a t sm sr m r},
+                                sm <= t -> mark mch p c a sm m ->
+                                (forall y, y < t -> ~ recv mch p c a y m) ->
+                                sr < sm -> mark rch p c a sr r ->
+                                (forall y, y < t -> ~ recv rch p c a y r) ->
+                                sle (state c a t) (to r).
+    Proof.
+      intros a t sm sr m r sm_le markm norecvm sr_lt markr norecvr.
+      pose proof (sendmImpRecvr pDef cDef isParent markm) as [r' recvr'].
+      pose proof (sendrImpNoSendm sr_lt markr markm) as [t' [condt' [m' [recvm' stCond]]]].
+      pose proof (recvImpMark recvm') as [ts [condts markm']].
+      pose proof (sendmChange st markm') as stAtTs.
+      assert (opts: sle (state c a t) (state c a (S ts)) \/
+                    sgt (state c a t) (state c a (S ts))) by
+          (
+            unfold sle; unfold sgt; unfold slt;
+            destruct (state c a t);
+            destruct (state c a (S ts)) ; auto).
+      destruct opts as [easy|hard].
+      rewrite stAtTs in easy.
+      destruct (state c a t); destruct (to r); destruct (to m');
+      unfold sle in *; firstorder.
+      assert (ts_lt_t: S ts <= t) by omega.
+      pose proof (whenChildHigh2 ts_lt_t hard) as [tx [condtx [m2 [recvm2 sth]]]].
+      pose proof (recvImpMark recvm2) as [ty [condty markm2]].
+      assert (H: ty = t' \/ t' < ty \/ ty < t') by omega.
+      destruct H.
+      rewrite H in *; clear H.
+      pose proof (noSendmRecvm dt markm2 recvm'); intuition.
+      destruct H.
+      assert (grt: sr <= ty) by omega.
+      pose proof (pReqResp pDef cDef isParent noTwoPResp noTwoPReqNon markr markm2 recvm2 grt) as
+      [t4 [cond recvr]].
+      assert (mu1: t4 < t) by omega.
+      generalize norecvr cond recvr mu1; clear; firstorder.
+      assert (cond1: forall t3, t3 < ts -> ~ recv mch p c a t3 m2).
+      unfold not; intros t3 condt3 recv'm2; pose proof (uniqRecv2 recvm2 recv'm2) as cr; omega.
+      assert (cond2: forall t4, t4 < ty -> ~ recv mch c p a t4 m').
+      unfold not; intros t3 condt3 recv'm2; pose proof (uniqRecv2 recvm' recv'm2) as cr; omega.
+      pose proof (cross markm' markm2 cond1 cond2).
+      intuition.
+    Qed.
+
+    Theorem cNoRecvLe: forall {a t1 t2},
+                         t1 <= t2 ->
+                         (forall y, t1 <= y < t2 -> forall m, ~ recv mch p c a y m) ->
+                         sle (state c a t2) (state c a t1).
+    Proof.
+      intros a t1 t2 cond norecvm.
+      remember (t2-t1) as td.
+      assert (H: t2 = t1 + td) by omega.
+      rewrite H in *; clear H Heqtd cond.
+      induction td.
+      assert (H: t1+0 = t1) by omega; rewrite H in *; clear H.
+      destruct (state c a t1); unfold sle; auto.
+      assert (H: t1 + S td = S (t1 + td)) by omega; rewrite H in *; clear H.
+      assert (help: forall y, t1 <= y < t1 + td -> forall m, ~ recv mch p c a y m).
+      intros y cond; assert (je: t1 <= y < S (t1 + td)) by omega;
+      apply (norecvm y je).
+      specialize (IHtd help).
+      destruct (classic (exists m, mark mch c p a (t1 + td) m)).
+      destruct H as [m markm].
+      pose proof (cSendDowngrade markm) as lt.
+      destruct (state c a (t1 + td)); destruct (state c a (S (t1 + td)));
+      unfold sle in *; destruct (state c a t1);
+      unfold slt in *; auto; firstorder.
+      destruct (classic (exists m, recv mch p c a (t1 + td) m)).
+      destruct H0 as [m recvm].
+      assert (cond: t1 <= t1 + td < S (t1 + td)) by omega;
+        specialize (norecvm (t1 + td) cond m recvm); intuition.
+      destruct (classic (state c a (S (t1 + td)) = state c a (t1 + td))).
+      destruct (state c a (S (t1 + td))); destruct (state c a t1); unfold sle in *;
+      destruct (state c a (t1 + td)); auto; discriminate.
+      pose proof (change st H1).
+      generalize H H0 H2; intuition.
+    Qed.
+
+    Theorem pNoRecvGe: forall {a t1 t2},
+                         t1 <= t2 ->
+                         (forall y, t1 <= y < t2 -> forall m, ~ recv mch c p a y m) ->
+                         sle (dir p c a t1) (dir p c a t2).
+    Proof.
+      intros a t1 t2 cond norecvm.
+      remember (t2-t1) as td.
+      assert (H: t2 = t1 + td) by omega.
+      rewrite H in *; clear H Heqtd cond.
+      induction td.
+      assert (H: t1+0 = t1) by omega; rewrite H in *; clear H.
+      destruct (dir p c a t1); unfold sle; auto.
+      assert (H: t1 + S td = S (t1 + td)) by omega; rewrite H in *; clear H.
+      assert (help: forall y, t1 <= y < t1 + td -> forall m, ~ recv mch c p a y m).
+      intros y cond; assert (je: t1 <= y < S (t1 + td)) by omega;
+      apply (norecvm y je).
+      specialize (IHtd help).
+      destruct (classic (exists m, mark mch p c a (t1 + td) m)).
+      destruct H as [m markm].
+      pose proof (pSendUpgrade markm) as lt.
+      destruct (dir p c a (t1 + td)); destruct (dir p c a (S (t1 + td)));
+      unfold sle in *; destruct (dir p c a t1);
+      unfold slt in *; auto; firstorder.
+      destruct (classic (exists m, recv mch c p a (t1 + td) m)).
+      destruct H0 as [m recvm].
+      assert (cond: t1 <= t1 + td < S (t1 + td)) by omega;
+        specialize (norecvm (t1 + td) cond m recvm); intuition.
+      destruct (classic (dir p c a (S (t1 + td)) = dir p c a (t1 + td))).
+      destruct (dir p c a (S (t1 + td))); destruct (dir p c a t1); unfold sle in *;
+      destruct (dir p c a (t1 + td)); auto; discriminate.
+      pose proof (change dt H1).
+      generalize H H0 H2; intuition.
+    Qed.
+
+    Theorem cNoSendGe: forall {a t1 t2},
+                         t1 <= t2 ->
+                         (forall y, t1 <= y < t2 -> forall m, ~ mark mch c p a y m) ->
+                         sle (state c a t1) (state c a t2).
+    Proof.
+      intros a t1 t2 cond norecvm.
+      remember (t2-t1) as td.
+      assert (H: t2 = t1 + td) by omega.
+      rewrite H in *; clear H Heqtd cond.
+      induction td.
+      assert (H: t1+0 = t1) by omega; rewrite H in *; clear H.
+      destruct (state c a t1); unfold sle; auto.
+      assert (H: t1 + S td = S (t1 + td)) by omega; rewrite H in *; clear H.
+      assert (help: forall y, t1 <= y < t1 + td -> forall m, ~ mark mch c p a y m).
+      intros y cond; assert (je: t1 <= y < S (t1 + td)) by omega;
+      apply (norecvm y je).
+      specialize (IHtd help).
+      destruct (classic (exists m, recv mch p c a (t1 + td) m)).
+      destruct H as [m markm].
+      pose proof (cRecvUpgrade markm) as lt.
+      destruct (state c a (t1 + td)); destruct (state c a (S (t1 + td)));
+      unfold sle in *; destruct (state c a t1);
+      unfold slt in *; auto; firstorder.
+      destruct (classic (exists m, mark mch c p a (t1 + td) m)).
+      destruct H0 as [m recvm].
+      assert (cond: t1 <= t1 + td < S (t1 + td)) by omega;
+        specialize (norecvm (t1 + td) cond m recvm); intuition.
+      destruct (classic (state c a (S (t1 + td)) = state c a (t1 + td))).
+      destruct (state c a (S (t1 + td))); destruct (state c a t1); unfold sle in *;
+      destruct (state c a (t1 + td)); auto; discriminate.
+      pose proof (change st H1).
+      generalize H H0 H2; intuition.
+    Qed.
+
+    Theorem pNoSendLe: forall {a t1 t2},
+                         t1 <= t2 ->
+                         (forall y, t1 <= y < t2 -> forall m, ~ mark mch p c a y m) ->
+                         sle (dir p c a t2) (dir p c a t1).
+    Proof.
+      intros a t1 t2 cond norecvm.
+      remember (t2-t1) as td.
+      assert (H: t2 = t1 + td) by omega.
+      rewrite H in *; clear H Heqtd cond.
+      induction td.
+      assert (H: t1+0 = t1) by omega; rewrite H in *; clear H.
+      destruct (dir p c a t1); unfold sle; auto.
+      assert (H: t1 + S td = S (t1 + td)) by omega; rewrite H in *; clear H.
+      assert (help: forall y, t1 <= y < t1 + td -> forall m, ~ mark mch p c a y m).
+      intros y cond; assert (je: t1 <= y < S (t1 + td)) by omega;
+      apply (norecvm y je).
+      specialize (IHtd help).
+      destruct (classic (exists m, recv mch c p a (t1 + td) m)).
+      destruct H as [m markm].
+      pose proof (pRecvDowngrade markm) as lt.
+      destruct (dir p c a (t1 + td)); destruct (dir p c a (S (t1 + td)));
+      unfold sle in *; destruct (dir p c a t1);
+      unfold slt in *; auto; firstorder.
+      destruct (classic (exists m, mark mch p c a (t1 + td) m)).
+      destruct H0 as [m recvm].
+      assert (cond: t1 <= t1 + td < S (t1 + td)) by omega;
+        specialize (norecvm (t1 + td) cond m recvm); intuition.
+      destruct (classic (dir p c a (S (t1 + td)) = dir p c a (t1 + td))).
+      destruct (dir p c a (S (t1 + td))); destruct (dir p c a t1); unfold sle in *;
+      destruct (dir p c a (t1 + td)); auto; discriminate.
+      pose proof (change dt H1).
+      generalize H H0 H2; intuition.
+    Qed.
+
+    Theorem cNoEq: forall {a t1 t2},
+                     t1 <= t2 ->
+                     (forall y, t1 <= y < t2 -> forall m, ~ (mark mch c p a y m \/
+                                                            recv mch p c a y m)) ->
+                     state c a t1 = state c a t2.
+    Proof.
+      intros a t1 t2 l2 not.
+      assert (forall y, t1 <= y < t2 -> forall m, ~ mark mch c p a y m) by firstorder.
+      assert (forall y, t1 <= y < t2 -> forall m, ~ recv mch p c a y m) by firstorder.
+      pose proof (cNoRecvLe l2 H0).
+      pose proof (cNoSendGe l2 H).
+      destruct (state c a t1); destruct (state c a t2); unfold sle in *; firstorder.
+    Qed.
+
+    Theorem pNoEq: forall {a t1 t2},
+                     t1 <= t2 ->
+                     (forall y, t1 <= y < t2 -> forall m, ~ (mark mch p c a y m \/
+                                                            recv mch c p a y m)) ->
+                     dir p c a t1 = dir p c a t2.
+    Proof.
+      intros a t1 t2 l2 not.
+      assert (forall y, t1 <= y < t2 -> forall m, ~ mark mch p c a y m) by firstorder.
+      assert (forall y, t1 <= y < t2 -> forall m, ~ recv mch c p a y m) by firstorder.
+      pose proof (pNoRecvGe l2 H0).
+      pose proof (pNoSendLe l2 H).
+      destruct (dir p c a t1); destruct (dir p c a t2); unfold sle in *; firstorder.
+    Qed.
+
+    Theorem cReqBadExCResp:
+      forall {a t sr r},
+        sr < t ->
+        mark rch c p a sr r ->
+        (forall y, y < t -> ~ recv rch c p a y r) ->
+        (sle (dir p c a t) (from r) \/
+         exists sm, sm < t /\ exists m, mark mch c p a sm m /\
+                      (forall y, y < t -> ~ recv mch c p a y m)).
+    Proof.
+      intros a t sr r sr_lt markr norecvr.
+      destruct (classic (exists sm, sm < t /\ exists m, mark mch c p a sm m /\
+                                      (forall y, y < t -> ~ recv mch c p a y m))).
+      intuition.
+      left.
+      assert (stf: forall sm m, sm < t -> mark mch c p a sm m -> exists y, y < t /\
+                                                                           recv mch c p a y m).
+      intros sm m sm_lt markm.
+      destruct (classic (exists y, y < t /\ recv mch c p a y m)).
+      intuition.
+      assert (forall y, y < t -> ~ recv mch c p a y m) by (generalize H0; clear; firstorder).
+      generalize H sm_lt markm H1; clear; firstorder.
+      clear H.
+
+      assert (allRecv:
+                forall sm m, sm < t -> mark mch p c a sm m ->
+                             exists y, y < sr /\ recv mch p c a y m).
+      intros sm m sm_lt_t markm.
+      assert (cond2: forall tp', tp' <= sm -> ~ recv rch c p a tp' r).
+      unfold not; intros tp' tp'_le recvr.
+      assert (cond:tp' < t) by omega.
+      generalize norecvr cond recvr; clear; firstorder.
+      destruct (classic (exists y, y < sr /\ recv mch p c a y m)).
+      assumption.
+      assert (cond1: forall y, y < sr -> ~ recv mch p c a y m) by (generalize H; clear; firstorder).
+      clear H; pose proof (cReqPRespCross markr markm cond1 cond2); firstorder.
+
+      destruct (classic (exists t', t' < sr /\ exists m,
+                                                (mark mch c p a t' m \/ recv mch p c a t' m))).
+      pose proof (maxExists' H) as [sm [sm_lt_sr [[m [markm|recvm]] notAfter]]]; clear H.
+      assert (sm_lt_t: sm < t) by omega.
+      destruct (stf sm m sm_lt_t markm) as [y [y_lt_t recvm]].
+      assert (noSend: forall t', y < t' < t -> forall m, ~ mark mch p c a t' m).
+      unfold not; intros t' cond x markx.
+      assert (t'_lt_t: t' < t) by intuition.
+      destruct (allRecv t' x t'_lt_t markx) as [z [z_lt recvx]].
+      pose proof (recvImpMarkBefore recvx markx) as sth.
+      pose proof (recvImpMarkBefore recvm markm) as sth2.
+      assert (xl: sm < z < sr) by omega.
+      generalize notAfter xl recvx; clear; firstorder.
+      pose proof (pNoSendLe y_lt_t noSend) as newLe.
+      assert (notAfter': forall y, sm < y < sr -> forall m, ~ (mark mch c p a y m \/
+                                                              recv mch p c a y m)) by
+          (intros b cond; assert (g2: sm < b < sr) by omega;
+           generalize notAfter g2; clear; firstorder).
+      pose proof (cNoEq sm_lt_sr notAfter') as stEq.
+      pose proof (sendmChange st markm) as stSy.
+      pose proof (recvmChange dt recvm) as dtSy.
+      rewrite stSy in stEq.
+      rewrite dtSy in newLe.
+      rewrite stEq in newLe.
+      pose proof (sendrFrom st markr) as eq.
+      rewrite <- eq in newLe.
+      assumption.
+      pose proof (recvImpMark recvm) as [y [y_le_t markm]].
+      assert (noSend: forall t', y < t' < t -> forall m, ~ mark mch p c a t' m).
+      unfold not; intros t' cond x markx.
+      assert (t'_lt_t: t' < t) by intuition.
+      pose proof (allRecv t' x t'_lt_t markx) as [t'' [t''_lt_t recvx]].
+      assert (y_lt_t': y < t') by intuition.
+      pose proof (pRespFifo y_lt_t' markm markx recvx) as [tr [condtd recv'm]].
+      pose proof (uniqRecv2 recvm recv'm) as eq.
+      rewrite <- eq in *; clear eq.
+      assert (condnew: sm < t'' < sr) by omega.
+      generalize notAfter condnew recvx; clear; firstorder.
+      assert (y_lt_t: y < t) by omega.
+      pose proof (pNoSendLe y_lt_t noSend) as newLe.
+      assert (notAfter': forall y, sm < y < sr -> forall m, ~ (mark mch c p a y m \/
+                                                              recv mch p c a y m)) by
+          (intros b cond; assert (g2: sm < b < sr) by omega;
+           generalize notAfter g2; clear; firstorder).
+      pose proof (cNoEq sm_lt_sr notAfter') as stEq.
+      pose proof (sendmChange dt markm) as dtSy.
+      pose proof (recvmChange st recvm) as stSy.
+      rewrite stSy in stEq.
+      rewrite dtSy in newLe.
+      rewrite stEq in newLe.
+      pose proof (sendrFrom st markr) as eq.
+      rewrite <- eq in newLe.
+      assumption.
+      assert (noSend: forall t', 0 <= t' < t -> forall m, ~ mark mch p c a t' m).
+      unfold not; intros t' [_ t'_lt_t] m markm.
+      pose proof (allRecv t' m t'_lt_t markm) as [t'' [t''_lt_t recvm]].
+      generalize H t''_lt_t recvm; clear; firstorder.
+      assert (zt: 0 <= t) by omega.
+      pose proof (pNoSendLe zt noSend) as newLe.
+      assert (notAfter': forall y, 0 <= y < sr -> forall m, ~ (mark mch c p a y m \/
+                                                              recv mch p c a y m)) by
+          (intros b cond; assert (g2: 0 <= b < sr) by omega;
+           generalize H g2; clear; firstorder).
+      assert (z_le_sr: 0 <= sr) by omega.
+      pose proof (cNoEq z_le_sr notAfter') as stEq.
+      pose proof (@init _ _ pDef cDef isParent a) as eq.
+      rewrite eq in newLe.
+      rewrite stEq in newLe.
+      pose proof (sendrFrom st markr) as eq'.
+      rewrite <- eq' in newLe.
+      assumption.
+    Qed.
+
+    Theorem cRespFifo1: forall {a s1 s2 r1 r2 m1 m2},
+                          mark mch c p a s1 m1 -> recv mch c p a r1 m1 ->
+                          mark mch c p a s2 m2 -> recv mch c p a r2 m2 ->
+                          r1 < r2 -> s1 < s2.
+    Proof.
+      intros a s1 s2 r1 r2 m1 m2 markm1 recvm1 markm2 recvm2 r1_lt_r2.
+      unfold Time in *.
+      assert (s1 < s2 \/ s1 = s2 \/ s2 < s1) by omega.
+      destruct H.
+      assumption.
+      destruct H.
+      rewrite H in *.
+      pose proof (uniqMark1 markm1 markm2).
+      rewrite H0 in *.
+      pose proof (uniqRecv2 recvm1 recvm2).
+      omega.
+      pose proof (cRespFifo markm2 markm1 recvm1 H) as bad.
+      assert (forall t4, t4 < r1 -> ~ recv mch c p a t4 m2).
+      unfold not; intros t4 t4_lt_r1 recv'm2.
+      pose proof (uniqRecv2 recvm2 recv'm2).
+      rewrite H0 in *.
+      omega.
+      intuition.
+    Qed.
+
+    Theorem cRespFifo2: forall {a s1 s2 r1 r2 m1 m2},
+                          mark mch c p a s1 m1 -> recv mch c p a r1 m1 ->
+                          mark mch c p a s2 m2 -> recv mch c p a r2 m2 ->
+                          s1 < s2 -> r1 < r2.
+    Proof.
+      intros a s1 s2 r1 r2 m1 m2 markm1 recvm1 markm2 recvm2 r1_lt_r2.
+      unfold Time in *.
+      assert (r1 < r2 \/ r1 = r2 \/ r2 < r1) by omega.
+      destruct H.
+      assumption.
+      destruct H.
+      rewrite H in *.
+      pose proof (uniqRecv1 recvm1 recvm2).
+      rewrite H0 in *.
+      pose proof (uniqMark2 markm1 markm2).
+      omega.
+      pose proof (cRespFifo1 markm2 recvm2 markm1 recvm1 H) as bad.
+      omega.
+    Qed.
+
+    Theorem pRespFifo1: forall {a s1 s2 r1 r2 m1 m2},
+                          mark mch p c a s1 m1 -> recv mch p c a r1 m1 ->
+                          mark mch p c a s2 m2 -> recv mch p c a r2 m2 ->
+                          r1 < r2 -> s1 < s2.
+    Proof.
+      intros a s1 s2 r1 r2 m1 m2 markm1 recvm1 markm2 recvm2 r1_lt_r2.
+      unfold Time in *.
+      assert (s1 < s2 \/ s1 = s2 \/ s2 < s1) by omega.
+      destruct H.
+      assumption.
+      destruct H.
+      rewrite H in *.
+      pose proof (uniqMark1 markm1 markm2).
+      rewrite H0 in *.
+      pose proof (uniqRecv2 recvm1 recvm2).
+      omega.
+      pose proof (pRespFifo H markm2 markm1 recvm1) as [tr1 [cond recv'm2]].
+      pose proof (uniqRecv2 recvm2 recv'm2).
+      rewrite H0 in *.
+      omega.
+    Qed.
+
+    Theorem pRespFifo2: forall {a s1 s2 r1 r2 m1 m2},
+                          mark mch p c a s1 m1 -> recv mch p c a r1 m1 ->
+                          mark mch p c a s2 m2 -> recv mch p c a r2 m2 ->
+                          s1 < s2 -> r1 < r2.
+    Proof.
+      intros a s1 s2 r1 r2 m1 m2 markm1 recvm1 markm2 recvm2 r1_lt_r2.
+      unfold Time in *.
+      assert (r1 < r2 \/ r1 = r2 \/ r2 < r1) by omega.
+      destruct H.
+      assumption.
+      destruct H.
+      rewrite H in *.
+      pose proof (uniqRecv1 recvm1 recvm2).
+      rewrite H0 in *.
+      pose proof (uniqMark2 markm1 markm2).
+      omega.
+      pose proof (pRespFifo1 markm2 recvm2 markm1 recvm1 H) as bad.
+      omega.
+    Qed.
+
+    Theorem cRespBadExCResp:
+      forall {a t sr r},
+        sr < t ->
+        mark mch c p a sr r ->
+        (forall y, y < t -> ~ recv mch c p a y r) ->
+        (from r = dir p c a t \/
+         exists sm, sm < sr /\ exists m, mark mch c p a sm m /\
+                                         (forall y, y < t -> ~ recv mch c p a y m)).
+    Proof.
+      intros a t sr r sr_lt markr norecvr.
+      destruct (classic (exists sm, sm < sr /\
+                                    exists m,
+                                      mark mch c p a sm m /\
+                                      (forall y, y < t -> ~ recv mch c p a y m))) as [easy|hard].
+      intuition.
+      left.
+      assert (stf: forall sm m, sm < sr -> mark mch c p a sm m -> exists y, y < t /\
+                                                                           recv mch c p a y m).
+      intros sm m sm_lt markm.
+      destruct (classic (exists y, y < t /\ recv mch c p a y m)).
+      intuition.
+      assert (forall y, y < t -> ~ recv mch c p a y m) by (generalize H; clear; firstorder).
+      generalize hard sm_lt markm H0; clear; firstorder.
+
+      assert (allRecv:
+                forall sm m, sm < t -> mark mch p c a sm m ->
+                             exists y, y < sr /\ recv mch p c a y m).
+      intros sm m sm_lt_t markm.
+      assert (cond2: forall tp', tp' < sm -> ~ recv mch c p a tp' r).
+      unfold not; intros tp' tp'_le recvr.
+      assert (cond:tp' < t) by omega.
+      generalize norecvr cond recvr; clear; firstorder.
+      destruct (classic (exists y, y < sr /\ recv mch p c a y m)).
+      assumption.
+      assert (cond1: forall y, y < sr -> ~ recv mch p c a y m) by (generalize H; clear; firstorder).
+      clear H; pose proof (cross markr markm cond1 cond2); firstorder.
+
+      destruct (classic (exists t', t' < sr /\ exists m,
+                                                (mark mch c p a t' m \/ recv mch p c a t' m))).
+      pose proof (maxExists' H) as [sm [sm_lt_sr [[m [markm|recvm]] notAfter]]]; clear H.
+      destruct (stf sm m sm_lt_sr markm) as [y [y_lt_t recvm]].
+      assert (noSend: forall t', y < t' < t -> forall m, ~ mark mch p c a t' m).
+      unfold not; intros t' cond x markx.
+      assert (t'_lt_t: t' < t) by intuition.
+      destruct (allRecv t' x t'_lt_t markx) as [z [z_lt recvx]].
+      pose proof (recvImpMarkBefore recvx markx) as sth.
+      pose proof (recvImpMarkBefore recvm markm) as sth2.
+      assert (xl: sm < z < sr) by omega.
+      generalize notAfter xl recvx; clear; firstorder.
+      assert (noRecv: forall t', y < t' < t -> forall m, ~ recv mch c p a t' m).
+      unfold not; intros t' [y_t' t'_t] x recvx.
+      pose proof (recvImpMark recvx) as [t'' [condt'' markx]].
+      pose proof (cRespFifo1 markm recvm markx recvx y_t') as sm_t''.
+      assert (sr = t'' \/ sr < t'' \/ t'' < sr) by omega.
+      destruct H.
+      rewrite <- H in *.
+      pose proof (uniqMark1 markr markx).
+      rewrite <- H0 in *.
+      specialize (norecvr t' t'_t recvx); intuition.
+      destruct H.
+      pose proof (cRespFifo markr markx recvx H) as bad.
+      assert (forall t4, t4 < t' -> ~ recv mch c p a t4 r) by
+          (intros t4 condy; assert (condz: t4 < t) by omega; generalize norecvr condz; clear;
+           firstorder).
+      intuition.
+      generalize notAfter sm_t'' H markx; clear; firstorder.
+      assert (all: forall t', y < t' < t -> forall m, ~ (mark mch p c a t' m \/
+                                                    recv mch c p a t' m)) by
+          (generalize noSend noRecv; clear; firstorder).
+      pose proof (pNoEq y_lt_t all) as newLe.
+      assert (notAfter': forall y, sm < y < sr -> forall m, ~ (mark mch c p a y m \/
+                                                              recv mch p c a y m)) by
+          (intros b cond; assert (g2: sm < b < sr) by omega;
+           generalize notAfter g2; clear; firstorder).
+      pose proof (cNoEq sm_lt_sr notAfter') as stEq.
+      pose proof (sendmChange st markm) as stSy.
+      pose proof (recvmChange dt recvm) as dtSy.
+      rewrite stSy in stEq.
+      rewrite dtSy in newLe.
+      rewrite stEq in newLe.
+      pose proof (sendmFrom st markr) as eq.
+      rewrite <- eq in newLe.
+      assumption.
+
+      pose proof (recvImpMark recvm) as [y [y_le_sm markm]].
+      assert (noSend: forall t', y < t' < t -> forall m, ~ mark mch p c a t' m).
+      unfold not; intros t' [y_lt_t' cond] x markx.
+      destruct (allRecv t' x cond markx) as [z [cond2 recvx]].
+      pose proof (pRespFifo2 markm recvm markx recvx y_lt_t') as sm_lt_z.
+      generalize notAfter sm_lt_z cond2 recvx; clear; firstorder.
+      assert (noRecv: forall t', y < t' < t -> forall m, ~ recv mch c p a t' m).
+      unfold not; intros t' [y_lt_t' t'_lt_t] x recvx.
+      pose proof (recvImpMark recvx) as [t'' [condt'' markx]].
+      assert (t'' = sm \/ t'' < sm \/ sm < t'') by omega.
+      destruct H.
+      rewrite H in *; clear H.
+      pose proof (noSendmRecvm st markx recvm); intuition.
+      destruct H.
+      assert (cond1: forall tp, tp < y -> ~ recv mch c p a tp x).
+      unfold not; intros tp tp_lt_y recv'x.
+      pose proof (uniqRecv2 recvx recv'x) as eq.
+      rewrite <- eq in *.
+      omega.
+      assert (cond2: forall tc, tc < t'' -> ~ recv mch p c a tc m).
+      unfold not; intros tc tc_lt_t'' recv'm.
+      pose proof (uniqRecv2 recvm recv'm) as eq.
+      rewrite <- eq in *.
+      omega.
+      pose proof (cross markx markm cond2 cond1); intuition.
+      assert (t'' = sr \/ sr < t'' \/ t'' < sr) by omega.
+      destruct H0.
+      rewrite H0 in *.
+      pose proof (uniqMark1 markr markx) as eq.
+      rewrite eq in *.
+      apply (norecvr t' t'_lt_t recvx).
+      destruct H0.
+      pose proof (cRespFifo markr markx recvx H0) as sth.
+      assert (forall t4, t4 < t' -> ~ recv mch c p a t4 r) by
+          ( intros t4 cond; assert (K: t4 < t) by omega; generalize norecvr K; clear; firstorder).
+      intuition.
+      generalize H0 H notAfter markx; clear; firstorder.
+      assert (all: forall t', y < t' < t -> forall m, ~ (mark mch p c a t' m \/
+                                                    recv mch c p a t' m)) by
+          (generalize noSend noRecv; clear; firstorder).
+      assert (y_lt_t: y < t) by omega.
+      pose proof (pNoEq y_lt_t all) as newLe.
+      assert (notAfter': forall y, sm < y < sr -> forall m, ~ (mark mch c p a y m \/
+                                                              recv mch p c a y m)) by
+          (intros b cond; assert (g2: sm < b < sr) by omega;
+           generalize notAfter g2; clear; firstorder).
+      pose proof (cNoEq sm_lt_sr notAfter') as stEq.
+      pose proof (recvmChange st recvm) as stSy.
+      pose proof (sendmChange dt markm) as dtSy.
+      rewrite stSy in stEq.
+      rewrite dtSy in newLe.
+      rewrite stEq in newLe.
+      pose proof (sendmFrom st markr) as eq.
+      rewrite <- eq in newLe.
+      assumption.
+
+      assert (noSend: forall t', 0 <= t' < t -> forall m, ~ mark mch p c a t' m).
+      unfold not; intros t' [_ t'_lt_t] m markm.
+      pose proof (allRecv t' m t'_lt_t markm) as [t'' [t''_lt_t recvm]].
+      generalize H t''_lt_t recvm; clear; firstorder.
+      assert (noRecv: forall t', 0 <= t' < t -> forall m, ~ recv mch c p a t' m).
+      unfold not; intros t' [_ t'_lt_t] m recvm.
+      pose proof (recvImpMark recvm) as [t'' [t''_le_t' markm]].
+      assert (t'' = sr \/ sr < t'' \/ t'' < sr) by omega.
+      destruct H0.
+      rewrite H0 in *.
+      pose proof (uniqMark1 markr markm) as H1.
+      rewrite H1 in *.
+      apply (norecvr t' t'_lt_t recvm).
+      destruct H0.
+      pose proof (cRespFifo markr markm recvm H0) as bad.
+      assert (forall t4, t4 < t' -> ~ recv mch c p a t4 r) by
+          ( intros t4 cond; assert (cd: t4 < t) by omega; generalize norecvr cd; clear;
+            firstorder).
+      intuition.
+      generalize H markm H0; clear; firstorder.
+      assert (notAfter': forall y, 0 <= y < sr -> forall m, ~ (mark mch c p a y m \/
+                                                              recv mch p c a y m)) by
+          (intros b cond; assert (g2: 0 <= b < sr) by omega;
+           generalize H g2; clear; firstorder).
+      assert (not1: forall y, 0 <= y < t -> forall m, ~ (mark mch p c a y m \/
+                                                         recv mch c p a y m)) by
+          (generalize noSend noRecv; clear; firstorder).
+      assert (z_le_sr: 0 <= sr) by omega.
+      assert (z_le_t: 0 <= t) by omega.
+      pose proof (cNoEq z_le_sr notAfter') as stEq.
+      pose proof (pNoEq z_le_t not1) as dtEq.
+      pose proof (@init _ _ pDef cDef isParent a) as eq.
+      rewrite eq in dtEq.
+      rewrite stEq in dtEq.
+      pose proof (sendmFrom st markr) as eq'.
+      rewrite <- eq' in dtEq.
+      assumption.
+    Qed.
+
+    Theorem cRespGoodNoEarlier:
+      forall {a t sr r},
+        sr < t ->
+        mark mch c p a sr r ->
+        (forall y, y < t -> ~ recv mch c p a y r) ->
+        from r = dir p c a t ->
+        forall {sx x},
+          sx < sr ->
+          mark mch c p a sx x ->
+          exists y, y < t /\ recv mch c p a y x.
+    Proof.
+      intros a t sr r sr_lt_t markr norecvr eqDir.
+      assert (gd: ~ exists sx x, sx < sr /\ mark mch c p a sx x /\
+                                 forall y, y < t ->
+                                           ~ recv mch c p a y x).
+      unfold not; intros ex.
+      pose proof (minExists ex) as stf.
+      destruct stf as [sx [[x [sx_lt_sr [markx norecvx]]] notBefore]].
+      assert (noRecv1: forall y, sx < y < sr -> forall m, ~ recv mch p c a y m).
+      unfold not; intros y [sx_lt_y y_lt_sr m recvm].
+      pose proof (recvImpMark recvm) as [b [b_le_y markm]].
+      assert (cond1: forall tc, tc < sx -> ~ recv mch p c a tc m).
+      unfold not; intros tc tc_lt_sx recv'm.
+      pose proof (uniqRecv2 recvm recv'm) as eq.
+      omega.
+      assert (cond2: forall tp, tp < b -> ~ recv mch c p a tp x).
+      unfold not; intros tp tp_lt_b recvx.
+      assert (cond: tp < t) by omega; generalize norecvx cond recvx; clear; firstorder.
+      pose proof (cross markx markm cond1 cond2); intuition.
+      pose proof (cNoRecvLe sx_lt_sr noRecv1) as sth.
+      pose proof (sendmChange st markx) as sth2.
+      pose proof (sendmImpSt pDef cDef isParent markx) as sth4.
+      pose proof (sendmFrom st markr) as sth3.
+      rewrite eqDir in sth3.
+      assert (real1: slt (dir p c a t) (state c a sx)).
+      rewrite sth2 in sth; clear sth2; rewrite <- sth3 in sth; clear sth3.
+      destruct (dir p c a t); destruct (state c a sx); unfold sle in *; unfold slt in *;
+      destruct (to x); auto; firstorder.
+      clear sth sth2 sth4 sth3.
+      pose proof real1 as help.
+      pose proof (sendmFrom st markx) as sth.
+      rewrite <- sth in help; clear sth.
+      assert (neq: from x <> dir p c a t) by (destruct (from x); destruct (dir p c a t);
+                                              unfold slt in *; auto; discriminate).
+      clear help.
+      assert (sx_lt_t: sx < t) by omega.
+      assert (great: forall y, y < t -> ~ recv mch c p a y x) by
+          (generalize norecvx; clear; firstorder).
+      pose proof (cRespBadExCResp sx_lt_t markx great) as opts.
+      destruct opts.
+      intuition.
+      destruct H as [sm [sm_lt_sx rest]].
+      assert (sm_lt_sr: sm < sr) by omega.
+      specialize (notBefore sm sm_lt_sx).
+      generalize notBefore sm_lt_sr rest; clear; firstorder.
+      intros sx x sx_lt_sr markx.
+      destruct (classic (exists y, y < t /\ recv mch c p a y x)).
+      assumption.
+      assert (forall y, y < t -> ~ recv mch c p a y x) by (generalize H; clear; firstorder).
+      firstorder.
     Qed.
   End Pair.
 End mkBehaviorTheorems.
