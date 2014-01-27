@@ -100,6 +100,7 @@ The responses should obey the following sanity conditions:
 \begin{defn} (The labels in the responses are unique. Since \dataR{} field is
 irrelevant for store requests, so uniqueness of responses does not depend on
 \dataR{} field for stores.)
+\small
 \begin{multline*}
 \textit{uniqRespLabels} := \forall (r_1, r_2 \in \Response),\\
 r_1.\labelR = r_2.\labelR @-> r_1.\timeR = r_2.\timeR \wedge\\
@@ -108,8 +109,9 @@ r_1.\labelR = r_2.\labelR @-> r_1.\timeR = r_2.\timeR \wedge\\
 \end{defn}
 
 \begin{defn} (No response can share the same time as another store response.)
+\small
 \begin{multline*}
-\textit{uniqStRespTimes} := 
+\textit{uniqStTimes} := 
 \forall (r_1, r_2 \in \Response),
 r_1.\timeR = r_2.\timeR @-> \\
 (\reqFn (r_1.\labelR)).\addrQ = (\reqFn (r_2.\labelR)).\addrQ @->\\
@@ -121,6 +123,7 @@ r_1.\labelR = r_2.\labelR
 In addition, the global ordering of responses to the same processor should not
 violate the local ordering of the corresponding requests.
 \begin{defn}
+\small
 \begin{multline*}
 \textit{localOrdering} :=
 \forall (r_1, r_2 \in \Response), (r_1.\labelR).\fst = (r_2.\labelR).\fst @->\\
@@ -130,36 +133,42 @@ violate the local ordering of the corresponding requests.
 
 This brings us to the main condition for store atomicity which states that the
 value returned for a load response corresponds to the \emph{last earlier} store
-request that has been processed in the system for that address
-(\textit{lastEarlierValue}). The \emph{last} and \emph{earlier} are defined
-according to the field \timeR{} returned in the responses. In case no store has
-happened earlier for a particular address when a load is processed, then the
-load response returns the initial value for the address (\textit{initialValue}).
+request that has been processed in the system for that address This is
+indicated by the proposition \textit{lastEarlierValue}$(r)$ for response $r$.
+The \emph{last} and \emph{earlier} are defined according to the field \timeR{}
+returned in the responses. In case no store has happened earlier for a
+particular address when a load is processed, then the load response returns the
+initial value for the address. This is indicated by the proposition
+\textit{initialValue}$(r)$ for response $r$.
 \begin{defn}
+\small
 \begin{multline*}
-\textit{initialValue} (r: \Response) := \mylet q := \reqFn (r.\labelR) \myin\\
-q.\desc = \Ld @-> r.\dataR = \initData (r.\addrQ) \wedge \\
-\forall (r' \in \Response), \mylet q' := \reqFn (r'.\labelR) \myin 0 \le r'.\timeR < r.\timeR @->\\
-\neg (q'.\addrQ = q.\addrQ \wedge q'.\desc = \St)
+\textit{initialValue} := \lambda (r \in \Response) \Rightarrow
+(\reqFn (r.\labelR)).\desc = \Ld @->\\ r.\dataR = \initData (r.\addrQ) \wedge 
+\forall (r' \in \Response), 0 \le r'.\timeR < r.\timeR @->\\
+\neg ((\reqFn (r'.\labelR)).\addrQ = (\reqFn (r.\labelR)).\addrQ \wedge (\reqFn (r'.\labelR)).\desc = \St)
 \end{multline*}
 \end{defn}
 
 \begin{defn}
+\small
 \begin{multline*}
-\textit{lastEarlierValue} (r: \Response) := \mylet q := \reqFn (r.\labelR) \myin\\
-q.\desc = \Ld @-> \exists r_m, \mylet q_m := \reqFn (r_m.\labelR) \myin\\
-r.\dataR = q_m.\dataQ \wedge
-\forall (r' \in \Response), \mylet q' := \reqFn (r'.\labelR) \myin \\ r_m.\timeR \le r'.\timeR < r.\timeR @->
-\neg (q'.\addrQ = q.\addrQ \wedge q'.\desc = \St)
+\textit{initialValue} := \lambda (r \in \Response) \Rightarrow
+(\reqFn (r.\labelR)).\desc = \Ld @->
+\exists (r_m \in \Response),\\ r.\dataR = (\reqFn (r_m.\labelR)).\dataQ \wedge 
+(\reqFn (r_m.\labelR)).\desc = \St \\ \wedge (\reqFn (r_m.\labelR)).\addrQ = (\reqFn (r.\labelR)).\addrQ\\ \wedge
+\forall (r' \in \Response), r_m.\timeR \le r'.\timeR < r.\timeR @->\\
+\neg ((\reqFn (r'.\labelR)).\addrQ = (\reqFn (r.\labelR)).\addrQ \wedge (\reqFn (r'.\labelR)).\desc = \St)
 \end{multline*}
 \end{defn}
 
 Using the above definitions, we can define the store-atomicity theorem as follows:
 \begin{thm}
+\small
 \begin{multline*}
 storeAtomicity := 
 \textit{uniqRespLabels} \wedge
-\textit{uniqStRespTimes} \wedge \textit{localOrdering}\\ \wedge 
+\textit{uniqStTimes} \wedge \textit{localOrdering}\\ \wedge 
 (\forall (r \in \Response), \textit{initialValue}(r) \vee \textit{lastEarlierValue}(r))
 \end{multline*}
 \end{thm}

@@ -7,30 +7,45 @@ The memory subsystem consists of a tree hierarchy of caches. These
 caches are inclusive, \ie a cache at a higher level (near the root) contains
 all the addresses present in caches in the lower levels of its substree. The
 root of the communicates with the main memory, and the leaf caches communicate
-with the processor (Figure \ref{hier}).
+with the processor (Figure \ref{hier}). Whether a cache is a leaf or not is
+denoted by the relation \leaf$(c)$.
 
-Each cache has a \emph{coherence state} associated with each address. The
-coherence state can be one of the three values: \Mo{} (Modified), \Sh{} (Shared) or
-\In{} (Invalid). \Mo{} state denotes that the subtree rooted at the cache in \Mo{}
-state for that address can modify the data, \ie{} both read and write the data
-corresponding to the address. \Sh{} state denotes that the subtree rooted at the
-cache in \Sh{} state for that address can only read the data corresponding to
-that address and \In{} state denotes that the subtree rooted at the cache in \In{}
-state can neither read nor write the data corresponding to the address. The
-meanings of the state is clear, but one must verify the actual cache coherence
-protocol for violations of these invariants, which is what the proof in this
-paper intends to do. There's a logical ordering between the states, in terms of
-the permissions that they have: $\Mo > \Sh > \In$ (the notation should be read
-assuming that the order is transitively closed).
-In addition, each non-leaf cache maintains a \emph{directory}, which contains a
-local version of the state of each of its children caches for a particular address.
-This local version may be stale, but it should not be lower than the real state
-of the child (again this property has to be proven for a cache coherence
-protocol).
+We will restrict the discussion of the formal proofs to the MSI protocol
+\cite{MSI}. Extension of this proof framework to other protocols like MESI and
+MOESI is straightforward and will be discussed informally.
 
-Though this paper restricts the formal discussion to the simple MSI protocol,
-extension of this proof technique as well as major portions of the proof to
-other protocols like MOSI and MOESI is straightforward.
+Each leaf cache $c$ has a \emph{position} denoted by $c.\pos$, which represents
+the position of the next request from the processor corresponding to $c$ that
+it has to process. Since it has to process the first request first, it is set
+to $0$ initially.
+
+Each cache $c$, in addition to the data associated with each address $a$ (denoted
+by $c.\data[a]$), also has a \emph{coherence state} associated with the
+address (denoted by $c.\state[a]$). The coherence state can be
+one of the three values: \Mo{} (Modified), \Sh{} (Shared) or \In{} (Invalid).
+\Mo{} state denotes that the subtree rooted at the cache in \Mo{} state for
+that address can modify the data, \ie{} both read and write the data
+corresponding to the address. \Sh{} state denotes that the subtree rooted at
+the cache in \Sh{} state for that address can only read the data corresponding
+to that address and \In{} state denotes that the subtree rooted at the cache in
+\In{} state can neither read nor write the data corresponding to the address.
+The meanings of the state is clear, but one must verify the actual cache
+coherence protocol for violations of these invariants, which is what the proof
+in this paper intends to do.  There's a logical ordering between the states, in
+terms of the permissions that they have: $\Mo > \Sh > \In$ (the notation should
+be read assuming that the order is transitively closed). The states for each of
+the addresses in each of the caches, other than the root cache, is set to \In,
+while states for each address in the root cache is set to \Mo. This is because
+only the main memory (connected to the root cache) has the initial copy of
+data.  In addition, each non-leaf cache maintains a \emph{directory}, which
+contains a local version of the state of each of its children caches for a
+particular address.  For a non-leaf cache $p$, the state in its directory for
+child cache $c$ is denoted by $p.\dstate[c][a]$, for address $a$.  The relation
+$\parent(c, p)$ denotes that $p$ is the parent of cache $c$.  This local
+version may be stale, but it should not be lower than the real state of the
+child (again this property has to be proven for a cache coherence protocol).
+All the directory states are set to \In initially because initially, all the
+non-root caches have their states for all the addresses set to \In.
 
 In order for a cache to change to a higher state for a given address, \ie
 \emph{upgrade}, it has to \emph{request} its parent cache for increasing the
@@ -57,22 +72,24 @@ parent to child.
 %There is exactly one of \cproc{} and \procc{} channels between the L1 and the processor.
 
 In this paper, we will assume that each channel has a dedicated link between
-caches. In a real system, these channels will be logically implemented over an
-interconnect network, which poses additional problems that have to be proven --
-namely that of deadlock and starvation-freedom. Though we have proved these
-results for a general interconnect network as opposed to a point-to-point
-connection between the communicating caches, we completely omit the formal
+the communicating caches. In a real system, these channels will be logically
+implemented over an interconnect network, which poses additional problems that
+have to be proven -- namely that of deadlock and starvation-freedom. Though we
+have proved these results for a general interconnect network as opposed to a
+point-to-point connection between caches, we completely omit the formal
 discussion of deadlock and starvation freedom in this paper because of lack of
-space. We \xxx{might later} informally discuss how deadlock and starvation
-freedom properties are proved for our system.
+space. We will informally discuss how deadlock and starvation freedom
+properties are proved for our system.
 
 Since we have dedicated channel between each pair of child-parent, we will
 index the three channels (\cpReq{}, \cpResp{} and \pc{}) by the name of the
-child that uses that channel.
-%We will also index the two channels (\cproc{} and
-%\procc{}) between the processor and L1 cache by the name of the L1 cache.
-Figure \ref{format} shows the message format transmitted in the 3 channels
-between caches.
+child that uses that channel (using the notation $\cpReq[c]$, \etc for the
+\cpReq{} channel associated with cache $c$).  Figure \ref{format} shows the
+message format transmitted in the 3 channels between caches. In each of the
+channels $ch$, a message $m$ can be enqueued ($\enq(ch, m)$) or dequeued
+($\deq(ch)$), and the channels can be examined for the first element
+($\first(ch)$) or for availability of any message in the channel ($\avail(ch)$).
+Each of these channels start out empty \ie $\forall ch, \neg \avail(ch)$, initially.
 %The messages transmitted between the processor and the L1 cache
 %is the same as in Figure \ref{req-resp} (except for the omission of the \proc{}
 %field, which is indicated by the channel's index).
@@ -113,24 +130,104 @@ directory state of a child for \Resp{}\\
 \label{format}
 \end{figure}
 
+In addition to the actual coherence states, each cache also maintains a
+temporary \emph{wait state} for each of its addresses. The wait state contains
+two parts: a) a bool representing whether the cache has sent a request to its
+parent cache earlier and is waiting for a response (denoted by $c.\wait[a]$ for
+address $a$) and b) one of the three values \Mo, \Sh{} or \In representing the
+state upgrade that the cache is waiting for (denoted by $c.\waitS[a]$ for
+address $a$). Similarly, each non-leaf cache has the corresponding wait states
+for its directory.  $p.\dwait[c][a]$ denotes that cache $p$ is waiting for a
+response from its child $c$ for address $a$, and $p.\dwaitS[c][a]$ denotes the
+state that cache $p$ is waiting for $c$ to downgrade to. Both \wait{} and
+\dwait{} are \False{} initially for each of the caches, and each of the
+addresses, because no cache is waiting for any response from either its child
+or its parent initially.
+
 The behavior of the system can be given in terms of atomic state transitions.
 These transitions have two parts: a) the guard, which dictates when the
 transition can fire, and b) the action, which dictates how the state of the
 system changes when the transition happens. These transitions or \emph{guarded
 atomic actions} logically happen one by one, making the overall behavior of the
-system well defined.
+system well defined. Figure \ref{trans} gives the atomic transitions for a
+cache coherent memory subsystem. The actions in the transitions repesent only
+the specific system states that change. We use $x \Leftarrow y$ to indicate
+setting of a specific state $x$ of the overall system to value $y$ because of a
+transition.
+\begin{figure}
+\small
+\centering
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tabular}{|ll|}
+\hline
+\multicolumn{2}{|c|}{ChildSendReq$(c, x, a)$: Child $c$ sending request to upgrade to $x$ for address $a$}\\
+\hline
+Guard: & $c.\state[a] \le x \wedge c.\wait[a] = \False$\\
+\hline
+Action: & $\enq(\cpReq[c], \Req\langle c.\state[a], x, a \rangle)$;\\
+\hline
+\hline
+\multicolumn{2}{|c|}{ParentRecvReq$(p, c)$: Parent $p$ receiving a request from child $c$}\\
+\hline
+Guard: & 
+$\parent(c,p) \wedge \avail(\cpReq[c]) \wedge \mylet q := \first(\cpReq[c]) \myin$\\
+& $\dwait[p][c][q.\addr] = \False \wedge \dstate[p][c][q.\addr] \le q.\from \wedge$\\
+& $\compat(p, c, (q.\myto) \wedge q.\myto \le p.\state[q.\addr]$\\
+\hline
+Action: & $\enq(\pc[c], \langle \Resp, q.\myto, q.\addr, $\\
+& $\;\;\;\myif \dstate[p][c][q.\addr] = \In \mythen \data[p][a] \rangle \myelse \_\rangle)$;\\
+& $\dstate[p][c][q.\addr] \Leftarrow q.\myto$; $\deq(\cpReq[c])$;\\
+\hline
+\hline
+\multicolumn{2}{|c|}{ChildRecvResp$(c)$: Child $c$ receiving a response}\\
+\hline
+Guard: & 
+$\avail(\pc[c]) \wedge \mylet r := \first(\pc[c]) \myin$\\
+\hline
+Action: & $\myif \state[c][q.\addr] = \In \mythen \data[c][a] \Leftarrow q.\data$;\\
+&$\myif \waitS[c][q.\addr] \le q.\myto \mythen c.\wait[a] \Leftarrow \False $;\\
+& $c.\state[q.\addr] \Leftarrow q.\to$; $\deq(\pc[c])$;\\
+\hline
+\end{tabular}
+\caption{Child sending upgrade request and getting back the response}
+\end{subfigure}
+\begin{subfigure}{\textwidth}
+\centering
+\begin{tabular}{|ll|}
+\hline
+\multicolumn{2}{|c|}{LoadReq$(c)$:  Handling a processor's load request}\\
+\hline
+Guard: & $\leaf(c) \wedge \reqFn(c, c.\pos) = \Ld \wedge c.\state[\addrQ(\reqFn(c, c.\pos))] \ge \Sh$\\
+\hline
+Action:& $c.\pos \Leftarrow c.\pos + 1$;\\
+\hline
+\hline
+\multicolumn{2}{|c|}{StoreReq$(c)$:  Handling a processor's store request}\\
+\hline
+Guard: & $\leaf(c) \wedge \reqFn(c, c.\pos) = \St \wedge c.\state[\addrQ(\reqFn(c, c.\pos))] = \Mo$\\
+\hline
+Action:& $c.\pos \Leftarrow c.\pos + 1$;\\
+\hline
+\end{tabular}
+\caption{Handling requests from the processor}
+\end{subfigure}
+\caption{Atomic transitions for a cache coherent memory subsystem}
+\label{trans}
+\end{figure}
 
-The atomic transitions access local states, \ie a transition can read or write
-states only corresponding to a single cache and/or the channel the cache is
-connected to. This restriction allows such a system to be implemented directly
-into hardware. Bluespec System Verilog (BSV), for instance, directly converts
-these transitions into efficient synchronous hardware. Though these transitions
-logically happen one by one, BSV executes several transitions simultaneously,
-as long as they do not access the same state, \ie do not \emph{conflict}
-\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}. Sometimes, these transitions (both the
-guards and the actions) may not be amenable to single cycle implementations in
-hardware. For example, writing a register array (like a cache) can actually
-take several hardware clock cycles, though logically it is a single transition.
-Karczmarek \etal \cite{Karczmarek} has provided a scheme to convert atomic
-transitions into synchronous hardware in which each transition can span several
-clock cycles.
+Note that he atomic transitions in Figure \ref{trans} access only local states,
+\ie a transition can read or write states only corresponding to a single cache
+and/or the channel the cache is connected to. This restriction allows such a
+system to be implemented directly into hardware. Bluespec System Verilog (BSV),
+for instance, directly converts these transitions into efficient synchronous
+hardware. Though these transitions logically happen one by one, BSV executes
+several transitions simultaneously, as long as they do not access the same
+state, \ie do not \emph{conflict} \cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
+Sometimes, these transitions (both the guards and the actions) may not be
+amenable to single cycle implementations in hardware. For example, writing a
+register array (like a cache) can actually take several hardware clock cycles,
+though logically it is a single transition.  Karczmarek \etal \cite{Karczmarek}
+has provided a scheme to convert atomic transitions into synchronous hardware
+in which each transition can span several clock cycles.
+
