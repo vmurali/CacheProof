@@ -165,7 +165,7 @@ transition.
 \hline
 Guard: & $c.\state[a] < x \wedge c.\wait[a] = \False$\\
 \hline
-Action: & $\enq(\cpReq[c], \langle c.\state[a], x, a \rangle)$;\\
+Action: & $c.\waitS[a] \Leftarrow x$; $c.wait[a] \Leftarrow \True$; $\enq(\cpReq[c], \langle c.\state[a], x, a \rangle)$;\\
 \hline
 \hline
 \multicolumn{2}{|l|}{\textbf{ParentRecvReq}$(p, c)$: Parent $p$ receiving a request from child $c$}\\
@@ -175,7 +175,7 @@ $\parent(c,p) \wedge \avail(\cpReq[c]) \wedge \mylet q := \first(\cpReq[c]) \myi
 & $p.\dwait[c][q.\addr] = \False \wedge p.\dstate[c][q.\addr] \le q.\from \wedge$\\
 & $\compat(p, c, q.\myto) \wedge q.\myto \le p.\state[q.\addr]$\\
 \hline
-Action: & $\enq(\pc[c], \langle \Resp, p.\state[c][q.\addr], q.\myto, q.\addr, $\\
+Action: & $\enq(\pc[c], \langle \Resp, q.\myto, q.\addr, $\\
 & $\;\;\;%
 \myif p.\dstate[c][q.\addr] = \In \mythen p.\data[q.\addr] \myelse \_\rangle)$;\\
 & $p.\dstate[c][q.\addr] \Leftarrow q.\myto$; $\deq(\cpReq[c])$;\\
@@ -202,7 +202,7 @@ Action: & $\myif c.\state[r.\addr] = \In \mythen c.\data[a] \Leftarrow r.\data$;
 \hline
 Guard: & $\parent(c,p) \wedge p.\dstate[c][a] > x \wedge p.\dwait[c][a] = \False$\\
 \hline
-Action: & $\enq(\pc[c], \langle \Req, p.\dstate[c][a], x, a, \_ \rangle)$;\\
+Action: & $p.\dwaitS[c][a] \Leftarrow x$; $p.\dwait[c][a] \Leftarrow \True$; $\enq(\pc[c], \langle \Req, x, a, \_ \rangle)$;\\
 \hline
 \hline
 \multicolumn{2}{|p{\textwidth}|}{\textbf{ChildRecvReq}$(c)$: Child $c$ receiving a request from its parent and has to downgrade}\\
@@ -235,12 +235,12 @@ Action: & $\myif p.\dstate[c][r.\addr] = \Mo \mythen p.\data[r.\addr] \Leftarrow
 \centering
 \begin{tabular}{|ll|}
 \hline
-\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildVolResp}$(c, x, )$: Child $c$ sending a response to downgrade to $x$ for address $a$ without any request from its parent}\\
+\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildVolResp}$(c, x, a)$: Child $c$ sending a response to downgrade to $x$ for address $a$ without any request from its parent}\\
 \hline
-Guard: & $(\forall i, \parent(i, c) \rightarrow c.\dstate[i][a] \le x) \wedge x < c.\state[q.\addr]$\\
+Guard: & $(\forall i, \parent(i, c) \rightarrow c.\dstate[i][a] \le x) \wedge x < c.\state[a]$\\
 \hline
-Action: & $\enq(\cpResp[c], \langle c.\state[q.\addr], x, a,$\\
-& $\;\;\;%
+Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,%$\\
+%& $\;\;\;%
 \myif c.\state[a] = \Mo \mythen c.\data[a] \myelse \_\rangle)$;\\
 & $c.\state[a] \Leftarrow x$;\\
 \hline
@@ -248,8 +248,9 @@ Action: & $\enq(\cpResp[c], \langle c.\state[q.\addr], x, a,$\\
 \multicolumn{2}{|p{\textwidth}|}{\textbf{ChildRecvBadReq}$(c)$: Child $c$ receiving a request from its parent and has already downgraded}\\
 \hline
 Guard: & 
-$\avail(\pc[c]) \wedge \mylet q := \first(\pc[c]) \myin q.\typ = \Req \wedge$\\
-& $q.\myto \ge c.\state[q.\addr]$\\
+$\avail(\pc[c]) \wedge \mylet q := \first(\pc[c]) \myin q.\typ = \Req \wedge%$\\
+%& $%
+q.\myto \ge c.\state[q.\addr]$\\
 \hline
 Action: & $\deq(\pc[c])$;\\
 \hline
@@ -261,16 +262,16 @@ Action: & $\deq(\pc[c])$;\\
 \centering
 \begin{tabular}{|ll|}
 \hline
-\multicolumn{2}{|l|}{\textbf{LoadReq}$(c)$: Handling a processor's load request}\\
+\multicolumn{2}{|l|}{\textbf{LoadReq}$(c)$: Handling a processor's load request at a leaf cache}\\
 \hline
-Guard: & $\leaf(c) \wedge \reqFn(c, c.\pos) = \Ld \wedge c.\state[\addrQ(\reqFn(c, c.\pos))] \ge \Sh$\\
+Guard: & $\leaf(c) \wedge \reqFn(c, c.\pos) = \Ld \wedge c.\state[(\reqFn(c, c.\pos)).\addrQ] \ge \Sh$\\
 \hline
 Action:& $c.\pos \Leftarrow c.\pos + 1$;\\
 \hline
 \hline
-\multicolumn{2}{|l|}{\textbf{StoreReq}$(c)$: Handling a processor's store request}\\
+\multicolumn{2}{|l|}{\textbf{StoreReq}$(c)$: Handling a processor's store request at a leaf cache}\\
 \hline
-Guard: & $\leaf(c) \wedge \reqFn(c, c.\pos) = \St \wedge c.\state[\addrQ(\reqFn(c, c.\pos))] = \Mo$\\
+Guard: & $\leaf(c) \wedge \reqFn(c, c.\pos) = \St \wedge c.\state[(\reqFn(c, c.\pos)).\addrQ] = \Mo$\\
 \hline
 Action:& $c.\pos \Leftarrow c.\pos + 1$;\\
 \hline
