@@ -1,4 +1,4 @@
-:qh\section{Introduction}
+\section{Introduction}
 \label{sec:Introduction}
 
 Shared memory is a common abstraction for distributed systems as it
@@ -11,9 +11,9 @@ functioning of the system, significant effort is placed in making sure
 that the cache coherence engine is correct. In practice, this is done
 in two steps. First, a cache coherence protocol is constructed and
 verified. This protocol generally directly represents many of
-the key concurrent aspects of an implementation, \eg reads and
+the key concurrent aspects of an implementation, \eg{} reads and
 writes to the system are broken into local atomic micro-operations, but
-ignores implementation details \eg buffer sizing and memory access
+ignores implementation details \eg{} buffer sizing and memory access
 times. Second, once the protocol has been verified it is handed to
 hardware experts who fill in the missing implementation details and
 realize it at the Register Transfer Level (RTL) of gates, wires, and
@@ -29,27 +29,26 @@ guarantees to the implementation by performing not only a non-trivial
 translation from the protocol representation to hardware, but also
 the refinement to add missing implementation details.
 
-Because verified protocols are often described via Term Rewrite Systems (TRS).
-it was shown by Dave \etal{} that a verified protocol could be transliterated
-into Bluespec, a hardware description language based on Guarded Atomic Actions,
-a restriction of TRS \cite{Hoe:TCAD, DNA:CoherenceImplementation}. This reduces
-the correctness of the implementation to the correctness of the protocol,
-effectively removing any implementation bugs. Though in the current versions of
-the Bluespec language, each atomic action corresponds to one hardware clock
-cycle, there has been some work to reduce this restriction \cite{Karczmarek}.
-%This requires that the protocol description includes many important
-%implementation-level details which had previously been elided for simplicity
-%of the description. Practically, beyond some additional descriptional noise in
-%the proof this is not a show stopper.
+Because verified protocols are often described via Term Rewrite
+Systems (TRS).  it was shown by Dave \etal{} that a verified protocol
+could be transliterated into Bluespec, a hardware description language
+based on Guarded Atomic Actions, a restriction of
+TRS~\cite{Hoe:TCAD,DNA:CoherenceImplementation}. This reduces the
+correctness of the implementation to the correctness of the protocol,
+effectively removing any implementation bugs. Though in the current
+versions of the Bluespec language, each atomic action corresponds to
+one hardware clock cycle, there has been some work to reduce this
+restriction~\cite{Karczmarek}.
 
-The issue with this protocol transliteration approach is that design of a
-hardware system requires many design tweaks to reach optimal performance as one
-cannot practically know the correct low-level hardware results without
-evaluating the low-level representation.
-Each of these changes can potentially breaks
-correctness and a full reverification of correctness is needed in
-principle. As hardware designers are unlikely to have the expertise or
-skill this effectively nullifies the verification guarantee in design.
+
+The issue with this protocol transliteration approach is that design
+of a hardware system requires many design tweaks to reach optimal
+performance as one cannot practically know the correct low-level
+hardware results without evaluating the low-level representation.
+Each of these changes can potentially breaks correctness and a full
+reverification of correctness is needed in principle. As hardware
+designers are unlikely to have the expertise or skill this effectively
+nullifies the verification guarantee in design.
 
 To fully realize this approach of design we need to provide not just a
 single proof of correctness, but a proof framework covering any
@@ -57,27 +56,36 @@ variation of a design that might be of interest for performance
 reasons. This would enable implementation level changes without
 compromising on the ability to verify correctness of the design.
 
-In practice, protocol variants rely on a small set of general ``local building
-block'' properties, \eg{} messages always get from source to destination or
-that the local cache's reaction to receiving a protocol message results in the
-appropriate messages being sent, the appropriate local state being changed \etc{}.
-% about parts of the
-%design to be true for the full system correctness.
-These properties are easily verifiable since they correspond to a small
-partition of the system, for instance a single cache.
-The details of how these properties hold vary depending on the precise design
-variant. For instance, the reason why some property holds, like the
-point-to-point FIFO ordering for messages transferred between two nodes,
-depends on the type of network; the proof will be very different for a mesh
+In practice, protocol variants rely on a small set of general ``local
+building block'' properties, \eg{} messages always get from source to
+destination or that the local cache's reaction to receiving a protocol
+message results in the appropriate messages being sent, the
+appropriate local state being changed \etc{}.  These properties are
+easily verifiable since they correspond to a small partition of the
+system, for instance a single cache.  The details of how these
+properties hold vary depending on the precise design variant. For
+instance, the reason why some property holds, like the point-to-point
+FIFO ordering for messages transferred between two nodes, depends on
+the type of network; the proof will be very different for a mesh
 network compared to a point-to-point network.
 
-In this paper, we describe an approach to provide this proof framework for any
-particular cache coherence protocol via the example of a MSI-style protocol and
-show how it can be extended to other protocols like MESI and MOESI. We show how
-the modular structure of the proof and design can be shared and how
-modification of micro-archtectural aspects of design directly translates to
-just reverification of our local building block properties. We use Coq for our
-proof framework. We also show how an atomic action based MSI protocol
-description can be directly transliterated into an Inductive definition in Coq,
-and verify its local building block properties formally, thus completing the
-picture.
+In this paper, we describe an approach to provide this proof framework
+for any particular cache coherence protocol via the example of a
+MSI-style protocol and show how it can be extended to other protocols
+like MESI and MOESI. We show how the modular structure of the proof
+and design can be shared and how modification of microarchitectural
+aspects of design directly translates to just reverification of our
+local building block properties. We use Coq for our proof
+framework. We also show how an atomic action based MSI protocol
+description can be directly transliterated into an Inductive
+definition in Coq, and verify its local building block properties
+formally, thus completing the picture.
+
+\noindent\textbf{Paper Outline}. In Section~\ref{Sec:Background} we
+discuss our notion of correctness for our cache coherence protocol
+framework. We discuss our MSI protocol example and its implementation
+in Section~\ref{Sec:Protocol}. In Section~\ref{Sec:Proof} we discuss
+the structuring of our proof framework and verification of the base
+protocol. We show implementation refinments in
+Section~\ref{Sec:Refinements} and conclude with a general discussion
+of the applicability of our technique.
