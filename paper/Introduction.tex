@@ -18,40 +18,42 @@ times. Second, once the protocol has been verified it is handed to
 hardware experts who fill in the missing implementation details and
 realize it at the Register Transfer Level (RTL) of gates, wires, and
 registers. This involves further breaking down of local micro-operations to
-make it realizable in hardware. This effort is not a one time translation, as
+make it realizable in hardware. This effort is not a one-time translation, as
 performance properties are not easily estimated; a significant amount of
 performance testing is requires to select a good implementation. 
 
-From a methodological perspective, this two step process represent a
-significant methodological failure. We spent a significant amount of
-time verifying the protocol and then invalidate any correctness
-guarantees to the implementation by performing not only a non-trivial
-translation from the protocol representation to hardware, but also
-the refinement to add missing implementation details.
+From a methodological perspective, this two-step process represent a
+significant methodological failure. The significant effort of
+verification is effectively lost by the concurrent non-trivial tasks
+of translation from the protocol representation to a hardware
+description and the necessary refinement to add missing implementation
+details to the protocol. 
 
 Because verified protocols are often described via Term Rewrite
-Systems (TRS).  it was shown by Dave \etal{} that a verified protocol
+Systems (TRS). It was shown by Dave
+\etal{}~\cite{DNA:CoherenceImplementation} that a verified protocol
 could be transliterated into Bluespec, a hardware description language
 based on Guarded Atomic Actions, a restriction of
-TRS~\cite{Hoe:TCAD,DNA:CoherenceImplementation}. This reduces the
-correctness of the implementation to the correctness of the protocol,
-effectively removing any implementation bugs. Though in the current
-versions of the Bluespec language, each atomic action corresponds to
-one hardware clock cycle, there has been some work to reduce this
-restriction~\cite{Karczmarek}.
+TRS~\cite{Hoe:TCAD}. This reduces the correctness of the
+implementation to the correctness of the protocol, effectively
+removing any implementation bugs. While the current Bluespec compiler
+has certain restrictions which limit the expressiveness of certain
+operations \eg{} fairness is not guaranteed, atomic actions are always
+implemented in a single cycle, work has been done to remove these
+restrictions~\cite{DNA:CoherenceImplementation, Karczmarek}.
 
+While better, this approach of protocol transliteration has
+flaws. Design of a hardware system requires many tweaks to reach
+optimal performance as one cannot practically know the correct
+low-level hardware results without evaluating the low-level
+representation.  Each of these changes can potentially breaks
+correctness and a full reverification of correctness is needed in
+principle. As hardware designers are unlikely to have the expertise or
+skill to do make this verification, this greatly weakens the ability
+to carry over our verification guarantee to the design.
 
-The issue with this protocol transliteration approach is that design
-of a hardware system requires many design tweaks to reach optimal
-performance as one cannot practically know the correct low-level
-hardware results without evaluating the low-level representation.
-Each of these changes can potentially breaks correctness and a full
-reverification of correctness is needed in principle. As hardware
-designers are unlikely to have the expertise or skill this effectively
-nullifies the verification guarantee in design.
-
-To fully realize this approach of design we need to provide not just a
-single proof of correctness, but a proof framework covering any
+For this approach to be truly viable, we need not a single proof of
+correctness of a single design, but a proof framework covering any
 variation of a design that might be of interest for performance
 reasons. This would enable implementation level changes without
 compromising on the ability to verify correctness of the design.
@@ -76,10 +78,10 @@ like MESI and MOESI. We show how the modular structure of the proof
 and design can be shared and how modification of microarchitectural
 aspects of design directly translates to just reverification of our
 local building block properties. We use Coq for our proof
-framework. We also show how an atomic action based MSI protocol
+framework. We also show how an atomic-action-based MSI protocol
 description can be directly transliterated into an Inductive
 definition in Coq, and verify its local building block properties
-formally, thus completing the picture.
+formally.
 
 \noindent\textbf{Paper Outline}. In Section~\ref{Sec:Background} we
 discuss our notion of correctness for our cache coherence protocol

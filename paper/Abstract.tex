@@ -1,0 +1,19 @@
+
+Correct implementation of cache coherent systems of high importance in
+industrial use. While significant efforts have been made in formally
+verifying that the underlying protocol, this provides no formal
+guarantees to the actual physically implemented hardware cache
+coherence engine, which are generally derived manually and entail
+nontrivial design-oriented refinements, \eg{} buffer sizing, caching
+policies, multiplexing of distinct communication channels. Previously,
+it was shown that that a formal model protocol description could be
+almost automatically translated into a hardware description allowing
+protocol proof to be reused for the implementation; however, any
+hardware-oriented change to the design resulted in a new protocol and
+required a complete reverification. We propose a metholoogy where the
+proof is structured to be modular and shown mechnically allowing
+designers to make desired changes to the implementation without
+inducing further verification overhead. We show this via the concrete
+example of an hierarchical MSI protocol and many interesting design variants.
+
+
