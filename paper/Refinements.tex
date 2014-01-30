@@ -1,0 +1,44 @@
+\section{Refinements}
+
+In this section we discuss important design changes that would of
+interest to implementors. Most of these require no change at all to
+our framework only a change in how the local properties are proven.
+We have formally proven the correctness of each of these choices, but
+due to space concerns we will not discuss them in their full detail. 
+
+\subsection{Buffer Sizing}
+
+This is trivial as nowhere in the proof have we relied on the size of the buffer
+
+\subsection{Partial Caching}
+
+This is how we can model the full memory with a smaller cache and some tags with the missing addresses being assumed to be \In. 
+
+Proof requires the partial view is sound in comparison to flat model
+when static. Showing upgrades/ downgrades are okay, requires that
+overflow looks like a voluntary rule .
+
+\subsection{Pair-wise Communication Channels}
+
+In industrial grade implementations, these channels are generally
+implemented logically over an interconnect network which requires
+additional verification to show deadlock avoidance and starvation
+freedom.  This introduces additional verification requirements to
+avoid deadlock and starvation. Though we have proved these results for
+a general interconnect network as opposed to a point-to-point
+connection between caches, we omit the formal discussion of deadlock
+and starvation freedom in this paper because of lack of space. We will
+informally discuss how deadlock and starvation freedom properties are
+proved for our system.
+
+* Actually making each cache structure a cache not a perfect copy
+* Adding delays / buffering
+
+\subsection{Communication Fabric}
+
+Requires we prove the communication channel can always move
+messages. Trivial in p2p setting, but for grids requires some
+nontrivial understanding of routing protocol.
+
+\subsection{Protocol}
+
