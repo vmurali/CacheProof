@@ -1,44 +1,49 @@
 \section{System}
 \label{sec:System}
 
-We have chosen as our concrete example is a multi-step hierarchical
-MSI protocol~\cite{MSI}. Conceptually, our cache coherence system is
+We have chosen as our concrete example is a hierarchical
+MSI protocol~\cite{MSI}. As we will
+discuss later, this can naturally extended to MESI and MOESI based protocols.
+Conceptually, our cache coherence system is
 organized as in a tree-like structure with the root node as the main
 memory, the leaves as the last local cache for individual processors
 interfaces and the remaining nodes as intermediate cache structures
 (see Figure~\ref{hier}). Whether a cache is a leaf or not is denoted
-by the relation \leaf$(c)$.
+by the relation \leaf$(c)$.  The relation $\parent(c, p)$
+denotes that $p$ is the parent of cache $c$.
 
 Input and output happen at the leaves in the form of memory requests
-issued by the associated processor $c$. These will be represented by
-an unbounded input and output arrays and position value denoted
-$c.\pos$, which represents the position of the next request to
-process; it is set to $0$ initially.
+issued by the associated processor. These will be represented by
+unbounded input and output arrays. For each leaf $c$, $c.\pos$ represents the
+position of the next request to process; it is set to $0$ initially.
 
-In the MSI protocol, each node maintains the apermission state for
+Each node maintains the a permission state for
 each address, denoting what operations may be performed on the
 data. An address may be in the modified state (\Mo) representing that
 it may be both read and modified, or in the shared state (\Sh) where
 it may only be read, or in the Invalid state (\In), meaning it can be
 neither modified or read. This forms a natural total order of
-permissions (\In $<$ \Sh $<$ \Mo). As we will discuss later, this can
-naturally extended to MESI and MOESI based protocols.
+permissions ($\In < \Sh < \Mo$). For leaf caches, the meaning of these
+permission states is straightfoward, a load request can be processed only if the
+leaf is at least in the \Sh{} state, and a store request can be processed only
+if it is in the \Mo{} state. For the non-leaf cache, these states denote the
+highest state present in the subtree rooted at this cache, denoting that some
+cache in the subtree has the specified permissions (we are modeling inclusive
+caches). Of course, all these invariants have to be enforced by the protocol.
 
 Each cache in addition to the data associated with each address $a$
-(denoted by $c.\data[a]$). It also has a \emph{coherence state}
+(denoted by $c.\data[a]$) also has a \emph{coherence state}
 associated with the address (denoted by $c.\state[a]$) holding the
-permissions on that address (\Mo, \Sh, or \In). At this level, each
-node has a complete cache of the entire memory system; we will
-restrict these caches to be partial as a refinement later. Initially,
-all address in each cache is in the \In state, save for those in the
-root cache which are in the \Mo state.
+permissions on that address (\Mo, \Sh, or \In). If a cache does not have a
+particular location, the it is equivalent to its permission being \In.
+Initially, all addresses in each cache is in the \In state, save for those in
+the root cache which are in the \Mo state.
 
 Non-leaf nodes also keep a copy of the coherence state of each of its
 children in a \emph{directory}, which contains a the state of each of
 its children caches for a particular address.  For a non-leaf cache
 $p$, the state in its directory for child cache $c$ is denoted by
-$p.\dstate[c][a]$, for address $a$.  The relation $\parent(c, p)$
-denotes that $p$ is the parent of cache $c$.  This local version may
+$p.\dstate[c][a]$, for address $a$. This local version may
 be stale, in that the child may have changed it state but the parent
 has not yet updated itself. However, the parent state will always be a
 conservative overapproximation of the child state.
@@ -74,9 +79,6 @@ availability of any message in the channel ($\avail(ch)$).  Each of
 these channels start out empty \ie $\forall ch, \neg \avail(ch)$,
 initially.
 
-%The messages transmitted between the processor and the L1 cache
-%is the same as in Figure \ref{req-resp} (except for the omission of the \proc{}
-%field, which is indicated by the channel's index).
 \begin{figure}
 \begin{subfigure}{6.8cm}
 \begin{tabular}{|lp{5.8cm}|}
@@ -125,13 +127,11 @@ is waiting to make (denoted by $c.\waitS[a]$ for address
 $a$). Similarly, each non-leaf cache has the corresponding wait states
 for its directory.  $p.\dwait[c][a]$ denotes that cache $p$ is waiting
 for a response from its child $c$ for address $a$, and
-$p.\dwaitS[c][a]$ denotes the state to which that cache $p$ is waiting
-for $c$ to downgrade. 
-
-%% Both \wait{} and \dwait{} are \False{} initially
-%% for each of the caches, and each of the addresses, because no cache is
-%% waiting for any response from either its child or its parent
-%% initially.
+$p.\dwaitS[c][a]$ denotes the state to which $p$ is waiting
+for $c$ to downgrade. Both \wait{} and \dwait{} are \False{} initially
+for each of the caches, and each of the addresses, because no cache is
+waiting for any response from either its child or its parent
+initially.
 
 The behavior of the system are described via atomic state transitions.
 These transitions have two parts: the guard dictating when the
@@ -301,7 +301,7 @@ Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,%$\\
 & $c.\state[a] \Leftarrow x$;\\
 \hline
 \hline
-\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildRecvBadReq}$(c)$: Child $c$ receiving a request from its parent and has already downgraded}\\
+\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildDropReq}$(c)$: Child $c$ receiving a request from its parent and has already downgraded}\\
 \hline
 Guard: & 
 %$\avail(\pc[c]) \wedge \mylet q := \first(\pc[c]) \myin q.\typ = \Req \wedge%$\\

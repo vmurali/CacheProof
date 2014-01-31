@@ -1,10 +1,20 @@
 
 Correct implementation of cache coherent systems of high importance in
-industrial use. While significant efforts have been made in formally
-verifying that the underlying protocol, this provides no formal
-guarantees to the actual physically implemented hardware cache
-coherence engine, which are generally derived manually and entail
-nontrivial design-oriented refinements, \eg{} buffer sizing, caching
+industrial use. 
+
+
+
+Model checking techniques which are typically used to verify
+the protocols require both scaling down and simplifying the system rather than
+modeling the full implementation.
+
+ can be used to tackle these
+issues by providing parameterized proofs. 
+We use the Coq theorem prover to 
+
+We use the Coq theorem
+prover to provide a modular proof of safety properties for two distinct cache coherence
+protocols (MSI and MOESI). We identify a set of invariants which all these protocols obey  all of which obey common invariants. We use the example of an MSI protocol specified as a set of local atomic transitio. We also show how large portions of this
 policies, multiplexing of distinct communication channels. Previously,
 it was shown that that a formal model protocol description could be
 almost automatically translated into a hardware description allowing
