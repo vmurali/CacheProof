@@ -31,9 +31,9 @@ details to the protocol.
 
 Because verified protocols are often described via Term Rewrite
 Systems (TRS). It was shown by Dave
-\etal{}~\cite{DNA:CoherenceImplementation} that a verified protocol
-could be transliterated into Bluespec, a hardware description language
-based on Guarded Atomic Actions, a restriction of
+\etal{}~\cite{DNA:CoherenceImplementation} that such a verified
+protocol could be transliterated into Bluespec, a hardware description
+language based on Guarded Atomic Actions, a restriction of
 TRS~\cite{Hoe:TCAD}. This reduces the correctness of the
 implementation to the correctness of the protocol, effectively
 removing any implementation bugs. While the current Bluespec compiler
@@ -52,11 +52,12 @@ principle. As hardware designers are unlikely to have the expertise or
 skill to do make this verification, this greatly weakens the ability
 to carry over our verification guarantee to the design.
 
-For this approach to be truly viable, we need not a single proof of
-correctness of a single design, but a proof framework covering any
-variation of a design that might be of interest for performance
-reasons. This would enable implementation level changes without
-compromising on the ability to verify correctness of the design.
+For this approach to be truly viable, designers cannot be handed a
+single proof of correctnessof a single design; rather, they need a
+proof framework covering any variation of a design that might be of
+interest for performance reasons. This would enable implementation
+level changes without compromising on the ability to verify
+correctness of the design.
 
 In practice, protocol variants rely on a small set of general ``local
 building block'' properties, \eg{} messages always get from source to
