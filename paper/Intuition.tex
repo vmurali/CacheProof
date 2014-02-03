@@ -149,14 +149,82 @@ of caches.
 \item A parent sends a response to a child iff it upgrades the directory of
 that child.
 \item The state and the directory can change only on sending and receiving a
-response.
+response; the receiving entity changes its value to that of the sending entity
+immediately after sending the response message.
+\item 
 \end{enumerate}
 \label{stateChange}
 \end{inv}
 
+\begin{inv}
+\textit{respFIFO}: Responses are received in the order in which they are sent,
+for a source-destination pair, for the same address.
+\label{respFIFO}
+\end{inv}
+
+\begin{inv}
+\textit{noCross}: A response from a cache to its child for an address can not
+be in transit while another response from the same child to the parent for the
+same address is in transit.
+\label{noCross}
+\end{inv}
+
+Invariant \textit{conservative} at any time $t$ for child cache $c$ and parent
+$p$ for an address $a$ can be proved as follows. Consider the case when
+$c.\state[a]$ never changed before $t$, then $c.\state[a] = \In$ because of the
+initialization conditions described in Section \ref{System}. No response would
+have been sent by $c$ to its parent for address $a$ before $t$, otherwise
+$c.\state[a]$ would have changed. Thus the parent would not have received any
+response from $c$, $p.\dstate[c][a]$ could have changed only by sending a
+response to $c$ which can only upgrade it from the initial value of $\In$. Thus
+at $t$, $p.\dstate[c][a] \ge c.state[a]$.
+
+Now consider the case when $c.\state[a]$ last changed at $t'$ such that $t' <
+t$ because of receiving a response from $p$, sent at $t''$. $c.\state[a]$ at
+$t'+1 = p.\dstate[c][a]$ at $t''+1$ because of Invariant \textit{stateChange}.
+$c$ neiter sends nor receives a response at any $t_i$ such that $t' < t_i < t$.
+If $p$ received a response at some $t_m$ such that $t'' < t_m < t$,
+then it would either violate Invariant \textit{noCross}, or the fact that no
+message was sent between $t' < t_i < t$ from $c$. Thus, $p.\dstate[c][a]$ at $t
+\ge p.\dstate[c][a]$ at $t''+1$ because any message sent can only upgrade
+$p.\dstate[a]$. This ensures that Invariant \textit{conservative} is obeyed. We
+can similarly prove this invariant holds when $c.\state[a]$ last changes before
+$t$ by sending a response.
+
 Invariant \textit{stateChange} can be proved directly from the atomic
 transitions for MSI. Other protocols have similar atomic transitions obeying
 these invariants.
+
+Invariant \textit{respFIFO} can be enforced by the interconnect network which
+ensures a FIFO ordering for messages sent between a pair of nodes.
+
+%Invariant \textit{respFIFO} is known as point-to-point FIFO ordering in the
+%Network-on-Chip NoC community, and is enforced by common routing algorithms
+%like Dimension-ordered routing \cite{dimension}. Only the parent-to-child
+%channels need to be FIFO ordered, the FIFO ordering in child-to-parent channels
+%can be enforced using the protocol itself.
+
+---------------------------------------------
+
+\begin{inv}
+\textit{noTransitEqual}: When no response is in transit for an address, then
+the state of a cache for that address is the same as its parent's directory for
+that cache and address.
+\label{noTransitEqual}
+\end{inv}
+
+Proving Invariants \textit{inTransitCondition} and \textit{noTransitEqual},
+needs two further invariants, along with Invariant \textit{stateChange}.
+
+Invariant \textit{inTransitCondition} can be proved as follows. Whenever a
+response from a child to the parent is in transit, the parent can not send any
+response to the child, or it will violate Invariant \textit{noCross}. Using the fact that 
+
+
+
+
+
+
 
 \begin{inv}
 \textit{inTransitCondition}:
@@ -173,45 +241,6 @@ $t$.
 \end{enumerate}
 \label{inTransitCondition}
 \end{inv}
-
-\begin{inv}
-\textit{noTransitEqual}: When no response is in transit for an address, then
-the state of a cache for that address is the same as its parent's directory for
-that cache and address.
-\label{noTransitEqual}
-\end{inv}
-
-Using Invariants \ref{stateChange} to \ref{noTransitEqual}, it is easy to prove
-Invariant \textit{conservative}. If no response is in flight for an address, then
-the parent's directory state of the cache for the address matches that of the
-cache's state for that address. If there is a response from parent to child in
-flight, then the corresponding directory at the parent will be no less than the
-directory immediately after the response was sent and the state of the child
-will be no greater than the directory immediately before the response was sent
-(by Invariant \textit{inTransitCondition}). By Invariant \textit{stateChange}, the
-parent upgrades the directory when sending the response, thus conforming to
-Invariant \textit{conservative}. Similarly, it can be shown that if there is a
-response from child to parent, Invariant \textit{conservative} will hold.
-
-Proving Invariants \textit{inTransitCondition} and \textit{noTransitEqual},
-needs two further invariants, along with Invariant \textit{stateChange}.
-
-\begin{inv}
-\textit{respFIFO}: Responses are received in the order in which they are sent,
-for a source-destination pair.
-\label{respFIFO}
-\end{inv}
-
-\begin{inv}
-\textit{noCross}: A response from a cache to its child for an address can not
-be in transit while another response from the same child to the parent for the
-same address is in transit.
-\label{noCross}
-\end{inv}
-
-Invariant \textit{inTransitCondition} can be proved as follows. Whenever a
-response from a child to the parent is in transit, the parent can not send any
-response to the child, or it will violate Invariant \textit{noCross}. Using the fact that 
 
 \begin{inv}
 \textit{prevState}: When a response is received from a child to the parent
