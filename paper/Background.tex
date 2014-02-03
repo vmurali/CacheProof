@@ -1,4 +1,5 @@
 \section{Correctness of our Cache Coherence System}
+\label{Background}
 
 Before we can discuss our protocol framework and it's verification we
 must first establish exactly what it means for a system to be
@@ -176,22 +177,21 @@ initial value for the address. This is indicated by the proposition
 \begin{defn}
 \small
 \begin{multline*}
-\textit{initialValue} := \lambda (r \in \Response) \Rightarrow
-(\reqFn (r.\labelR)).\desc = \Ld @->\\ r.\dataR = \initData (r.\addrQ) \wedge 
-\forall (r' \in \Response), 0 \le r'.\timeR < r.\timeR @->\\
-\neg ((\reqFn (r'.\labelR)).\addrQ = (\reqFn (r.\labelR)).\addrQ \wedge (\reqFn (r'.\labelR)).\desc = \St)
+\textit{initialValue} := \lambda (a \in Addr)\; (t \in \mathbb{N}) \; (d \in Data)\Rightarrow
+d = \initData (a) \wedge \\
+\forall (r' \in \Response), 0 \le r'.\timeR < t @->\\
+\neg ((\reqFn (r'.\labelR)).\addrQ = t \wedge (\reqFn (r'.\labelR)).\desc = \St)
 \end{multline*}
 \end{defn}
 
 \begin{defn}
 \small
 \begin{multline*}
-\textit{initialValue} := \lambda (r \in \Response) \Rightarrow
-(\reqFn (r.\labelR)).\desc = \Ld @->
-\exists (r_m \in \Response),\\ r.\dataR = (\reqFn (r_m.\labelR)).\dataQ \wedge 
-(\reqFn (r_m.\labelR)).\desc = \St \\ \wedge (\reqFn (r_m.\labelR)).\addrQ = (\reqFn (r.\labelR)).\addrQ\\ \wedge
-\forall (r' \in \Response), r_m.\timeR \le r'.\timeR < r.\timeR @->\\
-\neg ((\reqFn (r'.\labelR)).\addrQ = (\reqFn (r.\labelR)).\addrQ \wedge (\reqFn (r'.\labelR)).\desc = \St)
+\textit{lastEarlierValue} := \lambda (a \in Addr)\; (t \in \mathbb{N}) \; (d \in Data)\Rightarrow
+\exists (r_m \in \Response),\\ d = (\reqFn (r_m.\labelR)).\dataQ \wedge 
+(\reqFn (r_m.\labelR)).\desc = \St \wedge\\ (\reqFn (r_m.\labelR)).\addrQ = a \wedge
+\forall (r' \in \Response), r_m.\timeR \le r'.\timeR < t @->\\
+\neg ((\reqFn (r'.\labelR)).\addrQ = a \wedge (\reqFn (r'.\labelR)).\desc = \St)
 \end{multline*}
 \end{defn}
 
@@ -201,7 +201,8 @@ Using the above definitions, we can define the store-atomicity theorem as follow
 \begin{multline*}
 storeAtomicity := 
 \textit{uniqRespLabels} \wedge
-\textit{uniqStTimes} \wedge \textit{localOrdering}\\ \wedge 
-(\forall (r \in \Response), \textit{initialValue}(r) \vee \textit{lastEarlierValue}(r))
+\textit{uniqStTimes} \wedge \textit{localOrdering} \wedge \\
+(\forall (r \in \Response), \mylet q := \reqFn(r.\labelR) \myin q.\desc = \Ld \wedge \\
+(\textit{initialValue}(q.\addrQ, r.\timeR, r.\dataR) \vee \textit{lastEarlierValue}(q.\addrQ, r.\timeR, r.\dataR)))
 \end{multline*}
 \end{thm}

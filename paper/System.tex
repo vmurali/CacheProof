@@ -13,8 +13,9 @@ by the relation \leaf$(c)$.  The relation $\parent(c, p)$
 denotes that $p$ is the parent of cache $c$.
 
 Input and output happen at the leaves in the form of memory requests
-issued by the associated processor. These will be represented by
-unbounded input and output arrays. For each leaf $c$, $c.\pos$ represents the
+issued by and responses issued to the associated processor. These will be
+represented by two mappings one from $\mathbb{N}$ to requests and the other
+from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
 position of the next request to process; it is set to $0$ initially.
 
 Each node maintains the a permission state for
@@ -154,7 +155,8 @@ requested, it sends an upgrade response to the cache, while changing the
 appropriate directory state. Compatibility of an upgrade request with respect
 to a cache's siblings can be defined as follows:
 \begin{multline*}
-\compat = \lambda (p \in Cache) (c \in Cache) (a \in \textit{Addr}) (s \in \{\Mo, \Sh, \In\}) \Rightarrow \forall i, i \ne c @-> \\
+\compat = \lambda (p \in Cache) (c \in Cache) (a \in \textit{Addr}) (s \in
+\{\Mo, \Sh, \In\}) \Rightarrow\\ \forall i, i \ne c @->
 \mylet s_i := p.\dstate[i][a] \myin\\
  (s = \Mo @-> s_i = \In) \wedge (s = \Sh @-> s_i = \Sh) \wedge (s = \In @-> s_i = \Mo)
 \end{multline*}

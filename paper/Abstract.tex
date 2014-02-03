@@ -1,29 +1,13 @@
-
-Correct implementation of cache coherent systems of high importance in
-industrial use. 
-
-
-
-Model checking techniques which are typically used to verify
-the protocols require both scaling down and simplifying the system rather than
-modeling the full implementation.
-
- can be used to tackle these
-issues by providing parameterized proofs. 
-We use the Coq theorem prover to 
-
-We use the Coq theorem
-prover to provide a modular proof of safety properties for two distinct cache coherence
-protocols (MSI and MOESI). We identify a set of invariants which all these protocols obey  all of which obey common invariants. We use the example of an MSI protocol specified as a set of local atomic transitio. We also show how large portions of this
-policies, multiplexing of distinct communication channels. Previously,
-it was shown that that a formal model protocol description could be
-almost automatically translated into a hardware description allowing
-protocol proof to be reused for the implementation; however, any
-hardware-oriented change to the design resulted in a new protocol and
-required a complete reverification. We propose a metholoogy where the
-proof is structured to be modular and shown mechnically allowing
-designers to make desired changes to the implementation without
-inducing further verification overhead. We show this via the concrete
-example of an hierarchical MSI protocol and many interesting design variants.
-
+Correct implementation of cache coherent systems is of high importance in
+industrial use. Model-checking is inadequate for verifying a large system with
+hierarchical caches because of its size and complexity. We provide a
+theorem-prover verified proof for the safety properties of a size-parameterized
+hierarchical MSI-based coherent system. The system is specified in terms of
+atomic transitions accessing only local state.  Previously, it has been shown
+that these atomic transitions can be translated automatically into efficient
+hardware. Verifying the specification based on atomic transitions therefore
+guarantees the correctness of the actual implementation.
+The proof is built in a modular fashion, identifying key invariants common with
+other protocols like MESI, MOSI, \etc. We informally show how these other
+protocols can be proved reusing modules from the proof of the MSI protocol.
 
