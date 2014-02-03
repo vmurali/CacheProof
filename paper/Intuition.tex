@@ -138,9 +138,69 @@ data (by Invariant \textit{noTransitWrite}), which means the data is the latest
 value by induction hypothesis, so the new data it receives at time $t$ is the
 latest value, making the clean cache at time $t+1$ have the latest value.
 
-Any earlier clean cache has the latestValue, and data is
-obtained from a clean cache
+Invariant \ref{conservative} can be proved by
+further breaking them into the following invariants between a parent-child pair
+of caches.
 
+\begin{inv}
+\textit{stateChange}:
+\begin{enumerate}
+\item A child sends a response to its parent iff it downgrades its state.
+\item A parent sends a response to a child iff it upgrades the directory of
+that child.
+\item The state and the directory can change only on sending and receiving a
+response.
+\end{enumerate}
+\label{stateChange}
+\end{inv}
+
+Invariant \textit{stateChange} can be proved directly from the atomic
+transitions for MSI. Other protocols have similar atomic transitions obeying
+these invariants.
+
+\begin{inv}
+\textit{inTransitChange}:
+\begin{enumerate}
+\item When a response is sent from a child $c$ at time $t$ for an address $a$,
+and has not been received by the parent $p$ before time $t'$, $\forall t_i, t <
+t_i \le t' @-> c.\state[a]$ at $t_i \le c.\state[a]$ at $t+1$ and $\forall t_i,
+t \le t_i \le t' @->$ $p.\dstate[c][a]$ at $t_i \ge c.\state[a]$ at $t$.
+\item When a response is sent from parent $p$ at time $t$ for an address $a$,
+and has not been received by its child $c$ before time $t'$, $\forall t_i, t <
+t_i \le t' @-> p.\dstate[c][a]$ at $t_i \ge p.\dstate[c][a]$ at $t+1$ and
+$\forall t_i, t \le t_i \le t' @->$ $c.\state[a]$ at $t_i \le p.\dstate[c][a]$ at
+$t$.
+\end{enumerate}
+\label{inTransitChange}
+\end{inv}
+
+\begin{inv}
+\textit{noTransitEqual}: When no response is in transit for an address, then
+the state of a cache for that address is the same as its parent's directory for
+that cache and address.
+\label{noTransitEqual}
+\end{inv}
+
+Using Invariants \ref{stateChange} to \ref{noTransit}, it is easy to prove
+Invariant \ref{conservative}. If no response is in flight for an address, then
+the parent's directory state of the cache for the address matches that of the
+cache's state for that address. If there is a response from parent to child in
+flight, then the corresponding directory at the parent will be no less than the
+directory immediately after the response was sent and the state of the child
+will be no greater than the directory immediately before the response was sent
+(by Invariant \textit{inTransitChange}). By Invariant \textit{stateChange}, the
+parent upgrades the directory when sending the response, thus conforming to
+Invariant \textit{conservative}. Similarly, it can be shown that if there is a
+response from child to parent, Invariant \textit{coservative} will hold.
+
+\begin{inv}
+\textit{prevState}: When a response is received from a child to the parent
+(parent to child) for an address, the state of the child for that address at
+the time of sending (receiving) the response is the same as the parent's
+directory for that child and address at the time of receiving (sending) the
+response.
+\label{prevState}
+\end{inv}
 
 %Top
 %a) conservative: forall p c a t, parent c p -> dir p c a t >= state c a t
