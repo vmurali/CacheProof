@@ -25,7 +25,7 @@ it may be both read and modified, or in the shared state (\Sh) where
 it may only be read, or in the Invalid state (\In), meaning it can be
 neither modified or read. This forms a natural total order of
 permissions ($\In < \Sh < \Mo$). For leaf caches, the meaning of these
-permission states is straightfoward, a load request can be processed only if the
+permission states is straightforward, a load request can be processed only if the
 leaf is at least in the \Sh{} state, and a store request can be processed only
 if it is in the \Mo{} state. For the non-leaf cache, these states denote the
 highest state present in the subtree rooted at this cache, denoting that some
@@ -42,12 +42,12 @@ the root cache which are in the \Mo state.
 
 Non-leaf nodes also keep a copy of the coherence state of each of its
 children in a \emph{directory}, which contains a the state of each of
-its children caches for a particular address.  For a non-leaf cache
+its children caches for a particular address. For a non-leaf cache
 $p$, the state in its directory for child cache $c$ is denoted by
-$p.\dstate[c][a]$, for address $a$. This local version may
-be stale, in that the child may have changed it state but the parent
-has not yet updated itself. However, the parent state will always be a
-conservative overapproximation of the child state.
+$p.\dstate[c][a]$, for address $a$. This local version may be stale,
+in that the child may have changed it state but the parent has not yet
+updated itself. However, the parent state will always be a
+conservative over-approximation of the child state.
 
 In order for a cache to change to a higher state for a given address,
 \ie{} \emph{upgrade}, it has to \emph{request} its parent.  For a
@@ -140,7 +140,7 @@ transition can fire, and the action defining how the state of the
 system changes when the transition happens. These transitions or \emph{guarded
 atomic actions} logically happen one by one, making the overall behavior of the
 system well defined. Figure~\ref{trans} gives the atomic transitions for a
-cache coherent memory subsystem. The actions in the transitions repesent only
+cache coherent memory subsystem. The actions in the transitions represent only
 the specific system states that change. We use $x \Leftarrow y$ to indicate
 setting of a specific state $x$ of the overall system to value $y$ because of a
 transition.
@@ -161,7 +161,7 @@ to a cache's siblings can be defined as follows:
  (s = \Mo @-> s_i = \In) \wedge (s = \Sh @-> s_i = \Sh) \wedge (s = \In @-> s_i = \Mo)
 \end{multline*}
 Finally, the child cache receives the response from the parent (ChildRecvResp)
-and sets its state while reseting its wait state if the desired upgrade is
+and sets its state while resetting its wait state if the desired upgrade is
 indicated by the response.
 
 Figure~\ref{parentside} shows the transitions that result in a downgrade of the
@@ -171,7 +171,7 @@ request is received by the child (ChildRecvReq), and if the state of each of
 the child's own children is not greater than the requested downgrade, the cache
 downgrades its state and sends a notification response to the parent. Finally,
 the parent receives the response from the cache (ParentRecvResp) and sets the
-appropriate directory state while reseting the appropriate directory wait state
+appropriate directory state while resetting the appropriate directory wait state
 if the desired downgrade is indicated by the response.
 
 Figure~\ref{childextra} shows transitions that happen in a non-root cache
@@ -358,30 +358,3 @@ register array (like a cache) can actually take several hardware clock cycles,
 though logically it is a single transition.  Karczmarek \etal~\cite{Karczmarek}
 has provided a scheme to convert atomic transitions into synchronous hardware
 in which each transition can span several clock cycles.
-
-
-
-
-
-
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
-
-%In addition, the leaf caches (called L1 caches usually)
-%communicate with the processor through two channels: a) \cproc{} \textbf{FIFO}
-%channel to transmit requests from the processor to L1 cache, and b) \procc{}
-%\textbf{FIFO} channel to transmit responses from the L1 cache to the processor.
-%There is exactly one of \cproc{} and \procc{} channels between the L1 and the processor.
-
-
-
-
-
-
