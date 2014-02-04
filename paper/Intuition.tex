@@ -1,13 +1,13 @@
-\section{Intuition}
-\label{Sec:ProofStructure}
+\section{Proof of MSI protocol being sound wrt Store atomicity}
+\label{safety}
 
-In this section, we present the proof structure for our MSI-based cache
-coherence protocol of Figure \ref{trans}. Specifically, we formally reduce the
-proof of the store atomicity theorem for the whole system to the proof of a set
-of invariants. In order to prove these invariants we introduce the main
-``intuition'' behind the correctness of the protocol. This intuition is not
-restricted to the MSI-based protocol; Section \ref{Sec:Refinements} shows that
-it applies to other protocols like MOSI.
+In this section, we present the proof structure for the soundness property of our
+MSI-based cache coherence protocol of Figure \ref{trans}. Specifically, we
+formally reduce the proof of the store atomicity theorem for the whole system
+to the proof of a set of invariants. In order to prove these invariants we
+introduce the main ``intuition'' behind the correctness of the protocol. This
+intuition is not restricted to the MSI-based protocol; Section
+\ref{Sec:Refinements} shows that it applies to other protocols like MOSI.
 
 Our invariants hold after any series of executions of the component
 transactions of our design reachable from the initial state. We use

@@ -1,44 +1,66 @@
 \section{Refinements}
+\label{sec:Refinements}
 
-In this section we discuss important design changes that would of
-interest to implementors. Most of these require no change at all to
-our framework only a change in how the local properties are proven.
-We have formally proven the correctness of each of these choices, but
-due to space concerns we will not discuss them in their full detail. 
+In this section we discuss important design changes that would of interest to
+implementors. Most of these require no change at all to our framework only a
+change in how certain invariants properties hold/are proven.
+%We have formally proven the
+%correctness of each of these choices in Coq, but due to space concerns we will
+%not discuss them in their full detail. 
 
-\subsection{Buffer Sizing}
+\subsection{Implementing unbounded pair-wise communication channels in real hardware}
 
-This is trivial as nowhere in the proof have we relied on the size of the buffer
+In order to implement the unbounded pair-wise communication channels that we
+assumed in Figure \ref{trans} and throughout Section \ref{safety}, we need
+to prove that a) finite buffers are sufficient, b) provide a mapping from
+pair-wise communication channels to an interconnect network such as a ring or a
+mesh and c) prove that such a mapping does not cause deadlocks.
 
-\subsection{Partial Caching}
+In order to prove that finite buffers are sufficient to avoid deadlocks, it is
+sufficient to observe that the protocol obeys weak forward progress. Therefore
+some message will be consumed by the system eventually if it exists.
 
-This is how we can model the full memory with a smaller cache and some tags with the missing addresses being assumed to be \In. 
+We will now describe the mapping from pair-wise communication channels to
+interconnnect network in greater detail, and informal arguments about why the
+mapping is necessary and sufficient.
 
-Proof requires the partial view is sound in comparison to flat model
-when static. Showing upgrades/ downgrades are okay, requires that
-overflow looks like a voluntary rule .
+\begin{enumerate}
+\item Each level in the cache hierarchy has a single separate virtual network
+for requests from child to parent. This need not maintain FIFO order.
+\item Either
+\begin{enumerate}
+\item there are 2 separate virtual networks overall (shared by all the levels)
+for responses from child to parent. The first network carries responses sent by
+children who were in state \Mo{} when sending the response and the second
+carries response sent by children in state \Sh{} when sending the response.
+Neither of these two virtual networks need to maintain FIFO order or
+\item there is a single virtual network overall (shared by all the levels) for
+responses from child to parent, which maintains a FIFO order.
+\end{enumerate}
+\item Each level in the cache hierarchy has a single separate virtual network
+for both request and response messages from the parent to the child. This
+network has to maintain FIFO order between messages with the same
+source-destination pair.
+\end{enumerate}
 
-\subsection{Pair-wise Communication Channels}
+The intuition behind this virtual network allotment is as follows. Requests and
+responses sent by a parent to its child need to maintain FIFO order, in order
+to satisfy Invariant \label{noCross}. Any response message sent to the parent
+will be drained by execution of either ParentRecvResp transitions, hence these
+messages can share a virtual network across the whole hierarchy. In the case of
+responses, FIFO property can be enforced at the protocol itself (in fact the
+transitions in Figure \ref{trans} ensures the FIFO property of responses from
+child to parent without requiring the network to provide them). The need for 2
+separate virtual networks is to avoid head of line blocking in case the
+messages go out of order. If FIFO property is maintained, then the messages
+will not go out of order, and hence a single virtual network is sufficient.
+Since any request can generate new requests (unlike responses), the new
+requests should be sent on different virtual networks to prevent deadlocks,
+hence the need for separate virtual channels for requests at each level of the
+hierarchy.
 
-In industrial grade implementations, these channels are generally
-implemented logically over an interconnect network which requires
-additional verification to show deadlock avoidance and starvation
-freedom.  This introduces additional verification requirements to
-avoid deadlock and starvation. Though we have proved these results for
-a general interconnect network as opposed to a point-to-point
-connection between caches, we omit the formal discussion of deadlock
-and starvation freedom in this paper because of lack of space. We will
-informally discuss how deadlock and starvation freedom properties are
-proved for our system.
-
-* Actually making each cache structure a cache not a perfect copy
-* Adding delays / buffering
-
-\subsection{Communication Fabric}
-
-Requires we prove the communication channel can always move
-messages. Trivial in p2p setting, but for grids requires some
-nontrivial understanding of routing protocol.
+We do not provide the formal proofs for the above assertions due to lack of space.
 
 \subsection{Protocol}
-
+We will describe two important protocol variations in which all the invariants
+that we mention in Section \ref{safety} hold.
