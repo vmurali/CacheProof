@@ -1,77 +1,63 @@
-\section{System}
+\section{MSI-based cache coherence protocol}
 \label{sec:System}
 
-We have chosen as our concrete example is a hierarchical
-MSI protocol~\cite{MSI}. As we will
-discuss later, this can naturally extended to MESI and MOESI based protocols.
-Conceptually, our cache coherence system is
-organized as in a tree-like structure with the root node as the main
-memory, the leaves as the last local cache for individual processors
-interfaces and the remaining nodes as intermediate cache structures
-(see Figure~\ref{hier}). Whether a cache is a leaf or not is denoted
-by the relation \leaf$(c)$.  The relation $\parent(c, p)$
-denotes that $p$ is the parent of cache $c$.
+We have chosen as our concrete example is a hierarchical MSI
+protocol~\cite{MSI}. Logically, the system is organized as in a tree-like
+structure with the root connected to the main memory and each leaf interfaced
+with a processor (Figure~\ref{hier}). In the following, $\leaf(c)$ indicates
+that a cache is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
+$c$.
 
-Input and output happen at the leaves in the form of memory requests
-issued by and responses issued to the associated processor. These will be
+Input and output happens at the leaves in the form of memory requests
+issued from and responses issued to the associated processor. These will be
 represented by two mappings one from $\mathbb{N}$ to requests and the other
 from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
 position of the next request to process; it is set to $0$ initially.
 
-Each node maintains the a permission state for
-each address, denoting what operations may be performed on the
-data. An address may be in the modified state (\Mo) representing that
-it may be both read and modified, or in the shared state (\Sh) where
-it may only be read, or in the Invalid state (\In), meaning it can be
-neither modified or read. This forms a natural total order of
-permissions ($\In < \Sh < \Mo$). For leaf caches, the meaning of these
-permission states is straightforward, a load request can be processed only if the
-leaf is at least in the \Sh{} state, and a store request can be processed only
-if it is in the \Mo{} state. For the non-leaf cache, these states denote the
-highest state present in the subtree rooted at this cache, denoting that some
-cache in the subtree has the specified permissions (we are modeling inclusive
-caches). Of course, all these invariants have to be enforced by the protocol.
+Each node maintains a permission state for each address $a$, $c.\state[a]$, in
+addition to the data associated with the address, $c.\data[a]$. The permission
+state denotes which operations may be performed on the data. An address may be
+in the modified state (\Mo) representing that it may be both read and modified,
+in the shared state (\Sh) in which it may only be read, or in the Invalid state
+(\In), indicating that it can be neither modified or read. This forms a natural
+total order of permissions ($\In < \Sh < \Mo$). For a leaf cache, the meaning
+of these permission states is straightforward, a load request can be processed
+only if the leaf is at least in the \Sh{} state, and a store request can be
+processed only if it is in the \Mo{} state. For a non-leaf cache, it denotes
+that no cache in the subtree rooted at that cache has more permissions (we are
+modeling inclusive caches).  If a cache does not have a particular location,
+the it is equivalent to its permission being \In.  Initially, all addresses in
+each cache is in the \In{} state, save for those in the root cache which are in
+the \Mo{} state.
 
-Each cache in addition to the data associated with each address $a$
-(denoted by $c.\data[a]$) also has a \emph{coherence state}
-associated with the address (denoted by $c.\state[a]$) holding the
-permissions on that address (\Mo, \Sh, or \In). If a cache does not have a
-particular location, the it is equivalent to its permission being \In.
-Initially, all addresses in each cache is in the \In state, save for those in
-the root cache which are in the \Mo state.
+%Of course, all these invariants have to be enforced by the protocol.
 
-Non-leaf nodes also keep a copy of the coherence state of each of its
-children in a \emph{directory}, which contains a the state of each of
-its children caches for a particular address. For a non-leaf cache
-$p$, the state in its directory for child cache $c$ is denoted by
-$p.\dstate[c][a]$, for address $a$. This local version may be stale,
-in that the child may have changed it state but the parent has not yet
-updated itself. However, the parent state will always be a
-conservative over-approximation of the child state.
 
-In order for a cache to change to a higher state for a given address,
-\ie{} \emph{upgrade}, it has to \emph{request} its parent.  For a
-cache to change to a lower state, \ie{} \emph{downgrade}, it has to
-notify its parent cache indicating the downgrade -- it uses
-\emph{response} messages for this purpose. Conversely, for a parent
-cache to force a child cache to downgrade the child's state for an
-address (in order to give permissions to a different child cache), or
-equivalently, to downgrade the parent's directory state for the child,
-it has to \emph{request} that child cache to downgrade, and a parent
-can notify a child about upgrading the child's state, or equivalently,
-about upgrading the parent's directory state for the child, by sending
-a \emph{response} message.
+Non-leaf caches also keep a (possibly stale) copy of the permission state of
+each of its children in a \emph{directory} for every address. The directory
+entry for a cache $c$ whose parent is $p$ for address $a$ is denoted by
+$p.\dstate[c][a]$. The directory entry for a cache, for an address is never
+less than the actual cache's permission state for that address.
 
-Each cache is connected to its parent cache using 3 logical FIFO
-connections: a) \cpReq{} channel to transmit requests from the child
-to the parent, b) \cpResp{} channel to transmit responses from the
-child to the parent, and c) \pc{} channel to transmit both request and
-response messages from parent to child. 
+In order for a cache to change to a higher state for a given address, \ie{}
+\emph{upgrade}, it has to \emph{request} its parent.  For changing to a lower
+state, \ie{} \emph{downgrade}, it has to notify its parent of the downgrade
+using a \emph{response} message.  Similarly, for a parent to force a child to
+downgrade for an address (in order to give permissions to a different child),
+or equivalently, to downgrade the parent's directory for the child and address,
+it has to \emph{request} that child to downgrade, and a parent can notify a
+child about upgrading the child's state, or equivalently, about upgrading the
+parent's directory state for the child, by sending a \emph{response} message.
 
-Since we have dedicated channel between each parent-child pair, we
-will index the three channels (\cpReq{}, \cpResp{} and \pc{}) by the
-name of the child that uses that channel (using the notation
-$\cpReq[c]$, \etc for the \cpReq{} channel associated with cache $c$).
+Each cache is connected to its parent cache using 3 logical FIFO connections:
+a) \cpReq{} channel to transmit requests from the child to the parent, b)
+\cpResp{} channel to transmit responses from the child to the parent, and c)
+\pc{} channel to transmit both request and response messages from parent to
+child. 
+
+We have dedicated channels between each parent-child pair. The three channels
+are indexed by the name of the child that uses that channel (denoted by
+$\textit{ch}[c]$ for the \textit{ch} channel associated with cache $c$).
 Figure \ref{format} shows the message format transmitted in the 3
 channels between caches. In each of the channels $ch$, a message $m$
 can be enqueued ($\enq(ch, m)$) or dequeued ($\deq(ch)$), and the
@@ -117,44 +103,42 @@ directory state of a child for \Resp{}\\
 \label{format}
 \end{figure}
 
-In addition to the actual coherence states, each cache also maintains
-a temporary \emph{wait state} for each address to deal with
-transitioning between permission levels. The wait state consists of
-two parts: a) a boolean representing whether the cache has sent a
-request to its parent cache earlier and is waiting for a response
-(denoted by $c.\wait[a]$ for address $a$) and b) one of the three
-values \Mo, \Sh{} or \In representing the state upgrade that the cache
-is waiting to make (denoted by $c.\waitS[a]$ for address
-$a$). Similarly, each non-leaf cache has the corresponding wait states
-for its directory.  $p.\dwait[c][a]$ denotes that cache $p$ is waiting
-for a response from its child $c$ for address $a$, and
-$p.\dwaitS[c][a]$ denotes the state to which $p$ is waiting
-for $c$ to downgrade. Both \wait{} and \dwait{} are \False{} initially
-for each of the caches, and each of the addresses, because no cache is
-waiting for any response from either its child or its parent
-initially.
+In addition to the actual permission states, each cache also maintains a
+temporary \emph{wait state} for each address to deal with transitioning between
+permission levels. The wait state consists of two parts: a) a boolean
+representing whether the cache has sent a request to its parent cache earlier
+and is waiting for a response (denoted by $c.\wait[a]$ for address $a$) and b)
+one of the three values \Mo, \Sh{} or \In{} representing the state upgrade that
+the cache is waiting to make (denoted by $c.\waitS[a]$ for address $a$).
+Similarly, each non-leaf cache has the corresponding wait states for its
+directory.  $p.\dwait[c][a]$ denotes that cache $p$ is waiting for a response
+from its child $c$ for address $a$, and $p.\dwaitS[c][a]$ denotes the state to
+which $p$ is waiting for $c$ to downgrade. Both \wait{} and \dwait{} are
+\False{} initially for each of the caches, and for each of the addresses,
+because no cache is waiting for any response from either its child or its
+parent initially.
 
-The behavior of the system is described via the atomic state
-transitions. These transitions have two parts: the guard dictating
-when the transition can fire, and the action defining how the state of
-the system changes when the transition happens. In our generated
-implementation, these transitions or \emph{guarded atomic actions}
-happen concurrently in a single hardware clock, but they will
-logically happen happen one at a time. Figure~\ref{trans} gives the
-atomic transitions for an MSI-based cache coherent memory subsystem. The actions
-in the transitions represent only the specific system states that
-change. We use $x \Leftarrow y$ to indicate setting of a specific
-state $x$ of the overall system to value $y$ because of a transition.
+The behavior of the system is described via the atomic state transitions. These
+transitions have two parts: a) the guard dictating when the transition can
+fire, and b) the action defining how the state of the system changes when the
+transition happens. In the actual implementation, several of these transitions
+or \emph{guarded atomic actions} happen concurrently in a single hardware
+clock, but they will logically happen happen one at a time. Figure~\ref{trans}
+gives the atomic transitions for the MIS protocol.
+The actions in the transitions in Figure \ref{trans} show only the specific
+states that change, the rest of the states remain as is. The notation ($x
+\Leftarrow y$;) in a transition indicates setting of a specific state $x$ of
+the overall system to value $y$.
 
 Figure~\ref{childside} shows the transitions that result in an upgrade of the
-state of a cache. It first involves a cache sending an upgrade request to the
-its parent when the cache is not already waiting for a response for that
-address from the parent (ChildSendReq). This request is received by the parent
-(ParentRecvReq), and if the rest of the parent's children caches are
-\emph{compatible}, and the parents state also has the permission being
-requested, it sends an upgrade response to the cache, while changing the
-appropriate directory state. Compatibility of an upgrade request with respect
-to a cache's siblings can be defined as follows:
+state of a cache. It involves a cache sending an upgrade request to the its
+parent if the cache is not already waiting for some response for that address
+from the parent (ChildSendReq). This request is received by the parent
+(ParentRecvReq). If the directory entries for all of the other children are
+\emph{compatible} with the upgrade request, and parent's permission state has
+at least the requested value, it sends an upgrade response to the cache, while
+changing the appropriate directory state. The notation \compat{} used in
+ParentRecvReq transition of Figure \ref{trans} is defined as follows:
 \begin{multline*}
 \compat = \lambda (p \in Cache) (c \in Cache) (a \in \textit{Addr}) (s \in
 \{\Mo, \Sh, \In\}) \Rightarrow\\ \forall i, i \ne c @->
@@ -162,49 +146,44 @@ to a cache's siblings can be defined as follows:
  (s = \Mo @-> s_i = \In) \wedge (s = \Sh @-> s_i = \Sh) \wedge (s = \In @-> s_i = \Mo)
 \end{multline*}
 Finally, the child cache receives the response from the parent (ChildRecvResp)
-and sets its state while resetting its wait state if the desired upgrade is
-indicated by the response.
+and sets its state while resetting its wait state if the response contains the
+desired upgrade.
 
-Figure~\ref{parentside} shows the transitions that result in a downgrade of the
-state of a cache because of a request by the cache's parent when the parent is
-not already waiting for a response from that cache (ParentSendReq).  This
-request is received by the child (ChildRecvReq), and if the state of each of
-the child's own children is not greater than the requested downgrade, the cache
-downgrades its state and sends a notification response to the parent. Finally,
-the parent receives the response from the cache (ParentRecvResp) and sets the
-appropriate directory state while resetting the appropriate directory wait state
-if the desired downgrade is indicated by the response.
+Figure~\ref{parentside} shows the similar sequence of transitions that results
+in downgrading a cache's directory entry for one of its chilren $c$. The
+difference is in the guard for ChildRecvReq transition: the directory entry for
+each of the $c$'s children should not be greater than the requested
+downgrade, in order for $c$ to accept a request and send a downgrade
+response.
 
 Figure~\ref{childextra} shows transitions that happen in a non-root cache
-because of the presence of \emph{voluntary} responses. Whenever a cache runs
-out of space to store the data corresponding to an address, it evicts the data
-corresponding to one or more addresses to make room for the new address. This
-eviction causes the state of the cache for that address to go to $\In$, which
-has to be informed to its parent. We use the same \cpResp{} FIFO (and the same
-response format) to indicate this. Such a voluntary response for an address can
-take place only if the cache is not waiting for a response from its parent for
+because of the presence of \emph{voluntary} responses. This models eviction of
+a location from a cache to make room for a new location.  This eviction usually
+causes the permission state of the cache for that address to go to $\In$, while
+we allow any downgrade to take place voluntarily.  We use the same \cpResp{}
+FIFO for such a message. Such a voluntary response for an address can take
+place only if the cache is not waiting for a response from its parent for
 that address (ChildVolResp).
 
-Because of the presence of voluntary response, a child cache could have already
+Because of the presence of voluntary response, a child could have already
 downgraded to a state required by a downgrade request from its parent. In such
-a case, the cache simply drops the downgrade request (ChildDropReq).
+a case, the child simply drops the downgrade request (ChildDropReq).
 
-Figure~\ref{procside} shows the transitions that actually serve a processors
-request in the leaf caches. LoadReq and StoreReq show the processing of a load
-and store request, respectively, from a processor. In the case of a store
-request, the data in the cache for the requested address is updated with that
-supplied in the request. We do not explicitly show the response generated by
-the cache in case of a load request in our memory subsystem model; in a real
-system, the data in the cache for the requested address is sent back to the
-processor. Our definition of store atomicity requires responses for both load
-and store requests, and the response field contains the
-$(\textit{Processor}*\mathbb{N})$ pair identifying the request corresponding to
-the response, the data from the cache in case of a load response, and a value
-for the field \tme. A \Response{} is defined whenever LoadReq or StoreReq
-transition takes place. Let $c$ be a leaf cache, and $t$ be the position of a
-LoadReq$(c)$ or StoreReq$(c)$ transition in the ordered list of transitions of
-the full system starting from the initial state. The fields of the response are
-as follows:
+Figure~\ref{procside} shows the transitions that serve a processors request in
+the leaf caches. LoadReq and StoreReq show the processing of a load and store
+request, respectively. In the case of a store request, the data in the cache
+for the requested address is updated with that supplied in the request. We do
+not explicitly show the response generated by the cache in case of a load
+request in our memory subsystem model; in a real system, the data in the cache
+for the requested address is sent back to the processor. Our definition of
+store atomicity requires responses for both load and store requests, and the
+response field contains the $(\textit{Processor}*\mathbb{N})$ pair identifying
+the request corresponding to the response, the data from the cache in case of a
+load response, and a value for the field \tme. A \Response{} is defined
+whenever LoadReq or StoreReq transition takes place. Let $c$ be a leaf cache,
+and $t$ be the position of a LoadReq$(c)$ or StoreReq$(c)$ transition in the
+ordered list of transitions of the full system starting from the initial state.
+The fields of the response are as follows:
 \begin{multline*}
 \small\langle (c, c.\pos), t, \mylet q := \reqFn(c, c.\pos) \myin\\
 \small\myif q.\desc = \Ld \mythen c.\data[q.\addr] \myelse \_ \rangle
@@ -294,7 +273,9 @@ Action: & $\myif p.\dstate[c][r.\addr] = \Mo \mythen p.\data[r.\addr] \Leftarrow
 \centering
 \begin{tabular}{|ll|}
 \hline
-\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildVolResp}$(c, x, a)$: Child $c$ sending a response to downgrade to $x$ for address $a$ without any request from its parent}\\
+\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildVolResp}$(c, x, a)$: Child $c$
+sending a response to downgrade to $x$ for address $a$ without any request from
+its parent}\\
 \hline
 Guard: & $(\forall i, \parent(i, c) \rightarrow c.\dstate[i][a] \le x) \wedge x < c.\state[a] \wedge c.\wait[a] = \False$\\
 \hline
@@ -304,7 +285,8 @@ Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,%$\\
 & $c.\state[a] \Leftarrow x$;\\
 \hline
 \hline
-\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildDropReq}$(c)$: Child $c$ receiving a request from its parent and has already downgraded}\\
+\multicolumn{2}{|p{\textwidth}|}{\textbf{ChildDropReq}$(c)$: Child $c$
+receiving a request from its parent and has already downgraded}\\
 \hline
 Guard: & 
 %$\avail(\pc[c]) \wedge \mylet q := \first(\pc[c]) \myin q.\typ = \Req \wedge%$\\
