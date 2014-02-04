@@ -148,7 +148,7 @@ and sets its state while resetting its wait state if the response contains the
 desired upgrade.
 
 Figure~\ref{parentside} shows the similar sequence of transitions that results
-in downgrading a cache's directory entry for one of its chilren $c$. The
+in downgrading a cache's directory entry for one of its children $c$. The
 difference is in the guard for ChildRecvReq transition: the directory entry for
 each of the $c$'s children should not be greater than the requested
 downgrade, in order for $c$ to accept a request and send a downgrade
@@ -281,9 +281,6 @@ Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,%$\\
 receiving a request from its parent and has already downgraded}\\
 \hline
 Guard: & 
-%$\avail(\pc[c]) \wedge \mylet q := \first(\pc[c]) \myin q.\typ = \Req \wedge%$\\
-%& $%
-%q.\myto \ge c.\state[q.\addr]$\\
 $\avail(\pc[c]) \wedge \mylet q := \first(\pc[c]) \myin q.\typ = \Req \wedge q.\myto \ge c.\state[q.\addr]$\\
 \hline
 Action: & $\deq(\pc[c])$;\\

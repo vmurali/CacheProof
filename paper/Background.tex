@@ -10,11 +10,11 @@ this view, all operations in the system appear to have a single unique total
 ordering.
 
 All modern systems have caches between the processor and memory for faster
-memory access.  It is often also useful to permit some reorderings of requests
+memory access.  It is often also useful to permit some re-orderings of requests
 from a processor to the memory to improve performance.  For instance, in the
 context of a processor with local store buffer, we may wish to allow a store to
 bypass a subsequent load request to a different location. The specification of
-which reorderings are permitted or restricted defines the memory consistency
+which re-orderings are permitted or restricted defines the memory consistency
 model.
 
 Most memory consistency models can be partitioned into two
