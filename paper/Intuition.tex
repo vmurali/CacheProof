@@ -1,13 +1,17 @@
 \section{Proof of MSI protocol being sound wrt Store atomicity}
 \label{safety}
 
-In this section, we present the proof structure for the soundness property of our
-MSI-based cache coherence protocol of Figure \ref{trans}. Specifically, we
-formally reduce the proof of the store atomicity theorem for the whole system
-to the proof of a set of invariants. In order to prove these invariants we
-introduce the main ``intuition'' behind the correctness of the protocol. This
-intuition is not restricted to the MSI-based protocol; Section
-\ref{sec:Refinements} shows that it applies to other protocols like MOSI.
+In this section, we present the proof structure for the soundness
+property of our MSI-based cache coherence protocol of
+Figure~\ref{trans}. Specifically, we formally reduce the proof of the
+store atomicity theorem for the whole system to the proof of a set of
+simple invariants by leveraging the ``intuitive'' justification of
+correctness of our protocol.
+
+%% This intuition
+%% is not restricted to the MSI-based protocol;
+%% Section~\ref{sec:Refinements} shows that it applies can apply to other
+%% protocols.
 
 Our invariants hold after any series of executions of the component
 transactions of our design reachable from the initial state. We use
@@ -20,12 +24,14 @@ be found at~\xxx{MURALI PUT REFERENCE HERE}.
 
 \subsection{Reducing correctness to Node-level Invariants}
 
-We've defined store atomicity to be a whole system property. The first step in
-our framework is to reduce the store atomicity property down to the following 4
-global invariants about nodes:
+The store atomicity is a whole system property. Intuitively our
+protocol is correct because it guarantees that at most one node can
+write at a time, and that any local cache that attempts to read has
+the ``latest'' value. We can state this formally with the following 4
+invariants about nodes:
 
 \begin{defn}
-\textit{clean}: A cache is said to be \clean{} for an address $a$ iff
+\textit{clean}: A cache is said to be \clean{} for an address $a$ if and only if
 the state of the cache for that address is at least \Sh{} and the
 state of all its children is at most \Sh.
 \end{defn}
@@ -45,7 +51,7 @@ q'.\addrQ$.
 
 We use the definition of compatibility between two caches as follows:
 \begin{defn}
-\textit{compatibile}: Values of states $x_1$ and $x_2$ are compatible iff
+\textit{compatibile}: Values of states $x_1$ and $x_2$ are compatible if and only if
 either $x_1$ or $x_2$ is \Mo{}, then the other is \In.
 \label{compatible}
 \end{defn}
@@ -70,33 +76,38 @@ which case $c.\pos$ is incremented.
 \label{noReqAgain}
 \end{inv}
 
-We can see that the correctness of our system (Theorem~\textit{storeAtomicity})
-follows naturally from Invariants \ref{latestValue} to \ref{noReqAgain}.  A
-store for an address may happen only when leaf cache is in \Mo{} state for that
-address (Invariant~\textit{processReq}). Any two distinct leaf caches are not
-ancestors of each other, so by Invariant \textit{nonAncestorCompatible}, if a
-leaf cache is in \Mo{} state, all other leaf caches will be in \In{} state
-which prevents processing of both load and store requests for the same address
-in other leaf caches (again by Invariant \textit{processReq}). Thus, Definition
-\textit{uniqStTimes} holds.  Given Invariant~\textit{noReqAgain}, once a
-response has been produced for a request $i$, the cache may subsequently only
-process $j^{th}$ request such that $j > i$. Thus there is at most one response
-to each request, satisfying Definition~\textit{uniqRespLabels}. A load request
-can be processed only if a cache is at least in \Sh{} state (again by Invariant
-\textit{processReq}). When a leaf cache is at least in \Sh{} state, since it
-has no children, it is \clean. A load response supplies the data for that
-address present in the cache, which, by Invariant~\textit{lastestValue},
-contains the ``latest value''. Thus, the final condition for
-Theorem~\textit{storeAtomicity} is also satisfied.
+Given these invariants, we codify our intuition by showing that
+Theorem~\textit{storeAtomicity} follows naturally from these
+invariants.  A store may happen only when leaf cache is in \Mo{} state
+for that address (Invariant~\textit{processReq}). Leaf caches cannot
+be ancestors of any other node, so by Invariant
+\textit{nonAncestorCompatible}, if a leaf cache is in \Mo{} state, all
+other leaf caches will be in \In{} state preventing the possibility of
+load and store requests for the same address (by Invariant
+\textit{processReq}), showing Definition~\textit{uniqStTimes} holds.
+
+Given Invariant~\textit{noReqAgain}, once a response has been produced
+for a request $i$, the cache may subsequently only process $j^{th}$
+request such that $j > i$. Thus there is at most one response to each
+request, satisfying Definition~\textit{uniqRespLabels}. A load request
+may be processed only if a cache is at least in \Sh{} state (Invariant
+\textit{processReq}). As leaf caches have no children, a leaf cache in
+at least in \Sh{} state for address $a$ is \clean for that address. A
+load response supplies the data for that address present in the cache,
+which, by Invariant~\textit{lastestValue}, contains the ``latest
+value''. Thus, the final condition for Theorem~\textit{storeAtomicity}
+is also satisfied. All that remains is to show that these properties hold.
 
 \subsection{Reducing to Pair-wise Invariants}
 \label{pairwise}
 
-Invariants~\textit{processReq} and \textit{noReqAgain} can be proved directly
-from the atomic transitions describing the system (Figure~\ref{trans} for MSI;
-other protocols must also have similar transitions). Proving
-invariants~\textit{uniqM} and \textit{latestValue} needs further work. We can
-prove both using the following invariants on parent-child relationships.
+We can directly show that Invariants~\textit{processReq} and
+\textit{noReqAgain} hold at the initial configuration and are
+preserved through each atomic transition of our protocol
+(Figure~\ref{trans}). Invariants~\textit{uniqM} and
+\textit{latestValue} correctness rely on properties of the node
+hierarchy. We can prove both using the following invariants on
+parent-child relationships.
 
 \begin{inv}
 \textit{conservative}: The state of an address in a cache is never greater than
@@ -123,53 +134,62 @@ $a$.
 \label{noTransitWrite}
 \end{inv}
 
-For any two caches $c$ and $p$, such that $p$ is an ancestor of $c$ in the
-cache tree hierarchy, from Invariants \textit{conservative} and the first part
-of \textit{localCompatibility}, we can show that for any address address $a$,
-$c.\state[a] \le p.\state[c][a]$. This is because the ancestor relation is the
-reflective-transitive closure of the parent relation, and Invariants
-\textit{conservative} and the first part \textit{localCompatibility} of defines
-a $\ge$ relation between the states of a parent and its child.
+For any two caches $c$ and $p$, such that $p$ is an ancestor of $c$ in
+the cache tree hierarchy, from Invariants \textit{conservative} and
+\textit{localCompatibility}, we can show that for any address $a$,
+$c.\state[a] \le p.\state[c][a]$. This is because the ancestor
+relation is the reflective-transitive closure of the parent relation,
+and Invariants \textit{conservative} and the first part
+\textit{localCompatibility} of defines a $\ge$ relation between the
+states of a parent and its child.
 
-Any two caches $c_1, c_2$ in which neither is an ancestor of the other will
-have a lowest common ancestor $x$ such that $x$ is an ancestor of both the
-caches and $x$ has two distinct children $x_1$ and $x_2$ such that they are the
-ancestors of $c_1$ and $c_2$ respectively. For any address $a$,
-$x.\dstate[x_1][a]$ and $x.\dstate[x_1][a]$ are compatible by the second part
-of Invariant \ref{localCompatibility}. From this, it straightaway follows that
-$x_1.\state[a]$ and $x_2.\state[a]$ are compatible (from Invariant
-\ref{conservative}). From the previous paragraph, it follows that $c_1$ and
-$c_2$ are also compatible. This proves Invariant \textit{nonAncestorCompatibility}.
+Any two caches $c_1, c_2$ neither of which are an ancestor of the
+other will have a lowest common ancestor $x$ which is an ancestor of
+both $c_1$ and $c_2$ and has two distinct children $x_1$ and $x_2$
+such that they are the ancestors of $c_1$ and $c_2$ respectively. For
+any address $a$, $x.\dstate[x_1][a]$ and $x.\dstate[x_1][a]$ are
+compatible by the second part of
+Invariant~\ref{localCompatibility}. From this, it straightaway follows
+that $x_1.\state[a]$ and $x_2.\state[a]$ are compatible (from
+Invariant~\ref{conservative}). From the previous paragraph, it follows
+that $c_1$ and $c_2$ are also compatible. This proves
+Invariant \textit{nonAncestorCompatibility}.
 
-We can prove that Invariant \textit{latestValue} is obeyed by strong induction
-on time. Consider two cases: cache $c$ is already \clean{} for an address $a$
-at time $t$ or the contrary.  If \clean{}, then it has the latest value at time
-$t$. Since none of its children's directory entries can be in \Mo{}, all its
-descendents should be no greater than \Sh{} for that address (as discussed
-above). Any non-ancestor of $c$, and non-descendent of $c$ must be compatible
-(as discussed above). Since $c$ is \clean, it is at least in the \Sh{} state,
-so compatibility means that non-descendents can not be in \Mo{} state. All of
-$c$'s ancestors are non leaves, so they can not process any store request. So,
-no cache could have processed a store request other than $c$ itself, which
-means that $c$ contains the latest value for address $a$ at time $t+1$ if it
-was \clean{} at time $t$.
+We prove Invariant \textit{latestValue} by strong induction on
+time. Consider two cases: cache $c$ is already \clean{} for an address
+$a$ at time $t$ or the contrary.  If \clean{}, then it has the latest
+value at time $t$. Since none of its children's directory entries can
+be in \Mo{}, all its descendants should be no greater than \Sh{} for
+that address (as discussed above). Any non-ancestor of $c$, and
+non-descendant of $c$ must be compatible (as discussed above). Since
+$c$ is \clean, it is at least in the \Sh{} state, so compatibility
+means that non-descendants can not be in \Mo{} state. All of $c$'s
+ancestors are non-leaves, so they can not process any store
+request. Therefore, no cache save $c$ may have process a store
+request, which means that $c$ contains the latest value for address
+$a$ at time $t+1$ if it was \clean{} at time $t$.
 
-If $c$ was not clean at time $t$, it must have received data from either its
-parent or its child.  As can be seen in Figure \ref{trans}, whenever data is
-sent either from a parent to a child, or from a child to the parent, the sender
-is \clean. By the induction hypothesis, it means that the sender has the latest
-value for the address. Because of Invariant \ref{noTransitWrite}, no store
-request can be processed when the data is in transit, which means $c$ will have
-the latest value for address $a$ at time $t+1$.
+If $c$ was not clean at time $t$, it must have received data from
+either its parent or its child.  As can be seen in Figure~\ref{trans},
+whenever data is sent either from a parent to a child, or from a child
+to the parent, the sender is \clean. By the induction hypothesis, it
+means that the sender has the latest value for the address. Because of
+Invariant~\ref{noTransitWrite}, no store request can be processed when
+the data is in transit, which means $c$ will have the latest value for
+address $a$ at time $t+1$. 
 
-\subsection{Main intuition to prove the pair-wise properties}
-We present two basic invariants that the MSI protocol of Figure \ref{trans}
-obeys. In fact the protocol (\ie the request/response message semantics) was
-designed to ensure the following two invariants. We believe that most
-cache-coherence protocols would end up obeying these two invariants; we show
-how MOSI, for instance, obeys these invariants in Section
-\ref{sec:Refinements}. These two invariants together can prove all the pair-wise
-properties of Section \ref{pairwise}.
+\subsection{Proving parent-child hierarchy properties}
+
+%ndave: This needs some repointing
+
+We present two basic invariants that the MSI protocol of
+Figure~\ref{trans} obeys. In fact the protocol (\ie{} the
+request/response message semantics) was designed to ensure the
+following two invariants. We believe that most cache-coherence
+protocols would end up obeying these two invariants; we show how MOSI,
+for instance, obeys these invariants in
+Section~\ref{sec:Refinements}. These two invariants together can prove
+all the pair-wise properties of Section~\ref{pairwise}.
 
 The transitions of the protocol are setup so that the following invariant holds:
 \begin{inv}
@@ -186,7 +206,7 @@ between the same pair of nodes:
 for a source-destination pair, for the same address.
 \end{inv}
 
-The MSI-based protocol in Figure \ref{trans} is such that any change in either
+The MSI-based protocol in Figure~\ref{trans} is such that any change in either
 the state of a cache or its directory entry takes place only on sending or
 receiving a response. The parent upgrades the corresponding directory entry on
 sending a response to a child and the child downgrades its directory entry on
@@ -386,3 +406,5 @@ transit at the same time as when the response is in transit, Invariant
 %%d) voluntary response sent from child only when not waiting
 %%
 %%In this section we specify a set of important invariants for a parent-child pair of caches.
+
+%%  LocalWords:  Invariants invariants
