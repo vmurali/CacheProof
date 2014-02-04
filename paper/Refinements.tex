@@ -1,59 +1,47 @@
 \section{Refinements}
 \label{sec:Refinements}
 
-In this section we discuss important design changes of interest to
-implementors and the impact it has on the verification. Most of these
-require no change in the intuitive reasoning for correctness and thus
-require no change to our Coq framework to prove correctness.
-
+In this section we discuss important design changes of interest to implementors
+and the impact it has on the verification. Most of these require no change in
+the intuitive reasoning for correctness, thus keeping the Coq-based proof
+framework intact. But these may require additional proof burden.
 %We have formally proven the
 %correctness of each of these choices in Coq, but due to space concerns we will
 %not discuss them in their full detail. 
 
 
-\subsection{Changing the caching policy}
+\subsection{Changing the cache structure and replacement policies}
 
-Logically, The base protocol lacks an explicit representation of the
-notion that caches have only a partial copy of the data; rather it
-models it by having unincluded cache entries be in the \In state and
-allowing voluntary transitions to evict any data as desired. This
-provides enough flexibility to model any caching policy at the node
-level.However, when realizing the protocol in hardware, we must
-explicitly encode the restrictions into the design, \eg{} explicitly
-providing finite memories for data and address tags. Showing such
-design-level details preserve correctness is simply showing that we
-have a correspondence between each hardware-oriented state
-configuration and the base protocol state configurations, an easily
-accomplished task.
+Logically, the base protocol lacks an explicit representation of the notion
+that caches hold only a partial set of addresses; rather it models it by having
+unincluded cache entries be in the \In{} state. This provides
+flexibility to model any cache structure, like a fully associative cache or a
+direct-mapped cache. One should simply prove that the states corresponding to
+the actual implementation has a bijective mapping to the states mentioned in
+Section \ref{sec:System}.
 
-\xxx{ndave: Can Coq do this automatically? That'd be a nice
-  statement}.
+Allowing voluntary downgrades allows a cache to evict any
+data as desired, which can model any replacement policity.
 
-\subsection{Implementing Unbounded pair-wise communication Channels}
+\subsection{Implementing Unbounded communication channels}
 
-In the base protocol, internode communication channels are assumed to
-be infinite. Obviously to be implemented in hardware they must be made
-finite which may introduce deadlocks as atomic transactions may not
-apply if a buffer becomes full. However, we can see that no such
-deadlock may happen as the protocol obeys weak forward
-progress. Therefore some message will be consumed by the system
-eventually if it exists.
+In the base protocol, internode communication channels are assumed to be
+infinite. To be implemented in hardware they must be made finite which may
+introduce deadlocks as atomic transactions may not apply if a buffer becomes
+full. In the proof of weak forward progress, we prove a lemma that if any
+channel has a response, then one of ParentRecvResp or ChildRecvResp is
+applicable. Otherwise, if no channel has a response, one of ParentRecvReq,
+ChildRecvReq, or ChildDropReq is applicable. Thus, any message in any channel
+eventually gets drained proving that finite communication channels suffice.
 
-\xxx{ndave: I don't understand why this is follows / is true. I'd also like to fold in the discussion of sharing the separate channels into a physical layer, but not the grid / communication fabric stuff here}
-
-\subsection{Implementing unbounded pair-wise communication channels in real hardware}
+\subsection{Implementing pair-wise communication channels in a communication
+fabric}
 
 \xxx{ndave: Given previous subsection, this is just focused on the network}
 
-In order to implement the unbounded pair-wise communication channels that we
-assumed in Figure~\ref{trans} and throughout Section \ref{safety}, we need
-to prove that a) finite buffers are sufficient, b) provide a mapping from
-pair-wise communication channels to an interconnect network such as a ring or a
-mesh and c) prove that such a mapping does not cause deadlocks.
-
-In order to prove that finite buffers are sufficient to avoid deadlocks, it is
-sufficient to observe that the protocol obeys weak forward progress. Therefore
-some message will be consumed by the system eventually if it exists.
+A real hardware has an underlying communication fabric onto which the pair-wise
+communication channels that we assumed in Figure~\ref{trans} have to be mapped.
+These communication network usually has a ring or a mesh topology.
 
 We will now describe the mapping from pair-wise communication channels
 to interconnnect network in greater detail, and informal arguments
@@ -94,7 +82,10 @@ requests should be sent on different virtual networks to prevent deadlocks,
 hence the need for separate virtual channels for requests at each level of the
 hierarchy.
 
-We do not provide the formal proofs for the above assertions due to lack of space.
+Note that multiple virtual channels can be mapped into a single underlying
+physical link \cite{noc-funda}.
+
+%We do not provide the formal proofs for the above assertions due to lack of space.
 
 \subsection{Protocol}
 We will describe two important protocol variations, the MESI and MOSI protocols
