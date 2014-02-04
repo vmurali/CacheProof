@@ -135,11 +135,11 @@ $a$.
 \end{inv}
 
 For any two caches $c$ and $p$, such that $p$ is an ancestor of $c$ in
-the cache tree hierarchy, from Invariants \textit{conservative} and
+the cache tree hierarchy, from Invariants \fullref{conservative} and
 \textit{localCompatibility}, we can show that for any address $a$,
 $c.\state[a] \le p.\state[c][a]$. This is because the ancestor
 relation is the reflective-transitive closure of the parent relation,
-and Invariants \textit{conservative} and the first part
+and Invariants \fullref{conservative} and the first part
 \textit{localCompatibility} of defines a $\ge$ relation between the
 states of a parent and its child.
 
@@ -153,9 +153,9 @@ Invariant~\ref{localCompatibility}. From this, it straightaway follows
 that $x_1.\state[a]$ and $x_2.\state[a]$ are compatible (from
 Invariant~\ref{conservative}). From the previous paragraph, it follows
 that $c_1$ and $c_2$ are also compatible. This proves
-Invariant \textit{nonAncestorCompatibility}.
+Invariant \fullref{nonAncestorCompatibility}.
 
-We prove Invariant \textit{latestValue} by strong induction on
+We prove Invariant \fullref{latestValue} by strong induction on
 time. Consider two cases: cache $c$ is already \clean{} for an address
 $a$ at time $t$ or the contrary.  If \clean{}, then it has the latest
 value at time $t$. Since none of its children's directory entries can
@@ -212,19 +212,19 @@ receiving a response. The parent upgrades the corresponding directory entry on
 sending a response to a child and the child downgrades its directory entry on
 sending a response to the parent.
 
-To prove Invariant \textit{conservative} at some time $t$, consider the case
+To prove Invariant \fullref{conservative} at some time $t$, consider the case
 when a child cache $c$ has sent to or received from the parent $p$ some message
 before $t$. Consider the last such message $m$ sent by or received at $c$ at
 $t'$. Let's say $m$ is sent by $c$. Then $p$ can not have received any message
-from $c$ after sending $m$ in order to not violate Invariant \textit{noCross}.
+from $c$ after sending $m$ in order to not violate Invariant \fullref{noCross}.
 Instead, if $c$ receives $m$ at $t'$, $p$ will not receive any message after
-sending $m$ in order to not violate Invariants \textit{noCross} and
+sending $m$ in order to not violate Invariants \fullref{noCross} and
 \textit{respFIFO}. Let $m$ be sent or received by $p$ at $t''$. In both cases,
 $p.\dstate[c][a]$ at $t''+1$ will be equal to $c.\state[a]$ at $t'+1$ (because
 the response messages sync up the next-state according to the transitions in
 Figure \ref{trans}). Since $p$ can not receive any message between $t''+1$ and
 $t$, it can only upgrade $p.\dstate[c][a]$. Since $c.\state[a]$ does not change
-between $t'+1$ and $t$, Invariant \textit{conservative} holds at $t$. If no
+between $t'+1$ and $t$, Invariant \fullref{conservative} holds at $t$. If no
 message has been sent or received by $c$ before $t$, then $p$
 wouldn't have received any message sent by $c$ before $t$ as it means that the
 message must be sent by $c$ before $t$. Since the initial states of the
@@ -232,12 +232,12 @@ directory and the child's state are both set to \In{}, the same argument holds
 (in which the parent can only upgrade), thus maintaining Invariant
 \textit{conservative}.
 
-To prove Invariant \textit{localCompatibility}, it is enough to show that a
+To prove Invariant \fullref{localCompatibility}, it is enough to show that a
 child $c$ upgrades $c.\state[a]$ on receiving a response for $a$ from its
 parent $p$ and $p.\dstate[c][a]$ is downgraded on receiving a response for $a$
-from $c$. If this is true, then Invariant \textit{localCompatibility} will not
+from $c$. If this is true, then Invariant \fullref{localCompatibility} will not
 be violated on receiving a response. The transitions of Figure \ref{trans}
-ensures that Invariant \textit{localCompatibility} is not violated when sending
+ensures that Invariant \fullref{localCompatibility} is not violated when sending
 a response.
 
 If the value of the state of a child at the time of sending a response is the
@@ -246,14 +246,14 @@ receiving the response, it follows straightaway that the parent downgrades its
 directory on receiving a response from the child, since a child downgrades on
 sending a response and the next-states are synced on receiving the response.
 The proof for this follows exactly the same arguments presented above to prove
-Invariant \textit{conservative} -- we prove by considering the last message
+Invariant \fullref{conservative} -- we prove by considering the last message
 sent or received at the child before $t$ (and the case when no message has been
 sent or received).
 
-Invariant \textit{noTransitWrite} can be proved as follows. Consider a response
+Invariant \fullref{noTransitWrite} can be proved as follows. Consider a response
 sent from a parent $p$ at time $t$ received by its child $c$ at time $t'$. No
 other response can be received by the parent at time $t_p$ such that $t+1 \le
-t_p \le t'$ to not violate Invariant \textit{noCross}, so $p.\dstate[c][a]$ at
+t_p \le t'$ to not violate Invariant \fullref{noCross}, so $p.\dstate[c][a]$ at
 $t+1 \le p.\dstate[c][a]$ at $t'$, since the parent can only upgrade its
 directory for $c$. Similarly, no response can be sent by the child at time
 $t_c$ such that $t \le t_c \le t'$ for the same reason and hence $c.\state[a]$
@@ -262,7 +262,7 @@ This means that during $t_p$ such that $t+1 \le t_p \le t'$, $p.\dstate[c][a]
 > \In$ since the parent upgraded its directory for $c$ at $t$. Similarly,
 during $t_c$ such that $t \le t_c \le t'$, $c.\state[a] < \Mo$ since the
 child upgrades its state at $t'$. Using arguments similar to the proof of
-Invariant \textit{latestValue}, we can establish that no cache can be in \Mo{}
+Invariant \fullref{latestValue}, we can establish that no cache can be in \Mo{}
 state for address $a$ when a response is in transit from $p$ to $c$.
 Similarly, we can prove that no cache can be in \Mo{} state for address $a$
 when a response is in transit for address $a$ from $c$ to $p$. Since data is in
@@ -314,26 +314,26 @@ transit at the same time as when the response is in transit, Invariant
 %
 %Now consider the case when $c.\state[a]$ last changed at $t'$ such that $t' <
 %t$ because of receiving a response from $p$, sent at $t''$. $c.\state[a]$ at
-%$t'+1 = p.\dstate[c][a]$ at $t''+1$ because of Invariant \textit{stateChange}.
+%$t'+1 = p.\dstate[c][a]$ at $t''+1$ because of Invariant \fullref{stateChange}.
 %$c$ neiter sends nor receives a response at any $t_i$ such that $t' < t_i < t$.
 %If $p$ received a response at some $t_m$ such that $t'' < t_m < t$,
-%then it would either violate Invariant \textit{noCross}, or the fact that no
+%then it would either violate Invariant \fullref{noCross}, or the fact that no
 %message was sent between $t' < t_i < t$ from $c$. Thus, $p.\dstate[c][a]$ at $t
 %\ge p.\dstate[c][a]$ at $t''+1$ because any message sent can only upgrade
-%$p.\dstate[a]$. This ensures that Invariant \textit{conservative} is obeyed. We
+%$p.\dstate[a]$. This ensures that Invariant \fullref{conservative} is obeyed. We
 %can similarly prove this invariant holds when $c.\state[a]$ last changes before
 %$t$ by sending a response.
 %
-%Invariant \textit{stateChange} can be proved directly from the atomic
+%Invariant \fullref{stateChange} can be proved directly from the atomic
 %transitions for MSI. Other protocols have similar atomic transitions obeying
 %these invariants.
 %
-%Invariant \textit{respFIFO} can be enforced by the interconnect network which
+%Invariant \fullref{respFIFO} can be enforced by the interconnect network which
 %ensures a FIFO ordering for messages sent between a pair of nodes.
 %
 %---------------------------------------------
 %
-%%Invariant \textit{respFIFO} is known as point-to-point FIFO ordering in the
+%%Invariant \fullref{respFIFO} is known as point-to-point FIFO ordering in the
 %%Network-on-Chip NoC community, and is enforced by common routing algorithms
 %%like Dimension-ordered routing \cite{dimension}. Only the parent-to-child
 %%channels need to be FIFO ordered, the FIFO ordering in child-to-parent channels
@@ -346,12 +346,12 @@ transit at the same time as when the response is in transit, Invariant
 %\label{noTransitEqual}
 %\end{inv}
 %
-%Proving Invariants \textit{inTransitCondition} and \textit{noTransitEqual},
-%needs two further invariants, along with Invariant \textit{stateChange}.
+%Proving Invariants \fullref{inTransitCondition} and \textit{noTransitEqual},
+%needs two further invariants, along with Invariant \fullref{stateChange}.
 %
-%Invariant \textit{inTransitCondition} can be proved as follows. Whenever a
+%Invariant \fullref{inTransitCondition} can be proved as follows. Whenever a
 %response from a child to the parent is in transit, the parent can not send any
-%response to the child, or it will violate Invariant \textit{noCross}. Using the fact that 
+%response to the child, or it will violate Invariant \fullref{noCross}. Using the fact that 
 %
 %
 %
