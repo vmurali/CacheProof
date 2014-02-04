@@ -1,17 +1,52 @@
 \section{Refinements}
 \label{sec:Refinements}
 
-In this section we discuss important design changes that would of interest to
-implementors. Most of these require no change at all to our framework only a
-change in how certain invariants properties hold/are proven.
+In this section we discuss important design changes of interest to
+implementors and the impact it has on the verification. Most of these
+require no change in the intuitive reasoning for correctness and thus
+require no change to our Coq framework to prove correctness.
+
 %We have formally proven the
 %correctness of each of these choices in Coq, but due to space concerns we will
 %not discuss them in their full detail. 
 
+
+\subsection{Changing the caching policy}
+
+Logically, The base protocol lacks an explicit representation of the
+notion that caches have only a partial copy of the data; rather it
+models it by having unincluded cache entries be in the \In state and
+allowing voluntary transitions to evict any data as desired. This
+provides enough flexibility to model any caching policy at the node
+level.However, when realizing the protocol in hardware, we must
+explicitly encode the restrictions into the design, \eg{} explicitly
+providing finite memories for data and address tags. Showing such
+design-level details preserve correctness is simply showing that we
+have a correspondence between each hardware-oriented state
+configuration and the base protocol state configurations, an easily
+accomplished task.
+
+\xxx{ndave: Can Coq do this automatically? That'd be a nice
+  statement}.
+
+\subsection{Implementing Unbounded pair-wise communication Channels}
+
+In the base protocol, internode communication channels are assumed to
+be infinite. Obviously to be implemented in hardware they must be made
+finite which may introduce deadlocks as atomic transactions may not
+apply if a buffer becomes full. However, we can see that no such
+deadlock may happen as the protocol obeys weak forward
+progress. Therefore some message will be consumed by the system
+eventually if it exists.
+
+\xxx{ndave: I don't understand why this is follows / is true. I'd also like to fold in the discussion of sharing the separate channels into a physical layer, but not the grid / communication fabric stuff here}
+
 \subsection{Implementing unbounded pair-wise communication channels in real hardware}
 
+\xxx{ndave: Given previous subsection, this is just focused on the network}
+
 In order to implement the unbounded pair-wise communication channels that we
-assumed in Figure \ref{trans} and throughout Section \ref{safety}, we need
+assumed in Figure~\ref{trans} and throughout Section \ref{safety}, we need
 to prove that a) finite buffers are sufficient, b) provide a mapping from
 pair-wise communication channels to an interconnect network such as a ring or a
 mesh and c) prove that such a mapping does not cause deadlocks.
@@ -20,9 +55,9 @@ In order to prove that finite buffers are sufficient to avoid deadlocks, it is
 sufficient to observe that the protocol obeys weak forward progress. Therefore
 some message will be consumed by the system eventually if it exists.
 
-We will now describe the mapping from pair-wise communication channels to
-interconnnect network in greater detail, and informal arguments about why the
-mapping is necessary and sufficient.
+We will now describe the mapping from pair-wise communication channels
+to interconnnect network in greater detail, and informal arguments
+about why the mapping is necessary and sufficient.
 
 \begin{enumerate}
 \item Each level in the cache hierarchy has a single separate virtual network
