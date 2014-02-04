@@ -1,24 +1,26 @@
 \section{Liveness properties}
 \label{liveness}
 
-In Section \ref{safety} we showed how the MSI protocol of Figure \ref{trans}
-obeys the Store atomicity theorem. In addition to this criteria, we must
-establish that the system makes forward progress.
+In Section~\ref{safety} we showed how the MSI protocol of
+Figure~\ref{trans} obeys the store atomicity theorem, showing that
+only correct behavior occurs. To complete our correctness picture, we
+must also show that we avoid deadlock, \ie\ we make forward progress.
 
 Forward progress can be either of the following:
 \begin{enumerate}
-\item Weak forward progress: The system never reaches a state where none of the transitions of Figure
-\ref{trans} apply or
-\item Strong forward progress: At any time, eventually a new request from some processor will be
-processed
+\item Weak forward progress: The system never reaches a state where
+  none of the transitions of Figure~\ref{trans} apply or
+\item Strong forward progress: At any time, eventually a new request
+  from some processor will be processed
 \end{enumerate}
 
-In order to prove strong forward progress, we need to
-establish some more conditions on the strategy to execute the transitions of
-Figure \ref{trans} in each cache -- the caches must ensure local
-starvation-freedom in the processing of messages when sufficient resources are
-available. We do not discuss this issue in this paper and instead focus on 
-weak forward progress.
+To prove strong forward progress given weak fairness, we need some
+guarantees on the choice of executions of the transitions
+Figure~\ref{trans} in each cache. Specifically, caches must ensure
+local starvation-freedom in the processing of messages when sufficient
+resources are available. This can be enforced via during hardware
+compilation; for this paper we will focus only on weak forward
+progress.
 
 In order to establish that some transition always executes, we prove the
 following important invariant.

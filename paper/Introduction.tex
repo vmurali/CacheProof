@@ -32,10 +32,10 @@ details to the protocol.
 Because verified protocols are often described via Term Rewrite
 Systems (TRS). It was shown by Dave
 \etal{}~\cite{DNA:CoherenceImplementation} that such a verified
-protocol could be transliterated into Bluespec, a hardware description
-language based on Guarded Atomic Actions, a restriction of
-TRS~\cite{Hoe:TCAD}. This reduces the correctness of the
-implementation to the correctness of the protocol, effectively
+protocol could be transliterated into Bluespec~\cite{Bluespec:TFRG}, a
+hardware description language based on Guarded Atomic Actions, a
+restriction of TRS~\cite{Hoe:TCAD}. This reduces the correctness of
+the implementation to the correctness of the protocol, effectively
 removing any implementation bugs. While the current Bluespec compiler
 has certain restrictions which limit the expressiveness of certain
 operations \eg{} fairness is not guaranteed, atomic actions are always

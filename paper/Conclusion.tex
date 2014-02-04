@@ -1,0 +1,34 @@
+\section{Discussion}
+
+We illustrated a direct realization of our proposed proof framework
+for a very flexible cache coherence protocol implementation codifying
+the intuition behind the system's correctness as simple
+invariants. While this was took significant expertise, once done, we
+were able to show that many key hardware modifications,\eg\ caching
+policies, could be made with zero or very small natural changes to the
+proof. These bits were small enough that an informed hardware designer
+implementing our protocols can reasonably be expected to provide such
+information during refinement giving them a viable path for producing
+a provably correct performant cache coherence engine implementation.
+
+The protocol framework we showed was very flexible, and could easily
+be extended for variants that go beyond microarchitectural variants,
+\eg\ silent drops, extension to MOSI with a relatively small amount of
+additional reasoning.  This gives us good confidence that we can
+effectively produce frameworks for other classes protocol,
+\eg\ update-based protocols, non-inclusive cache hierarchies. Further,
+nothing about our methodology requires we limit ourselves to cache
+coherence systems; this approach should naturally extend to any
+hardware-based system.
+
+While fundamentally this work meets our goal of carrying verification
+into through the design refinement step, there are still some
+important mechanization to make this ready for industrial
+use. Foremost, the simple transliteration between the Coq transition
+system and the Bluespec hardware description implementation should be
+fully mechanized. Further, the proposed extension to provide fairness
+of transaction scheduling in the Bluespec compiler should be
+implemented. Finally, to fully guarantee correctness of the resulting
+hardware FSM, we should also fully verify the hardware generation as
+in the FeSi~\cite{Tomas} efforts. 
+
