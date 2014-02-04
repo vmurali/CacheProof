@@ -1,0 +1,38 @@
+\section{Liveness properties}
+\label{liveness}
+
+In Section \ref{safety} we showed how the MSI protocol of Figure \ref{trans}
+obeys the Store atomicity theorem. In addition to this criteria, we must
+establish that the system makes forward progress.
+
+Forward progress can be either of the following:
+\begin{enumerate}
+\item Weak forward progress: The system never reaches a state where none of the transitions of Figure
+\ref{trans} apply or
+\item Strong forward progress: At any time, eventually a new request from some processor will be
+processed
+\end{enumerate}
+
+In order to prove strong forward progress, we need to
+establish some more conditions on the strategy to execute the transitions of
+Figure \ref{trans} in each cache -- the caches must ensure local
+starvation-freedom in the processing of messages when sufficient resources are
+available. We do not discuss this issue in this paper and instead focus on 
+weak forward progress.
+
+In order to establish that some transition always executes, we prove the
+following important invariant.
+
+\begin{inv}
+\textit{waitCond}: When a cache $x$ has sent a request to another cache $y$ and
+is waiting for a response from $y$, then either $y$ has not yet received the
+request, or it has received the request and sent the appropriate response to
+$x$.
+\end{inv}
+
+This condition ensures that every request gets a response eventually. Using
+this invariant, it is easy to see that there will always be some cache in the
+system which can either send a request to another cache (ChildSendReq or
+ParentSendReq) or process a request (ParentRecvReq, ChildRecvReq or
+ChildDropReq) or accept a response from another cache (ChildRecvResp or
+ParentRecvResp). We do not give the formal proof here due to lack of space.

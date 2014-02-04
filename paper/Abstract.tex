@@ -1,0 +1,13 @@
+Correct implementation of cache coherent systems is of high importance in
+industrial use. Model-checking is inadequate for verifying a large system with
+hierarchical caches because of its size and complexity. We provide a
+theorem-prover verified proof for the safety properties of a size-parameterized
+hierarchical MSI-based coherent system. The system is specified in terms of
+atomic transitions accessing only local state.  Previously, it has been shown
+that these atomic transitions can be translated automatically into efficient
+hardware. Verifying the specification based on atomic transitions therefore
+guarantees the correctness of the actual implementation.
+The proof is built in a modular fashion, identifying key invariants common with
+other protocols like MESI, MOSI, \etc. We informally show how these other
+protocols can be proved reusing modules from the proof of the MSI protocol.
+
