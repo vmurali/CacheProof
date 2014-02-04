@@ -77,35 +77,35 @@ which case $c.\pos$ is incremented.
 \end{inv}
 
 Given these invariants, we codify our intuition by showing that
-Theorem~\textit{storeAtomicity} follows naturally from these
+Theorem~\fullref{storeAtomicity} follows naturally from these
 invariants.  A store may happen only when leaf cache is in \Mo{} state
-for that address (Invariant~\textit{processReq}). Leaf caches cannot
+for that address (Invariant~\fullref{processReq}). Leaf caches cannot
 be ancestors of any other node, so by Invariant
-\textit{nonAncestorCompatible}, if a leaf cache is in \Mo{} state, all
+\fullref{nonAncestorCompatible}, if a leaf cache is in \Mo{} state, all
 other leaf caches will be in \In{} state preventing the possibility of
 load and store requests for the same address (by Invariant
-\textit{processReq}), showing Definition~\textit{uniqStTimes} holds.
+\fullref{processReq}), showing Definition~\fullref{uniqStTimes} holds.
 
-Given Invariant~\textit{noReqAgain}, once a response has been produced
+Given Invariant~\fullref{noReqAgain}, once a response has been produced
 for a request $i$, the cache may subsequently only process $j^{th}$
 request such that $j > i$. Thus there is at most one response to each
-request, satisfying Definition~\textit{uniqRespLabels}. A load request
+request, satisfying Definition~\fullref{uniqRespLabels}. A load request
 may be processed only if a cache is at least in \Sh{} state (Invariant
-\textit{processReq}). As leaf caches have no children, a leaf cache in
+\fullref{processReq}). As leaf caches have no children, a leaf cache in
 at least in \Sh{} state for address $a$ is \clean for that address. A
 load response supplies the data for that address present in the cache,
-which, by Invariant~\textit{lastestValue}, contains the ``latest
-value''. Thus, the final condition for Theorem~\textit{storeAtomicity}
+which, by Invariant~\fullref{lastestValue}, contains the ``latest
+value''. Thus, the final condition for Theorem~\fullref{storeAtomicity}
 is also satisfied. All that remains is to show that these properties hold.
 
 \subsection{Reducing to Pair-wise Invariants}
 \label{pairwise}
 
-We can directly show that Invariants~\textit{processReq} and
-\textit{noReqAgain} hold at the initial configuration and are
+We can directly show that Invariants~\fullref{processReq} and
+\fullref{noReqAgain} hold at the initial configuration and are
 preserved through each atomic transition of our protocol
-(Figure~\ref{trans}). Invariants~\textit{uniqM} and
-\textit{latestValue} correctness rely on properties of the node
+(Figure~\ref{trans}). Invariants~\fullref{uniqM} and
+\fullref{latestValue} correctness rely on properties of the node
 hierarchy. We can prove both using the following invariants on
 parent-child relationships.
 
@@ -136,11 +136,11 @@ $a$.
 
 For any two caches $c$ and $p$, such that $p$ is an ancestor of $c$ in
 the cache tree hierarchy, from Invariants \fullref{conservative} and
-\textit{localCompatibility}, we can show that for any address $a$,
+\fullref{localCompatibility}, we can show that for any address $a$,
 $c.\state[a] \le p.\state[c][a]$. This is because the ancestor
 relation is the reflective-transitive closure of the parent relation,
 and Invariants \fullref{conservative} and the first part
-\textit{localCompatibility} of defines a $\ge$ relation between the
+\fullref{localCompatibility} of defines a $\ge$ relation between the
 states of a parent and its child.
 
 Any two caches $c_1, c_2$ neither of which are an ancestor of the
@@ -219,7 +219,7 @@ $t'$. Let's say $m$ is sent by $c$. Then $p$ can not have received any message
 from $c$ after sending $m$ in order to not violate Invariant \fullref{noCross}.
 Instead, if $c$ receives $m$ at $t'$, $p$ will not receive any message after
 sending $m$ in order to not violate Invariants \fullref{noCross} and
-\textit{respFIFO}. Let $m$ be sent or received by $p$ at $t''$. In both cases,
+\fullref{respFIFO}. Let $m$ be sent or received by $p$ at $t''$. In both cases,
 $p.\dstate[c][a]$ at $t''+1$ will be equal to $c.\state[a]$ at $t'+1$ (because
 the response messages sync up the next-state according to the transitions in
 Figure \ref{trans}). Since $p$ can not receive any message between $t''+1$ and
@@ -230,7 +230,7 @@ wouldn't have received any message sent by $c$ before $t$ as it means that the
 message must be sent by $c$ before $t$. Since the initial states of the
 directory and the child's state are both set to \In{}, the same argument holds
 (in which the parent can only upgrade), thus maintaining Invariant
-\textit{conservative}.
+\fullref{conservative}.
 
 To prove Invariant \fullref{localCompatibility}, it is enough to show that a
 child $c$ upgrades $c.\state[a]$ on receiving a response for $a$ from its
@@ -267,12 +267,12 @@ state for address $a$ when a response is in transit from $p$ to $c$.
 Similarly, we can prove that no cache can be in \Mo{} state for address $a$
 when a response is in transit for address $a$ from $c$ to $p$. Since data is in
 transit at the same time as when the response is in transit, Invariant
-\textit{noTransitWrite} follows.
+\fullref{noTransitWrite} follows.
 
 %from the parent and child respectively, it is sufficient to show that the previous state
 %or the 
 %
-%Invariant~\textit{conservative} can be proved by
+%Invariant~\fullref{conservative} can be proved by
 %further breaking them into the following invariants between a parent-child pair
 %of caches.
 %
@@ -302,7 +302,7 @@ transit at the same time as when the response is in transit, Invariant
 %\label{noCross}
 %\end{inv}
 %
-%Invariant~\textit{conservative} at any time $t$ for child cache $c$ and parent
+%Invariant~\fullref{conservative} at any time $t$ for child cache $c$ and parent
 %$p$ for an address $a$ can be proved as follows. Consider the case when
 %$c.\state[a]$ never changed before $t$, then $c.\state[a] = \In$ because of the
 %initialization conditions described in Section \ref{System}. No response would
