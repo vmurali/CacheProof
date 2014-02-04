@@ -134,14 +134,14 @@ for each of the caches, and each of the addresses, because no cache is
 waiting for any response from either its child or its parent
 initially.
 
-The behavior of the system are described via the atomic state
-transitions.  These transitions have two parts: the guard dictating
+The behavior of the system is described via the atomic state
+transitions. These transitions have two parts: the guard dictating
 when the transition can fire, and the action defining how the state of
 the system changes when the transition happens. In our generated
 implementation, these transitions or \emph{guarded atomic actions}
 happen concurrently in a single hardware clock, but they will
 logically happen happen one at a time. Figure~\ref{trans} gives the
-atomic transitions for a cache coherent memory subsystem. The actions
+atomic transitions for an MSI-based cache coherent memory subsystem. The actions
 in the transitions represent only the specific system states that
 change. We use $x \Leftarrow y$ to indicate setting of a specific
 state $x$ of the overall system to value $y$ because of a transition.
