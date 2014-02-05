@@ -15,14 +15,14 @@ actually implemented in Coq.
 
 Logically, the base protocol lacks an explicit representation of the notion
 that caches hold only a partial set of addresses; rather it models it by having
-unincluded cache entries be in the \In{} state. This provides
+excluded cache entries be in the \In{} state. This provides
 flexibility to model any cache structure, like a fully associative cache or a
 direct-mapped cache. One should simply prove that the states corresponding to
 the actual implementation has a bijective mapping to the states mentioned in
 Section \ref{sec:System}.
 
 Allowing voluntary downgrades allows a cache to evict any data as desired,
-which can model any replacement policity.
+which can model any replacement policy.
 
 \subsection{Implementing Unbounded communication channels}
 
@@ -107,7 +107,7 @@ For the MESI protocol, there is just one difference from the MSI protocol of
 Figure \ref{trans}. A cache, in addition to the states mentioned in Section
 \ref{sec:System}, contains a ``dirty'' boolean value associated with each
 address.  Whenever a cache gets new data from its parent, this value is set to
-\False{} and becomes \True{} whenever the a store request is processed in that
+\False{} and becomes \True{} whenever a store request is processed in that
 cache, or if the cache receives data from its children. It simply denotes
 whether the data in the cache matches that of its parent or not.  Whenever a
 child downgrades from \Mo{}, when the data is not dirty, instead of sending the
@@ -135,7 +135,7 @@ Invariant \fullref{localCompatibility} is no longer true. Instead, we can prove
 a weaker clause, \viz the states of two siblings for an address are compatible
 (instead of the directory entries at the parent for the two siblings being
 compatible).  This is because in the protocol, the parent sends an upgrade, say
-to cache $c$, for \Ow{} or \Mo{} inspite of another cache, say $c'$, being in
+to cache $c$, for \Ow{} or \Mo{} in spite of another cache, say $c'$, being in
 \Ow{} or \Mo{} state. But the parent also sends a downgrade request to $c'$
 simultaneously. The request-response message first reaches $c'$. If $c'$ has
 already downgraded (using a transition similar to ChildVolResp), then it drops
@@ -143,8 +143,9 @@ the request-response message, and the parent falls back to normal MSI-like
 transitions, otherwise $c'$ downgrades its state, and sends a downgrade
 response meant for $p$, along with the upgrade response meant for $c$ from $p$, to $c$.
 $c$ then performs the upgrade, and sends the downgrade response from $c'$ to
-the parent (dropping the data portion of the response). This gives the intuition behind why the siblings are compatibly
-inspite of the directory states not being compatible.
+the parent (dropping the data portion of the response). This gives the
+intuition behind why the siblings are compatibly in spite of the directory
+states not being compatible.
 
 The proof of Invariant \fullref{noTransitWrite} is also different in this
 protocol. One must analyze three caches, the parent and two siblings in order
