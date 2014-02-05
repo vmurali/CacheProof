@@ -1,26 +1,31 @@
 \section{Liveness properties}
 \label{liveness}
 
-In Section~\ref{safety} we showed how the MSI protocol of
-Figure~\ref{trans} obeys the store atomicity theorem, showing that
-only correct behavior occurs. To complete our correctness picture, we
-must also show that we avoid deadlock, \ie\ we make forward progress.
+In Section~\ref{safety} we showed how the MSI protocol of Figure~\ref{trans}
+obeys the store atomicity theorem. To complete the picture, we must also show
+that it avoids deadlock, \ie{} the protocol makes forward progress.
 
 Forward progress can be either of the following:
 \begin{enumerate}
 \item Weak forward progress: The system never reaches a state where
-  none of the transitions of Figure~\ref{trans} apply or
+  none of the transitions of Figure~\ref{trans} apply, or
 \item Strong forward progress: At any time, eventually a new request
-  from some processor will be processed
+  from some processor will be processed.
 \end{enumerate}
 
-To prove strong forward progress given weak fairness, we need some
-guarantees on the choice of executions of the transitions
-Figure~\ref{trans} in each cache. Specifically, caches must ensure
-local starvation-freedom in the processing of messages when sufficient
-resources are available. This can be enforced via during hardware
-compilation; for this paper we will focus only on weak forward
-progress.
+To prove strong forward progress, we need some guarantees on the choice of
+executions of the transitions Figure~\ref{trans} in each cache. Each cache must
+ensure that it does not avoid receiving a particular available request from one
+of its children indefinitely, when the guard for the corresponding transition
+(ParentRecvReq) is true. Besides, all the transitions in Figure \ref{trans} are
+voluntary in nature. Thus, the system can execute a sequence of transitions
+which simply moves, say, the \Mo{} permission among the children of a cache,
+without doing any further work with that permission
+%This can potentially be enforced via during hardware
+%compilation;
+For this paper we focus only on weak forward progress, as we have not modeled
+the algorithm for correctly choosing the transitions to guarantee strong
+forward progress in Coq.
 
 In order to establish that some transition always executes, we prove the
 following important invariant.
@@ -34,7 +39,12 @@ $x$.
 
 This condition ensures that every request gets a response eventually. Using
 this invariant, it is easy to see that there will always be some cache in the
-system which can either send a request to another cache (ChildSendReq or
-ParentSendReq) or process a request (ParentRecvReq, ChildRecvReq or
-ChildDropReq) or accept a response from another cache (ChildRecvResp or
-ParentRecvResp). We do not give the formal proof here due to lack of space.
+system which can either send a request to another cache if the cache is not
+waiting for any response from the latter cache (ChildSendReq or ParentSendReq),
+or accept a response from another cache if such a response is available
+(ChildRecvResp or ParentRecvResp). But if all the caches are waiting for a
+response, and no response is available, then the leaf caches can execute
+ChildRecvReq transition (as the leaf does not have any children, and this
+transition is executed even if a cache is waiting for a response from its
+parent). Therefore, some transition can always be executed, proving weak
+forward progress.
