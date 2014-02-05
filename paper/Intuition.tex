@@ -26,6 +26,7 @@ the ``latest'' value. We can state this formally with the following 4
 invariants.
 
 \begin{inv}
+\textit{latestValue}:
 At any time $t$, a cache $c$ which is clean for an address $a$ will have the most
 up-to-date value for that address, \ie{}
 \begin{enumerate}
@@ -90,14 +91,14 @@ have no children, a leaf cache in at least \Sh{} state for address $a$ is
 \clean{} for that address. Since processing a load request requires the cache
 to be at least in the \Sh{} state, its response, which supplies the data for
 that address present in the cache, supplies the latest value by
-Invariant~\fullref{lastestValue}.  Thus, the final condition for
+Invariant~\fullref{latestValue}.  Thus, the final condition for
 Theorem~\fullref{storeAtomicity} is also satisfied. All that remains is to show
 how these invariants hold.
 
 \subsection{Reducing to Pair-wise Invariants}
 \label{pairwise}
 
-Correctness of Invariants \fullref{uniqM} and \fullref{latestValue} can be
+Correctness of Invariants \fullref{localCompatibility} and \fullref{latestValue} can be
 proved using the following invariants on a parent-child pair.
 
 \begin{inv}
@@ -190,6 +191,7 @@ same address is in transit.
 \begin{inv}
 \textit{respFIFO}: Responses are received in the order in which they are sent,
 for a source-destination pair, for the same address.
+\label{respFIFO}
 \end{inv}
 
 The MSI-based protocol in Figure~\ref{trans} is such that any change in either
