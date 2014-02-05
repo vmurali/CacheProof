@@ -22,32 +22,27 @@ make them realizable in hardware. This effort is not a one-time translation, as
 performance properties are not easily estimated; a significant amount of
 performance testing is requires to select a good implementation. 
 
-\adamc{I don't understand what this paragraph is saying.}
-From a methodological perspective, this two-step process leaves much
-to be desired. The significant effort of
-verification is effectively lost by the concurrent non-trivial tasks
-of translation from the protocol representation to a hardware
-description and the necessary refinement to add missing implementation
-details to the protocol. 
+Methodologically, this process is flawed. The guarantees gained from
+verifying the protocol have no bearing on the implementation if
+hardware designers must do a manual translation to RTL.
 
-Verified protocols are often described via Term Rewrite
-Systems (TRS) \adamc{citation for TRSes?}, which apply equational logic to describe systems at an
-interesting point on the spectrum between declarative and operational methods.
-It was shown by Dave
-\etal{}~\cite{DNA:CoherenceImplementation} that such a verified
-protocol could be transliterated into Bluespec~\cite{Bluespec:TFRG}, a
-hardware description language based on Guarded Atomic Actions, a
-restriction of TRS~\cite{Hoe:TCAD}. In this way one reduces the correctness of
-the implementation to the correctness of the protocol, with no need
-for separate reasoning about an implementation. While the current Bluespec compiler
-does not support some implementation elements that are common in practice
-(\eg{} fairness guarantees, atomic actions running over multiple clock cycles),
-recent work has provided key insights toward lifting the
+Verified protocols are often described via Term Rewrite Systems (TRS),
+which apply equational logic to describe systems at an interesting
+point on the spectrum between declarative and operational methods.  It
+was shown by Dave \etal{}~\cite{DNA:CoherenceImplementation} that such
+a verified protocol could be transliterated into
+Bluespec~\cite{Bluespec:TFRG}, a hardware description language based
+on Guarded Atomic Actions, a restriction of TRS~\cite{Hoe:TCAD}. In
+this way one reduces the correctness of the implementation to the
+correctness of the protocol, with no need for separate reasoning about
+an implementation. While the current Bluespec compiler does not
+support some implementation elements that are common in practice
+(\eg{} fairness guarantees, atomic actions running over multiple clock
+cycles), recent work has provided key insights toward lifting the
 restrictions~\cite{DNA:CoherenceImplementation, Karczmarek}.  We
-believe that Bluespec and its future evolutions represent a
-very promising platform for productive implementation and
-verification of hardware components, including cache-coherent
-shared memories.
+believe that Bluespec and its future evolutions represent a very
+promising platform for productive implementation and verification of
+hardware components, including cache-coherent shared memories.
 
 Even though the protocol transliteration approach cuts out one
 layer of verification effort, it may not be practical in practice.

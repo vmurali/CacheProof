@@ -3,19 +3,20 @@
 
 We have chosen as our concrete example a hierarchical MSI
 protocol~\cite{MSI}. Logically, the system is organized in a tree
-structure, with the root connected to the main memory and each leaf interfaced
-with a processor (Figure~\ref{hier}). In the following, $\leaf(c)$ indicates
-that a cache $c$ is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
-$c$.
+structure, with the root connected to the main memory and each leaf
+interfaced with a processor (Figure~\ref{hier}). In the following,
+$\leaf(c)$ indicates that a cache $c$ is a leaf, and $\parent(c,p)$
+indicates that $p$ is the parent of $c$.
 
-Input and output happens at the leaves in the form of memory requests
-issued from and responses issued to the associated processor. These will be
-represented by two mappings, one from $\mathbb{N}$ to requests and the other
-from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
-position of the next request to process; it is set to $0$ initially.
-\adamc{What is a ``position'' here?  Is ``sequence number'' a better choice?}
-\adamc{I hope the diagram explains what these mappings mean, and in general what
-the tree structure really means.}
+Input and output happens at the leaves in the form of a stream of
+memory requests issued from and responses issued to the associated
+processor. These will be represented in Coq as two mappings each with
+integer ($c.\pos$) indicating how many elements in the stream we have
+handled so far.
+
+%% \adamc{What is a ``position'' here?  Is ``sequence number'' a better choice?}
+%% \adamc{I hope the diagram explains what these mappings mean, and in general what
+%% the tree structure really means.}
 
 Each node maintains a permission state for each address $a$, $c.\state[a]$, in
 addition to the data associated with the address, $c.\data[a]$. The permission
@@ -32,9 +33,6 @@ If a cache does not include a particular location,
 we consider that address to have permission \In.  Initially, all addresses in
 each cache are in the \In{} state, save for those in the root cache (i.e., main memory),
 which are in the \Mo{} state.
-
-%Of course, all these invariants have to be enforced by the protocol.
-
 
 Each non-leaf cache also keeps a (possibly stale) copy of the permission state of
 each of its children in a \emph{directory} for every address. The directory
@@ -340,4 +338,3 @@ as long as they do not access the same state, \ie{} do not
 %% Karczmarek \etal~\cite{Karczmarek} has provided a scheme to convert
 %% atomic transitions into synchronous hardware in which each transition
 %% can span several clock cycles.
-
