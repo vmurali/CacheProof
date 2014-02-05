@@ -1,11 +1,13 @@
 \section{Refinements}
 \label{Sec:Refinements}
 
-In this section we discuss important design changes of interest to implementors
-and the impact it has on the verification. Most of these require no change in
-the intuitive reasoning for correctness, thus keeping the Coq-based proof
-framework intact. But these may require additional proofs which we have not
-actually implemented in Coq.
+In this section we discuss important design changes of interest to
+implementors and the impact it has on the verification. Most of these
+require no change in the intuitive reasoning for correctness, thus
+keeping the Coq-based proof framework intact. These may require
+additional proofs not currently fully implemented in Coq; however, we
+have manually ascertained that these proofs are straightforward.
+
 %We have formally proven the
 %correctness of each of these choices in Coq, but due to space concerns we will
 %not discuss them in their full detail. 
@@ -23,7 +25,7 @@ implementation is correct, the correspondence
 between the system state of the real protocol and that in Section
 \ref{Sec:System} must be established, which is straightforward.
 
-% ndave: This is _not_ a bijective mapping
+% ndave: This is _not_ a bijective mapping (cache configuations to base node configurations)
 
 \subsection{Implementing Unbounded communication channels}
 
