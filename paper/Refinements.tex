@@ -80,7 +80,7 @@ be sent on a single virtual network
 \end{enumerate}
 
 Requests and responses sent by a parent to its child have to maintain FIFO
-order in order to satisfy Invariant \textit{noCross}. Any response message sent
+order in order to satisfy Invariant \fullref{noCross}. Any response message sent
 to the parent will be drained by execution of either ParentRecvResp
 transitions, hence these messages can share a virtual network across the whole
 hierarchy. In the case of responses, FIFO property can be enforced at the
@@ -119,36 +119,37 @@ is straightforward.
 A more interesting variation is the MOSI protocol (and it's E-variant MOESI --
 similar to the MESI variant of MSI). In this, a new state called \Ow{} is
 introduced. A cache in \Ow{} state for an address has only read permissions for
-that address, but the data it holds is more up-to-date than that in the parent.
-All its siblings in the \Sh{} state also have the most up-to-date data.
+that address, but the data it holds is more up-to-date than in the parent.
+All its siblings in the \Sh{} state also have the most up-to-date data, and
+none of the siblings can be in \Mo{} or \Ow{} state.
 Whenever data has to be supplied to a new cache $c$, the parent directs a
 sibling of $c$ in the \Ow{} or \Mo{} state (if any) to supply the data to $c$.
 
 The invariants in Section \ref{safety} almost holds as is in this protocol too,
 except for the definition of compatibility between two states and Invariant
-\textit{localCompatibility}. If a state is in \Ow{}, then it is compatible only
+\fullref{localCompatibility}. If a state is in \Ow{}, then it is compatible only
 with another state in \Sh{} or \In{}. The total order for the states is now
 ($\Mo > \Ow > \Sh > \In$). A child cache always requests an upgrade to \Ow{}
 instead of \Sh{} whenever it requires read permission. The second clause of
-Invariant \textit{localCompatibility} is no longer true. Instead, we can prove
+Invariant \fullref{localCompatibility} is no longer true. Instead, we can prove
 a weaker clause, \viz, the states of two siblings for an address are compatible
 (instead of the directory entries at the parent for the two siblings being
 compatible).  This is because in the protocol, the parent sends an upgrade, say
 to cache $c$, for \Ow{} or \Mo{} inspite of another cache, say $c'$, being in
 \Ow{} or \Mo{} state. But the parent also sends a downgrade request to $c'$
-simultaneosly. The request-response message first reaches $c'$. If $c'$ has
+simultaneously. The request-response message first reaches $c'$. If $c'$ has
 already downgraded (using a transition similar to ChildVolResp), then it drops
 the request-response message, and the parent falls back to normal MSI-like
 transitions, otherwise $c'$ downgrades its state, and sends a downgrade
-response, along with the upgrade response to $c$ from the parent, both to $c$.
+response meant for $p$, along with the upgrade response meant for $c$ from $p$, to $c$.
 $c$ then performs the upgrade, and sends the downgrade response from $c'$ to
-the parent. This gives the intuition behind why the siblings are compatibly
+the parent (dropping the data portion of the response). This gives the intuition behind why the siblings are compatibly
 inspite of the directory states not being compatible.
 
-The proof of Invariant \textit{noTransitWrite} is also different in this
+The proof of Invariant \fullref{noTransitWrite} is also different in this
 protocol. One must analyze three caches, the parent and two siblings in order
 to prove the invariant. The proof, as in MSI protocol, requires Invariant
-\textit{noCross} and \textit{respFIFO}.
+\fullref{noCross} and Invariant \fullref{respFIFO}.
 
 The bulk of the store atomicity proof, which requires proving Invariant
-\textit{conservative} remains the same as in the MSI protocol.
+\fullref{conservative} remains the same as in the MSI protocol.
