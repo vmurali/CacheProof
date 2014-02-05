@@ -1,5 +1,5 @@
 \section{Introduction}
-\label{sec:Introduction}
+\label{Sec:Introduction}
 
 Shared memory is a common abstraction for distributed systems as it
 provides an easily understood model of interaction. To achieve this
@@ -53,7 +53,7 @@ skill to do make this verification, this greatly weakens the ability
 to carry over our verification guarantee to the design.
 
 For this approach to be truly viable, designers cannot be handed a
-single proof of correctnessof a single design; rather, they need a
+single proof of correctness of a single design; rather, they need a
 proof framework covering any variation of a design that might be of
 interest for performance reasons. This would enable implementation
 level changes without compromising on the ability to verify
@@ -87,8 +87,8 @@ formally.
 \noindent\textbf{Paper Outline}. In Section~\ref{Sec:Background} we
 discuss our notion of correctness for our cache coherence protocol
 framework. We discuss our MSI protocol example and its implementation
-in Section~\ref{Sec:System}. In Section~\ref{Sec:ProofStructure} we discuss
-the structuring of our proof framework and verification of the base
-protocol. We show implementation refinements in
-Section~\ref{Sec:Refinements} and conclude with a general discussion
-of the applicability of our technique.
+in Section~\ref{Sec:System}. In Sections~\ref{Sec:Safety} and
+\ref{Sec:Liveness} we discuss the structuring of our proof framework and
+verification of the base protocol. We show implementation refinements
+in Section~\ref{Sec:Refinements} and conclude with a general
+discussion of the applicability of our technique.
