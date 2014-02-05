@@ -11,17 +11,17 @@ actually implemented in Coq.
 %not discuss them in their full detail. 
 
 
-\subsection{Changing the cache structure and replacement policies}
+\subsection{Changing the cache structure and eviction policies}
 
 The base protocol lacks an explicit representation of the notion that
 caches hold only a partial set of addresses; rather it models it by
 having excluded cache entries be in the \In{} state and permitting
 entries to be evicted voluntarily. This provides the flexibility to
-model any cache structure, \eg\ like a fully associative cache or a
-direct-mapped cache, or eviction policy. To show such an
-implementation is correct, we must show that the correspondence
-between the system state and the base protocol from
-Section~\ref{Sec:System}, easily expressed as a simple mapping.
+model any cache structure, \eg{} a fully associative cache or a
+direct-mapped cache, and any eviction policy. To show such an
+implementation is correct, the correspondence
+between the system state of the real protocol and that in Section
+\ref{Sec:System} must be established, which is straightforward.
 
 % ndave: This is _not_ a bijective mapping
 
