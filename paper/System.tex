@@ -154,18 +154,18 @@ each of the $c$'s children should not be greater than the requested
 downgrade, in order for $c$ to accept a request and send a downgrade
 response.
 
-Figure~\ref{childextra} shows transitions that happen in a non-root cache
-because of the presence of \emph{voluntary} responses. This models eviction of
-a location from a cache to make room for a new location.  This eviction usually
-causes the permission state of the cache for that address to go to $\In$, while
-we allow any downgrade to take place voluntarily.  We use the same \cpResp{}
-FIFO for such a message. Such a voluntary response for an address can take
-place only if the cache is not waiting for a response from its parent for
-that address (ChildVolResp).
+Figure~\ref{childextra} shows transitions that happen in a non-root
+cache due to the presence of \emph{voluntary} responses. This models
+eviction from a cache. This eviction usually causes the permission
+state of the cache for that address to go to $\In$, while we allow any
+downgrade to take place voluntarily.  We use the same \cpResp{} FIFO
+for such a message. Such a voluntary response for an address can take
+place only if the cache is not waiting for a response from its parent
+for that address (ChildVolResp).
 
-Because of the presence of voluntary response, a child could have already
+Because of the presence of voluntary responses, a child may have already
 downgraded to a state required by a downgrade request from its parent. In such
-a case, the child simply drops the downgrade request (ChildDropReq).
+a case, the child drops the downgrade request (ChildDropReq).
 
 Figure~\ref{procside} shows the transitions that serve a processors request in
 the leaf caches. LoadReq and StoreReq show the processing of a load and store

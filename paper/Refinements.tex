@@ -27,18 +27,19 @@ Section~\ref{Sec:System}, easily expressed as a simple mapping.
 
 \subsection{Implementing Unbounded communication channels}
 
-In the base protocol, inter-node communication channels are assumed to be
-infinite. To be implemented in hardware they must be made finite which may
-introduce deadlocks as an atomic transaction which sends a message can not
-execute if the channel in which the message is sent becomes full. In the proof
-of weak forward progress, we prove a lemma that if any channel has a response,
-then one of ParentRecvResp or ChildRecvResp is applicable. Otherwise, if no
-channel has a response, but all channels have requests, then ChildRecvReq or
-ChildDropReq is applicable for a leaf cache. If a channel does not have any
-request in it, then one of ChildSendReq or ParentSendReq can execute for the
-cache attached to the channel, eventually filling up all the request channels.
-Thus, any message in any channel eventually gets drained, allowing sending
-further messages, proving that finite communication channels suffice.
+In the base protocol, inter-node communication channels are assumed to
+be infinite. To be implemented in hardware they must be made finite
+which may introduce deadlocks as an atomic transaction cannot execute
+if it requires sending a message through a full channel. In the proof
+of weak forward progress, we prove a lemma that if any channel has a
+response, then one of ParentRecvResp or ChildRecvResp is
+applicable. Otherwise, if no channel has a response, but all channels
+have requests, then ChildRecvReq or ChildDropReq is applicable for a
+leaf cache. If a channel does not have any request in it, then either
+ChildSendReq or ParentSendReq can execute for the attached cache,
+eventually filling up all request channels.  Thus, any message in any
+channel will eventually be drained, allowing further messages to be
+sent, proving that finite communication channels suffice.
 
 \subsection{Implementing pair-wise communication channels in a communication
 fabric}
@@ -50,108 +51,117 @@ This communication network usually has a ring or a mesh topology.
 We will now describe the mapping from pair-wise communication channels
 to interconnnect network in greater detail, and give informal arguments
 about why the mapping is necessary and sufficient. This requires no change in
-the proof presented in Section \ref{safety}.
+the proof presented in Section~\ref{Sec:Safety}.
 
 \begin{enumerate}
 \item Each level in the cache hierarchy has a separate virtual network
-for requests from child to parent. This need not maintain FIFO order.
+  for requests from child to parent. This need not maintain FIFO order.
+
 \item Either
-\begin{enumerate}
-\item there are 2 separate virtual networks overall (shared by all the levels)
-for responses from child to parent. The first network carries responses sent by
-children who were in state \Mo{} when sending the response and the second
-carries responses sent by children in state \Sh{} when sending the response.
-Neither of these two virtual networks need to maintain FIFO order or
-\item there is a single virtual network overall (shared by all the levels) for
-responses from child to parent, which maintains a FIFO order.
-\end{enumerate}
+  \begin{enumerate}
+    \item there are 2 separate virtual networks overall (shared by all the levels)
+      for responses from child to parent. The first network carries responses sent by
+      children who were in state \Mo{} when sending the response and the second
+      carries responses sent by children in state \Sh{} when sending the response.
+      Neither of these two virtual networks need to maintain FIFO order or
+    \item there is a single virtual network overall (shared by all the levels) for
+      responses from child to parent, which maintains a FIFO order.
+  \end{enumerate}
+
 \item Each level in the cache hierarchy has a separate virtual network
-for both request and response messages from the parent to the child. This
-network has to maintain FIFO order between messages belonging to the same
-source-destination pair.
+  for both request and response messages from the parent to the child. This
+  network has to maintain FIFO order between messages belonging to the same
+  source-destination pair.
 \end{enumerate}
 
 The intuition behind this virtual network allotment is as follows:
 \begin{enumerate}
 \item a new message generated on receiving another message is sent on a virtual
-network different from that of the received message (to avoid running out of
-buffers), and
+  network different from that of the received message (to avoid running out of
+  buffers), and
 \item all types of messages which do not generate new messages on reception can
-be sent on a single virtual network
+  be sent on a single virtual network
 \end{enumerate}
 
-Requests and responses sent by a parent to its child have to maintain FIFO
-order in order to satisfy Invariant \fullref{noCross}. Any response message sent
-to the parent will be drained by execution of either ParentRecvResp
-transitions, hence these messages can share a virtual network across the whole
-hierarchy. In the case of responses, FIFO property can be enforced at the
-protocol itself (in fact the transitions in Figure \ref{trans} ensures the FIFO
-property of responses from child to parent without requiring the network to
-provide them). The need for 2 separate virtual networks is to avoid head of
-line blocking in case the messages go out of order. If FIFO property is
-maintained, then the messages will not go out of order, and hence a single
-virtual network is sufficient.  Since any request can generate new requests
-(unlike responses which can not generate new messages), the new requests should
-be sent on different virtual networks to prevent deadlocks, hence the need for
-separate virtual networks for requests at each level of the hierarchy.
+Messages sent by a parent to its child have to maintain FIFO order in
+order to satisfy Invariant \fullref{noCross}. Any response message
+sent to the parent will be drained by execution of either
+ParentRecvResp transitions, hence these messages can share a virtual
+network across the whole hierarchy. In the case of responses, FIFO
+property can be enforced at the protocol itself (in fact the
+transitions in Figure~\ref{trans} ensures the FIFO property of
+responses from child to parent without requiring the network to
+provide them). Having multiple separate virtual networks avoids head
+of line blocking when messages are reordered. If the FIFO property is
+maintained, a single network is sufficient. Since any request can
+generate new requests (unlike responses which can not generate new
+messages), the new requests should be sent on different virtual
+networks to prevent deadlocks, hence the need for separate virtual
+networks for requests at each level of the hierarchy.
 
-Note that multiple virtual networks can be mapped into a single underlying
-physical link \cite{noc-funda}.
+Note that multiple virtual networks can be mapped into a single
+underlying physical link~\cite{noc-funda}.
 
 %We do not provide the formal proofs for the above assertions due to lack of space.
 
 \subsection{Protocol}
-We will describe two important protocol variations, the MESI and MOSI protocols
-in which most of the invariants that we mention in Section \ref{safety} hold.
 
-For the MESI protocol, there is just one difference from the MSI protocol of
-Figure \ref{trans}. A cache, in addition to the states mentioned in Section
-\ref{sec:System}, contains a ``dirty'' boolean value associated with each
-address.  Whenever a cache gets new data from its parent, this value is set to
-\False{} and becomes \True{} whenever a store request is processed in that
-cache, or if the cache receives data from its children. It simply denotes
-whether the data in the cache matches that of its parent or not.  Whenever a
-child downgrades from \Mo{}, when the data is not dirty, instead of sending the
-non-updated data back to the parent, a special response message indicating that
-the data has not been updated is sent (to reduce the size of the message being
-sent). Proving that this protocol obeys the invariants in Section \ref{safety}
-is straightforward.
+A natural extension one may consider doing is expanding the protocol
+from MSI to two common extensions MESI and MOSI. These represents a
+significant shifts in assumptions and are generally out of scope for
+hardware exploration if correctness is a major concern; however,
+similarities in the protocol and thus their correctness argument
+result in only a small change to the invariants. 
 
-A more interesting variation is the MOSI protocol (and it's E-variant MOESI --
-similar to the MESI variant of MSI). In this, a new state called \Ow{} is
-introduced. A cache in \Ow{} state for an address has only read permissions for
-that address, but the data it holds is more up-to-date than in the parent.
-All its siblings in the \Sh{} state also have the most up-to-date data, and
-none of the siblings can be in \Mo{} or \Ow{} state.
-Whenever data has to be supplied to a new cache $c$, the parent directs a
-sibling of $c$ in the \Ow{} or \Mo{} state (if any) to supply the data to $c$.
+The MESI protocol conceptually adds a ``dirty'' bit to each
+address. On sending data back to its parent during downgrades, a cache
+with the dirty bit unset sends a special shorter message to its parent
+reflecting that the value has not changed. Proving that this protocol
+obeys the invariants in Section~\ref{safety} is straightforward,
+requiring only that we show that the new message is logically
+equivalent to the corresponding on in the base protocol.
 
-The invariants in Section \ref{safety} almost holds as is in this protocol too,
-except for the definition of compatibility between two states and Invariant
-\fullref{localCompatibility}. If a state is in \Ow{}, then it is compatible only
-with another state in \Sh{} or \In{}. The total order for the states is now
-($\Mo > \Ow > \Sh > \In$). A child cache always requests an upgrade to \Ow{}
-instead of \Sh{} whenever it requires read permission. The second clause of
-Invariant \fullref{localCompatibility} is no longer true. Instead, we can prove
-a weaker clause, \viz the states of two siblings for an address are compatible
-(instead of the directory entries at the parent for the two siblings being
-compatible).  This is because in the protocol, the parent sends an upgrade, say
-to cache $c$, for \Ow{} or \Mo{} in spite of another cache, say $c'$, being in
-\Ow{} or \Mo{} state. But the parent also sends a downgrade request to $c'$
-simultaneously. The request-response message first reaches $c'$. If $c'$ has
-already downgraded (using a transition similar to ChildVolResp), then it drops
-the request-response message, and the parent falls back to normal MSI-like
-transitions, otherwise $c'$ downgrades its state, and sends a downgrade
-response meant for $p$, along with the upgrade response meant for $c$ from $p$, to $c$.
-$c$ then performs the upgrade, and sends the downgrade response from $c'$ to
-the parent (dropping the data portion of the response). This gives the
-intuition behind why the siblings are compatibly in spite of the directory
-states not being compatible.
+In comparision, MOSI is a far more complicated. In MOSI, a new state
+called \Ow{} is introduced. A cache in \Ow{} state for an address has
+only read permissions for that address, but the data it holds is more
+up-to-date than in the parent.  All its siblings in the \Sh{} state
+also have the most up-to-date data, and none of the siblings can be in
+\Mo{} or \Ow{} state.  Whenever data has to be supplied to a new cache
+$c$, the parent directs a sibling of $c$ in the \Ow{} or \Mo{} state
+(if any) to supply the data to $c$.
 
-The proof of Invariant \fullref{noTransitWrite} is also different in this
-protocol. One must analyze three caches, the parent and two siblings in order
-to prove the invariant. The proof, as in MSI protocol, requires Invariant
-\fullref{noCross} and Invariant \fullref{respFIFO}.
+In MOSI, the invariants from Section~\ref{Sec:Safety} must be extended
+to consider the new cache state, \Ow. This affects the definition of
+compatibility (Invariant \fullref{localCompatibility}). If a state is
+in \Ow{}, then it is compatible only with another state in \Sh{} or
+\In{}. The total order for the states is now ($\Mo > \Ow > \Sh >
+\In$). A child cache always requests an upgrade to \Ow{} instead of
+\Sh{} whenever it requires read permission. Further, the second clause
+of Invariant \fullref{localCompatibility} is no longer true and we
+must use a weaker claim, \viz the states of two siblings for an
+address are compatible (instead of the restrictive requirements on
+corresponding entries in the parent's directory).  
 
-The bulk of the store atomicity proof, which requires proving Invariant
-\fullref{conservative} remains the same as in the MSI protocol.
+% ndave: This section is tertiary and long
+
+%% This is because in
+%% the protocol, the parent sends an upgrade, say to cache $c$, for \Ow{}
+%% or \Mo{} in spite of another cache, say $c'$, being in \Ow{} or \Mo{}
+%% state. But the parent also sends a downgrade request to $c'$
+%% simultaneously. The request-response message first reaches $c'$. If
+%% $c'$ has already downgraded (using a transition similar to
+%% ChildVolResp), then it drops the request-response message, and the
+%% parent falls back to normal MSI-like transitions, otherwise $c'$
+%% downgrades its state, and sends a downgrade response meant for $p$,
+%% along with the upgrade response meant for $c$ from $p$, to $c$.  $c$
+%% then performs the upgrade, and sends the downgrade response from $c'$
+%% to the parent (dropping the data portion of the response). This gives
+%% the intuition behind why the siblings are compatibly in spite of the
+%% directory states not being compatible.
+
+The proof of Invariant \fullref{noTransitWrite} changes for this
+protocol. One must analyze three caches, the parent and two siblings
+in order to prove the invariant. The proof, as in MSI protocol,
+requires Invariant \fullref{noCross} and Invariant
+\fullref{respFIFO}. The remainder of the store atomicity proof remains
+the same as in the MSI protocol.
