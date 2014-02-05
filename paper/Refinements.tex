@@ -13,16 +13,17 @@ actually implemented in Coq.
 
 \subsection{Changing the cache structure and replacement policies}
 
-Logically, the base protocol lacks an explicit representation of the notion
-that caches hold only a partial set of addresses; rather it models it by having
-excluded cache entries be in the \In{} state. This provides
-flexibility to model any cache structure, like a fully associative cache or a
-direct-mapped cache. One should simply prove that the states corresponding to
-the actual implementation has a bijective mapping to the states mentioned in
-Section \ref{sec:System}.
+The base protocol lacks an explicit representation of the notion that
+caches hold only a partial set of addresses; rather it models it by
+having excluded cache entries be in the \In{} state and permitting
+entries to be evicted voluntarily. This provides the flexibility to
+model any cache structure, \eg\ like a fully associative cache or a
+direct-mapped cache, or eviction policy. To show such an
+implementation is correct, we must show that the correspondence
+between the system state and the base protocol from
+Section~\ref{Sec:System}, easily expressed as a simple mapping.
 
-Allowing voluntary downgrades allows a cache to evict any data as desired,
-which can model any replacement policy.
+% ndave: This is _not_ a bijective mapping
 
 \subsection{Implementing Unbounded communication channels}
 

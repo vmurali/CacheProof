@@ -19,10 +19,10 @@ REFERENCE HERE}.
 
 \subsection{Reducing correctness to Node-level Invariants}
 
-The store atomicity is a whole system property. Intuitively our
-protocol is correct because it guarantees that at most one cache can
-write at a time, and that any cache that attempts to read has
-the ``latest'' value. We can state this formally with the following 4
+Store atomicity is a whole system property. Intuitively our
+protocol is correct because it guarantees at most one cache may
+write at a time, and that any cache permitted to read has
+the ``latest'' value. We state this formally with the following 4
 invariants.
 
 \begin{inv}
