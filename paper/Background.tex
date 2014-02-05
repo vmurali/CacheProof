@@ -34,8 +34,6 @@ caches. If these copies are independently written, the same address can end up
 having different values in different caches, violating the atomic register-like
 behavior unless the caches co-ordinate via a \emph{cache coherence protocol}.
 
-We will now provide the formal definition of store atomicity.
-
 \subsection{Formal definition of store atomicity}
 We will model an abstract memory sub-system, which interfaces with a set of
 processors. The requests issued by the processors to the memory sub-system can
@@ -166,7 +164,7 @@ d = \initData (a) \wedge \\
 \label{lastEarlierValue}
 \end{defn}
 
-Using the above definitions, we can define the store-atomicity theorem as follows:
+Using the above definitions, we can define the store atomicity theorem as follows:
 \begin{thm}
 \small
 \begin{multline*}

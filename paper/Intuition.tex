@@ -3,15 +3,15 @@
 
 In this section, we present the structure of the proof of Theorem
 \fullref{storeAtomicity} for a system implementing the MSI protocol of
-Figure~\ref{trans}. We reduce the whole system proof to that of a set of
-invariants between any parent-child pair. These invariants in turn depend on
-exactly two invariants. Identifying these two basic invariants is one of the
-main contributions of the paper; they also hold for other protocols like MOSI
-(discussed in Section~\ref{Sec:Refinements}).
+Figure~\ref{trans}. We reduce the whole system proof to that of a set
+of invariants between any parent-child pair. These invariants in turn
+depend on two smaller invariants which encapsulate the core aspects of
+correctness of the MSI protocol and allow the large scope of verified
+hardware refinements we present later (Section~\ref{Sec:Refinements}).
 
-The invariants hold after any number of executions of the transactions starting
-from the initial state. We use the term time $t$ to specify the global state
-reached after firing $t$ transitions.
+The invariants hold after any number of executions of the transactions
+starting from the initial state. We use the term time $t$ to specify
+the global state reached after firing $t$ transitions.
 
 While we have proofs in Coq for each invariant our discussion will be mainly
 informal for brevity. A full description can be found at~\xxx{MURALI PUT

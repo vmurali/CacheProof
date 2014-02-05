@@ -55,16 +55,16 @@ a) \cpReq{} channel to transmit requests from the child to the parent, b)
 \pc{} channel to transmit both request and response messages from parent to
 child. 
 
-We have dedicated channels between each parent-child pair. The three channels
-are indexed by the name of the child that uses that channel (denoted by
-$\textit{ch}[c]$ for the \textit{ch} channel associated with cache $c$).
-Figure \ref{format} shows the message format transmitted in the 3
-channels between caches. In each of the channels $ch$, a message $m$
-can be enqueued ($\enq(ch, m)$) or dequeued ($\deq(ch)$), and the
-channels can be examined for the first element ($\first(ch)$) or for
-availability of any message in the channel ($\avail(ch)$).  Each of
-these channels start out empty \ie $\forall ch, \neg \avail(ch)$,
-initially.
+We have dedicated channels between each parent-child pair. The three
+channels are indexed by the name of the child that uses that channel
+(denoted by $\textit{ch}[c]$ for the \textit{ch} channel associated
+with cache $c$).  Figure~\ref{format} shows the message format
+transmitted in the 3 channels between caches. In each of the channels
+$ch$, a message $m$ can be enqueued ($\enq(ch, m)$) or dequeued
+($\deq(ch)$), and the channels can be examined for the first element
+($\first(ch)$) or for availability of any message in the channel
+($\avail(ch)$).  Each of these channels start out empty \ie{} $\forall
+ch, \neg \avail(ch)$, initially.
 
 \begin{figure}
 \begin{subfigure}{6.8cm}
@@ -181,7 +181,6 @@ contains the number of transitions that has taken place in the system before
 the current transition, intuitively denoting the time at which this transition
 takes place.
 
-
 \begin{figure}
 \small
 \centering
@@ -271,8 +270,7 @@ its parent}\\
 \hline
 Guard: & $(\forall i, \parent(i, c) \rightarrow c.\dstate[i][a] \le x) \wedge x < c.\state[a] \wedge c.\wait[a] = \False$\\
 \hline
-Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,%$\\
-%& $\;\;\;%
+Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,
 \myif c.\state[a] = \Mo \mythen c.\data[a] \myelse \_\rangle)$;\\
 & $c.\state[a] \Leftarrow x$;\\
 \hline
@@ -316,17 +314,26 @@ Action:& $c.\pos \Leftarrow c.\pos + 1$; $c.\data[q.\addrQ] \Leftarrow q.\dataQ$
 \label{trans}
 \end{figure}
 
-Note that the atomic transitions in Figure~\ref{trans} access only local states,
-\ie{} a transition can read or write states only corresponding to a single cache
-and/or the channel the cache is connected to. This restriction allows such a
-system to be implemented directly into hardware. Bluespec System Verilog (BSV),
-for instance, directly converts these transitions into efficient synchronous
-hardware. Though these transitions logically happen one by one, BSV executes
-several transitions simultaneously, as long as they do not access the same
-state, \ie{} do not \emph{conflict}~\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
-Sometimes, these transitions (both the guards and the actions) may not be
-amenable to single cycle implementations in hardware. For example, writing a
-register array can actually take several hardware clock cycles, though
-logically it is a single transition.  Karczmarek \etal~\cite{Karczmarek} has
-provided a scheme to convert atomic transitions into synchronous hardware in
-which each transition can span several clock cycles.
+Note that the atomic transitions in Figure~\ref{trans} access only
+local states, \ie{} a transition can read or write states only
+corresponding to a single cache and/or the channel the cache is
+connected to. This restriction allows such a system to be implemented
+directly into hardware. Bluespec SystemVerilog (BSV), for instance,
+directly converts these transitions into efficient synchronous
+hardware. Though these transitions logically happen one by one, BSV
+executes several transitions simultaneously in a single clock cycle,
+as long as they do not access the same state, \ie{} do not
+\emph{conflict}~\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}. 
+
+%ndave: I know this is mildly relevant, but it's making the current
+%hardware implementation seem worse and it's not adding any actual
+%knowledge to the reader who doesn't care about this level of detail
+
+%%  Sometimes,
+%% these transitions may not be amenable to single cycle implementations
+%% in hardware. For example, writing a memory can actually take several
+%% hardware clock cycles, though logically it is a single transition.
+%% Karczmarek \etal~\cite{Karczmarek} has provided a scheme to convert
+%% atomic transitions into synchronous hardware in which each transition
+%% can span several clock cycles.
+
