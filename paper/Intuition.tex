@@ -8,11 +8,6 @@ store atomicity theorem for the whole system to the proof of a set of
 simple invariants by leveraging the ``intuitive'' justification of
 correctness of our protocol.
 
-%% This intuition
-%% is not restricted to the MSI-based protocol;
-%% Section~\ref{sec:Refinements} shows that it applies can apply to other
-%% protocols.
-
 Our invariants hold after any series of executions of the component
 transactions of our design reachable from the initial state. We use
 the term time $t$ to specify the global state reached after firing $t$
@@ -153,7 +148,7 @@ Invariant~\ref{localCompatibility}. From this, it straightaway follows
 that $x_1.\state[a]$ and $x_2.\state[a]$ are compatible (from
 Invariant~\ref{conservative}). From the previous paragraph, it follows
 that $c_1$ and $c_2$ are also compatible. This proves
-Invariant \fullref{nonAncestorCompatibility}.
+Invariant \fullref{nonAncestorCompatible}.
 
 We prove Invariant \fullref{latestValue} by strong induction on
 time. Consider two cases: cache $c$ is already \clean{} for an address

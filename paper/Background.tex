@@ -104,6 +104,7 @@ Responses should obey the following sanity conditions.
 r_1.\labelR = r_2.\labelR @-> r_1.\timeR = r_2.\timeR \wedge\\
 (\reqFn(r_1.\labelR) = \Ld @-> r_1.\dataR = r_2.\dataR)
 \end{multline*}
+\label{uniqRespLabels}
 \end{defn}
 
 \begin{defn} (No response can share a \timeR{} value with another store response.)
@@ -116,6 +117,7 @@ r_1.\timeR = r_2.\timeR @-> \\
 (\reqFn (r_1.\labelR)).\desc = \St @->
 r_1.\labelR = r_2.\labelR
 \end{multline*}
+\label{uniqStTimes}
 \end{defn}
 
 In addition, the global ordering of responses to the same processor should not
@@ -128,6 +130,7 @@ violate the local ordering of the corresponding requests.
 \forall (r_1, r_2 \in \Response), (r_1.\labelR).\fst = (r_2.\labelR).\fst @->\\
 (r_1.\labelR).\snd < (r2.\labelR).\snd @-> r_1.\timeR \le r_2.\timeR
 \end{multline*}
+\label{localOrdering}
 \end{defn}
 
 This brings us to the main condition for store atomicity which states that the
@@ -148,6 +151,7 @@ d = \initData (a) \wedge \\
 \forall (r' \in \Response), 0 \le r'.\timeR < t @->\\
 \neg ((\reqFn (r'.\labelR)).\addrQ = t \wedge (\reqFn (r'.\labelR)).\desc = \St)
 \end{multline*}
+\label{initialValue}
 \end{defn}
 
 \begin{defn}
@@ -159,16 +163,18 @@ d = \initData (a) \wedge \\
 \forall (r' \in \Response), r_m.\timeR \le r'.\timeR < t @->\\
 \neg ((\reqFn (r'.\labelR)).\addrQ = a \wedge (\reqFn (r'.\labelR)).\desc = \St)
 \end{multline*}
+\label{lastEarlierValue}
 \end{defn}
 
 Using the above definitions, we can define the store-atomicity theorem as follows:
 \begin{thm}
 \small
 \begin{multline*}
-storeAtomicity := 
+\textit{storeAtomicity} := 
 \textit{uniqRespLabels} \wedge
 \textit{uniqStTimes} \wedge \textit{localOrdering} \wedge \\
 (\forall (r \in \Response), \mylet q := \reqFn(r.\labelR) \myin q.\desc = \Ld \wedge \\
 (\textit{initialValue}(q.\addrQ, r.\timeR, r.\dataR) \vee \textit{lastEarlierValue}(q.\addrQ, r.\timeR, r.\dataR)))
 \end{multline*}
+\label{storeAtomicity}
 \end{thm}
