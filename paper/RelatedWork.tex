@@ -1,17 +1,58 @@
 \section{Related work}
 \label{relatedWork}
-These are lifted as is from that guy. Need to figure out how to restate them, and make it more concise.
+Formal verification of cache coherence protocols, among other hardware systems,
+is mainly done using model checking. Explicit state model checking tools like
+Murphi \cite{murphi} or TLC \cite{tlc} have been used in practise only to
+handle small and simplified systems, \eg{} a single level cache hierarchy with
+three CPUs handling two addresses and one bit of data. Symbolic model checking
+techniques have fared slightly better, McMillan \etal{} have verified a 2-level
+MSI protocol based on Gigamax distributed multiprocessor using SMV.
+Optimizations on these techniques (like partial order reduction \cite{part},
+symmetry reduction \cite{sym1, sym2}, compositional reasoning \cite{somethink}, \etc
+scale the model checking approach further, but they still haven't been able to
+verify realistic hierarchical coherence protocols.
 
-For verification of high level specifications, modern industrial practice
-consists of modeling small instances of the protocols, e.g., three CPUs
-handling two addresses and one bit of data, in terms of interleaving atomic
-steps, in guard/action languages such as Murphi \cite{tla} or TLA+ \cite{tla}, and
-exploring the reachable states through explicit state enumeration.
-Symbolic methods, e.g., BDD [31] or SAT [129, 142], are yet to succeed for the
-verification of cache coherence protocols.
-Monolithic formal verification methods – methods that treat the protocol as a whole – have
-been used fairly routinely for verifying cache coherence protocols from the early 1990s
-[10 (2 nodes, murphi)]. However, these monolithic techniques will not be able to handle the very
-large state space of hierarchical protocols. Compositional verification techniques are essential. 
+Theorem prover based approaches have also been used to verify cache coherence
+protocols. FLASH coherence protocol \cite{flash} has been verified using an
+approach called Aggregation of Distributed transactions \cite{park}.  Several
+state-transitions in the implementation accessing localized states intuitively
+correspond to a single atomic transition accessing all the states globally. In
+this approach, the user has to provide a proof of a mapping between the
+implemantion transitions to the aggregated atomic transition; once this is
+done, a model checker is used to verify the aggregated transition resulting in
+verification of the implementation. We believe that the difficult part in
+proving a protocol is precisely the proof of such a mapping from an
+implementation-level transition to a specification-level transitions accessing
+states globally, and their work does not present any approach to go about it.
 
-
+%These are lifted as is from that guy. Need to figure out how to restate them, and make it more concise.
+%
+%For verification of high level specifications, modern industrial practice
+%consists of modeling small instances of the protocols, e.g., three CPUs
+%handling two addresses and one bit of data, in terms of interleaving atomic
+%steps, in guard/action languages such as Murphi \cite{tla} or TLA+ \cite{tla}, and
+%exploring the reachable states through explicit state enumeration.
+%Symbolic methods, e.g., BDD [31] or SAT [129, 142], are yet to succeed for the
+%verification of cache coherence protocols.
+%Monolithic formal verification methods – methods that treat the protocol as a whole – have
+%been used fairly routinely for verifying cache coherence protocols from the early 1990s
+%[10 (2 nodes, murphi)]. However, these monolithic techniques will not be able to handle the very
+%large state space of hierarchical protocols. Compositional verification techniques are essential. 
+%
+%For coherence protocols which only consider one level (or nonhierarchical protocols),
+%various techniques have been proposed for the verification. These techniques basically
+%include explicit state enumeration \cite{sci-cache-coherence} and symbolic model checking \cite{gigamax}
+%Opti-
+%mizations on these techniques include partial order reduction [24], symmetry reduction
+%[25, 72], compositional reasoning [96], predicate abstraction [22, 49, 82], etc. There is
+%also a large body of work on parameterized verification [42, 53, 54, 100, 117]. However,
+%none of them have shown the capability to verify hierarchical coherence protocols with
+%realistic complexity.
+%
+%McMillan et al. [97, 102] modeled a 2-level MSI coherence protocol based on the
+%Gigamax distributed multiprocessor [102]. In the protocol, bus snooping is used in both
+%levels. SMV [97] was used to verify this protocol with two clusters each having six
+%processors, for both safety and liveness properties. In terms of the complexity, many
+%realistic details are abstracted away from the protocol so that the protocol does not have
+%the typical complexity that a hierarchical coherence protocol has.
+%
