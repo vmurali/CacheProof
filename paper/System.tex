@@ -354,9 +354,9 @@ for instance, directly converts these transitions into efficient synchronous
 hardware. Though these transitions logically happen one by one, BSV executes
 several transitions simultaneously, as long as they do not access the same
 state, \ie{} do not \emph{conflict}~\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
-Sometimes, these transitions (both the guards and the actions) may not be
-amenable to single-cycle implementations in hardware. For example, writing a
-register array can actually take several hardware clock cycles, though
-logically it is a single transition. Karczmarek \etal~\cite{Karczmarek} have
-provided a scheme to convert atomic transitions into synchronous hardware in
-which each transition can span several clock cycles.
+%Sometimes, these transitions (both the guards and the actions) may not be
+%amenable to single-cycle implementations in hardware. For example, writing a
+%register array can actually take several hardware clock cycles, though
+%logically it is a single transition. Karczmarek \etal~\cite{Karczmarek} have
+%provided a scheme to convert atomic transitions into synchronous hardware in
+%which each transition can span several clock cycles.
