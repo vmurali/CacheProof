@@ -1,13 +1,13 @@
 \section{Correctness of a Cache Coherence Protocol}
 \label{Background}
 
-Before we can discuss our protocol and proof framework, we must first
-establish exactly what it means for a cache coherence protocol to be
-correct. Intuitively, the simplest view of shared memory is as an
-array of addressable objects in which a single entry can be read or
-written by one of the many processors at a time.  In this view, all
-operations in the system appear to have a single unique total
-ordering.
+Before we can discuss our protocol and proof framework, we must first establish
+exactly what it means for a cache coherence protocol to be correct. 
+
+Intuitively, the simplest view of shared memory is as an array of addressible
+objects in which a single entry can be read or written by one of the many
+processors at a time.  In this view, all operations in the system appear to
+have a single unique total ordering.
 
 All modern systems have caches between the processor and memory for faster
 memory access. It is often also useful to reorder requests from a processor to
@@ -41,7 +41,7 @@ full-system execution, and its output is a potentially infinite set of
 the responses sent by the memory subsystem processors.
 
 Each input to the memory subsystem is isomorphic to a function
-$\reqFn : Processor \times \mathbb{N} @-> \Request$, where $\reqFn(p, i)$ models the
+$\reqFn : (Processor \times \mathbb{N}) @-> \Request$, where $\reqFn(p, i)$ models the
 $i^{th}$ request issued by processor $p$. An element of the set \Request{} (the
 range of \reqFn{}) contains fields (a) address (\addrQ) corresponding to
 the request, (b) \desc{} indicating whether the request is a load or a store,
@@ -164,10 +164,10 @@ Using the above definitions, we can define the store-atomicity theorem as follow
 \end{multline*}
 \label{storeAtomicity}
 \end{thm}
+
 \vspace{-.3in}
 
 The technical meat of this paper is a framework for proving this store atomicity
 property independently of details of memory hierarchies.  In the next section,
 we formalize memory hierarchies and a specific nondeterministic algorithm for
 generating their possible event traces.
-

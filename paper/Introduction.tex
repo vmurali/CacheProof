@@ -9,13 +9,15 @@ functioning of the system, it is imperative to ensure that the cache coherence
 protocol implementation is correct.
 
 Formal verification of cache coherence protocols has traditionally been done
-using model-checking based approaches. This significantly restricts the size as
+using model checking. That family of analyses significantly restricts the size as
 well as complexity of the system that has to be verified; most model-checking
-based approaches cannot handle more than one level of hierarchy. To the best of
-our knowledge, the largest system that has been verified using model-checking
-based approaches has only 12 processors~\cite{Chen:2008:VHC:1559300}, in an era
-when many observers are predicting mainstream systems with hundreds of processor
-cores.
+based approaches can not handle more than one level of hierarchy. To the best
+of our knowledge, the largest system that has been verified using
+model checking has only 12 processors, in an era when many observers are
+predicting mainstream systems with hundreds of processor cores.
+\xxx{citation:
+http://www.cs.utah.edu/formal\_verification/pdf/xiaofang\_dissertation.pdf (used
+data from their related work must cite)}.
 
 Apart from scalability concerns, another downside of model checking
 is that it provides no intuition as to why a protocol is correct, if
@@ -48,7 +50,6 @@ a few key elements of our methodology that should be of interest for future
 verifications of this kind, both through literal code reuse and through insights
 about key invariants that should generalize across protocols.
 \begin{enumerate}
-
 \item We give a \emph{precise formal definition of a cache-coherent system} as one
 that obeys \emph{store atomicity}. The definition is abstract in that it does not
 rely on any hardware implementation.
@@ -61,10 +62,7 @@ satisfy store atomicity as long as they obey the invariants.
 correctness of the MSI protocol}. We believe that this property is true also of
 other protocols like MESI, MOSI, and MOESI, enabling reuse of portions of our
 MSI proof for their verification.
-
 \end{enumerate}
-
-
 %In practice, verification proceeds in
 %two steps. First, a cache coherence protocol is constructed and verified. This
 %protocol generally directly represents many of the key concurrent aspects of an
@@ -85,29 +83,29 @@ MSI proof for their verification.
 %a hardware description and the necessary refinement to add missing
 %implementation details to the protocol. 
 
-Protocols, post verification, are often described via Term Rewrite Systems (TRS)
-\adamc{citation for TRSes?}, which apply equational logic to describe systems at
-an interesting point on the spectrum between declarative and operational
-methods.  It was shown by Dave \etal{}~\cite{DNA:CoherenceImplementation} that
-such a protocol, after its verification, can be transliterated into
-Bluespec~\cite{Bluespec:TFRG}, a hardware description language based on Guarded
-Atomic Actions, a restriction of TRS~\cite{Hoe:TCAD}. Bluespec specification can
-be directly implemented into efficient hardware. In this way one reduces the
-correctness of the implementation to the correctness of the protocol, with no
-need for separate reasoning about an implementation. While the current Bluespec
-compiler does not support some implementation elements that are common in
-practice (\eg{} fairness guarantees, atomic actions running over multiple clock
-cycles), recent work has provided key insights toward lifting these
+Protocols, post verification, are often described via Term Rewrite Systems
+(TRS) \adamc{citation for TRSes?}, which apply equational logic to describe
+systems at an interesting point on the spectrum between declarative and
+operational methods.  It was shown by Dave
+\etal{}~\cite{DNA:CoherenceImplementation} that such a protocol, after its
+verification, can be transliterated into Bluespec~\cite{Bluespec:TFRG}, a
+hardware description language based on Guarded Atomic Actions, a restriction of
+TRS~\cite{Hoe:TCAD}. Bluespec specifications can be directly implemented into
+efficient hardware. In this way one reduces the correctness of the
+implementation to the correctness of the protocol, with no need for separate
+reasoning about an implementation. While the current Bluespec compiler does not
+support some implementation elements that are common in practice (\eg{}
+fairness guarantees, atomic actions running over multiple clock cycles), recent
+work has provided key insights toward lifting the
 restrictions~\cite{Karczmarek}. We believe that Bluespec and its future
-evolutions represent a promising platform for productive implementation of
-hardware, including cache-coherent shared memories, starting from a
-verification-empowering description. 
-
-Our model of the MSI protocol in Coq is described as an inductively defined set
-of transitions which is directly translatable into Guarded Atomic Actions. In
-fact, our Coq-based model is a direct transliteration of the MSI protocol
-specified in Bluespec.  This ensures that the final hardware synthesized from
-the specification is formally verified.
+evolutions represent a very promising platform for productive implementation of
+hardware components, including cache-coherent shared memories, starting from a
+description designed to support verification. Our model of the MSI protocol
+in Coq is described as an inductively defined set of transitions that is
+directly translatable into Guarded Atomic Actions. In fact, our Coq-based model
+is a direct transliteration of the MSI protocol specified in Bluespec,
+ensuring that the final hardware synthesized from the specification is formally
+verified.
 
 %Even though the protocol transliteration approach cuts out one
 %layer of verification effort, it may not be practical in practice.
@@ -153,7 +151,6 @@ transition relation in Coq in Section~\ref{sec:System}. In
 Section~\ref{safety} we discuss the structuring of our proof. We
 present the invariants that are sufficient to prove store atomicity and give
 the key insight that enables these invariants to be proved.
-
 %We discuss some refinements in
 %Section~\ref{Sec:Refinements} and conclude with a general discussion
 %of the applicability of our technique.

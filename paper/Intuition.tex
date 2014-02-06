@@ -1,5 +1,4 @@
 \section{Proof that the MSI Protocol Preserves Store Atomicity}
-\label{Sec:Safety}
 \label{safety}
 
 In this section, we present the structure of the proof of Theorem
@@ -7,19 +6,19 @@ In this section, we present the structure of the proof of Theorem
 Figure~\ref{trans}.
 
 We first reduce the proof of store atomicity to 4 invariants, presented in
-Section~\ref{firstLevel}. These invariants in turn can be reduced to 4 more
-invariants presented in Section~\ref{secondLevel}. The reason for choosing the 8
- invariants is because they are not specific to MSI protocol
-alone; any other protocol which obeys these invariants obeys Theorem
-\fullref{storeAtomicity}. We finally present the key insight which we
+Section \ref{firstLevel}. These invariants in turn can be reduced to 4 more
+invariants presented in Section \ref{secondLevel}. The reason for choosing the 8
+ invariants is because they are not specific to the MSI protocol;
+any other protocol that obeys these invariants obeys Theorem
+\fullref{storeAtomicity}. We finally present the key insight that we
 discovered for proving the second-level invariants in the form of 3 invariants.
 We believe that other invalidation-based protocols with inclusive caches (\ie{}
 those cache hierarchies where a parent cache contains all the locations that
 any of its children contains) like MESI, MOSI and MOESI also
 satisfy these 3 fundamental properties, making their verification easier by reusing
 portions of our MSI proof.
-We informally show why this is the case using the example of MESI,
-MOSI and MOESI in Section~\ref{sec:Refinements}.
+We informally show why this is the case using the examples of MESI,
+MOSI and MOESI in Section \ref{mosi}.
 \adamc{...and maybe we don't, for space reasons. \texttt{:-)}}
 
 %We use the terms write to mean handling a store request, \ie{} executing the
@@ -205,6 +204,7 @@ higher-level starting point for verification of a new protocol.
 
 \subsection{Key Insight for Proving Second-Level Invariants}
 
+%ndave: This needs some repointing
 We present what we believe to be the key insight for proving any cache-coherence protocol.
 In fact, the request/response message semantics for the MSI protocol was designed to satisfy
 the following three invariants.
@@ -212,15 +212,15 @@ the following three invariants.
 \begin{inv}
 \textit{stateChange}:
 \begin{enumerate}
-\item A cache downgrades its state for an address if and only if it sends a response for that address
-\item A parent upgrades the directory entry for an address for one of
-  its children if and only if it sends a response for that child and
-  address
+\item A cache downgrades its state for an address iff it sends a response for that address.
+\item A parent upgrades the directory entry for an address for one of its
+children iff it sends a response for that child and address.
 \item The state or directory entry changes for an address only on sending and
 receiving a response for that address, and they change to the \myto-field of the response.
 \end{enumerate}
 \label{stateChange}
 \end{inv}
+
 \vspace{-.1in}
 
 Invariant \fullref{stateChange} ensures that a response message acts as a sync
@@ -249,7 +249,7 @@ for a source-destination pair, for the same address.
 \label{resps}
 \end{figure}
 
-Figure~\ref{resps} shows an example of the effect of Invariants
+Figure \ref{resps} shows an example of the effect of Invariants
 \fullref{stateChange}, \fullref{noCross} and \fullref{respFIFO}. The directory
 entry of the parent or the state of the child changes on sending and receiving
 a response and the new state is shown at the points of sending or receiving
@@ -260,23 +260,23 @@ The receiver cannot send any response before receiving because of
 \fullref{noCross}, thereby eliminating any scenarios where the lag complicates
 reasoning.
 
-Using these three invariants (Invariant~\ref{stateChange} to \ref{respFIFO}, it
+Using these three invariants (Invariants \ref{stateChange} to \ref{respFIFO}), it
 is easy to see that Invariant \fullref{conservative} holds. Intuitively, going
-back to Figure~\ref{resps}, we can see that at all times, either there is no
+back to Figure \ref{resps}, we can see that at all times, either there is no
 response in flight, or only responses from parent in flight, or responses from
 child in flight. A response from child downgrades the state, and a response from
 parent upgrades the directory. Since the other side simply lags behind,
-Invariant~\fullref{conservative} holds. Since Invariants~\ref{stateChange} to
+Invariant \fullref{conservative} holds. Since Invariants \ref{stateChange} to
 \ref{respFIFO} deals with just one cache's state for a single address and the
 corresponding directory entry, these properties can potentially be verified
 using model-checking techniques for an invalidation-based protocol.
 
-Proving the other 3 invariants in Section~\ref{secondLevel} requires using more
-properties of the MSI transistions of Figure~\ref{trans}, though it is
-straightforward. Analysing a parent-child pair will suffice in proving
-Invariants~\fullref{localCompatibility1} and
-\fullref{localCompatibility2}. Proof of Invariant~\fullref{noTransitWrite} is
-similar to the proof of Invariant~\fullref{nonAncestorCompatible}.
+Proving the other 3 invariants in Section \ref{secondLevel} requires using
+more properties of the MSI transistions of Figure \ref{trans}, though the argument is
+straightforward. Analyzing a parent-child pair will suffice in proving Invariants
+\fullref{localCompatibility1} and \fullref{localCompatibility2}. Proof of Invariant
+\fullref{noTransitWrite} is similar to the proof of Invariant
+\fullref{nonAncestorCompatible}.
 
 %To prove Invariant \fullref{conservative} at some time $t$, consider the case
 %when a child cache $c$ has sent to or received from the parent $p$ some message
