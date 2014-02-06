@@ -2,7 +2,8 @@
 \label{sec:Refinements}
 
 In this section we MESI, MOSI and MOESI protocols, and the
-complications in proving the invariants of Section \ref{safety} for these protocols.
+complications in proving the invariants of Section~\ref{safety} for these protocols.
+
 %In this section we discuss important design changes of interest to implementors
 %and the impact it has on the verification. Most of these require no change in
 %the intuitive reasoning for correctness, thus keeping the Coq-based proof
@@ -105,17 +106,17 @@ complications in proving the invariants of Section \ref{safety} for these protoc
 %We will describe two important protocol variations, the MESI and MOSI protocols
 %in which most of the invariants that we mention in Section \ref{safety} hold.
 
-MESI protocol is just a minor variation of the MSI protocol discussed in Section \ref{sec:System}.
-A cache, in addition to the states mentioned in Section
-\ref{sec:System}, contains a ``dirty'' boolean value associated with each
-address.  Whenever a cache gets new data from its parent, this value is set to
-\False{} and becomes \True{} whenever a store request is processed in that
+MESI protocol is a minor variation of the MSI protocol discussed in
+Section~\ref{sec:System}.  A cache, in addition to the states mentioned in
+Section~\ref{sec:System}, contains a ``dirty'' boolean value associated with
+each address.  Whenever a cache gets new data from its parent, this value is set
+to \False{} and becomes \True{} whenever a store request is processed in that
 cache, or if the cache receives data from its children. It simply denotes
 whether the data in the cache matches that of its parent or not.  Whenever a
 child downgrades from \Mo{}, when the data is not dirty, instead of sending the
 non-updated data back to the parent, a special response message indicating that
 the data has not been updated is sent (to reduce the size of the message being
-sent). Proving that this protocol obeys the invariants in Section \ref{safety}
+sent). Proving that this protocol obeys the invariants in Section~\ref{safety}
 is straightforward.
 
 A more interesting variation is the MOSI protocol (and it's E-variant MOESI --
@@ -127,7 +128,7 @@ the siblings can be in \Mo{} or \Ow{} state.  Whenever data has to be supplied
 to a new cache $c$, the parent directs a sibling of $c$ in the \Ow{} or \Mo{}
 state (if any) to supply the data to $c$.
 
-Since Invariant \fullref{conservative} depends solely on the fundamental Invariants
+Since Invariant~\fullref{conservative} depends solely on the fundamental Invariants
 \fullref{stateChange}, \fullref{noCross} and \fullref{respFIFO}, it holds true
 for as long as the 3 fundamental invariants hold (which is the case in MOSI
 protocol). The proof of Invariant \fullref{localCompatibility1} in MOSI is more

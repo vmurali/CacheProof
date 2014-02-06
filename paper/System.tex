@@ -129,7 +129,7 @@ Similarly, each non-leaf cache has the corresponding wait states for its
 directory.  $p.\dwait[c][a]$ denotes that cache $p$ is waiting for a response
 from its child $c$ for address $a$, and $p.\dwaitS[c][a]$ denotes the state to
 which $p$ is waiting for $c$ to downgrade. Both \wait{} and \dwait{} are
-+\False{} initially for all caches and addresses,
+\False{} initially for all caches and addresses,
 because no cache is waiting for any response from either its child or its
 parent.
 
@@ -357,6 +357,6 @@ state, \ie{} do not \emph{conflict}~\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
 Sometimes, these transitions (both the guards and the actions) may not be
 amenable to single cycle implementations in hardware. For example, writing a
 register array can actually take several hardware clock cycles, though
-logically it is a single transition. Karczmarek \etal~\cite{Karczmarek} has
+logically it is a single transition. Karczmarek \etal \cite{Karczmarek} has
 provided a scheme to convert atomic transitions into synchronous hardware in
 which each transition can span several clock cycles.

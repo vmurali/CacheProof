@@ -1,4 +1,5 @@
 \section{Proof of MSI protocol being preserving Store atomicity}
+\label{Sec:Safety}
 \label{safety}
 
 In this section, we present the structure of the proof of Theorem
@@ -18,7 +19,7 @@ any of its children contains) like MESI, MOSI and MOESI also
 satisfy these 3 fundamental properties, making their verification easier by reusing
 portions of our MSI proof.
 We informally show why this is the case using the example of MESI,
-MOSI and MOESI in Section~\ref{mosi}.
+MOSI and MOESI in Section~\ref{sec:Refinements}.
 
 %We use the terms write to mean handling a store request, \ie{} executing the
 %StoreReq transition and read to mean handling a load request, \ie{} executing
