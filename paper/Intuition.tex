@@ -168,7 +168,7 @@ respective directory values. From the previous paragraph about the relation
 between the states of a cache and its ancestor, it follows that $c_1$ and $c_2$
 are also compatible. This proves Invariant \fullref{nonAncestorCompatible}.
 
-We prove Invariant \fullref{latestValue} by strong induction on time. Consider
+We prove Invariant \fullref{latestValue} via strong induction on time. Consider
 two cases: a) cache $c$ is already \clean{} for an address $a$ at time $t$ or
 b) the contrary.  If \clean{}, then it has the latest value at time $t$. Since
 none of its children's directory entries can be in \Mo{}, all its descendants
@@ -193,7 +193,6 @@ time $t+1$. This establishes Invariant \fullref{latestValue}.
 
 \subsection{Key insight for proving second-level invariants}
 
-%ndave: This needs some repointing
 We present what we believe to be the key insight for proving any cache coherence protocol.
 In fact the request/response message semantics for the MSI protocol was designed to satisfy
 the following three invariants.
@@ -201,9 +200,10 @@ the following three invariants.
 \begin{inv}
 \textit{stateChange}:
 \begin{enumerate}
-\item A cache downgrades its state for an address iff it sends a response for that address
-\item A parent upgrades the directory entry for an address for one of its
-children iff it sends a response for that child and address
+\item A cache downgrades its state for an address if and only if it sends a response for that address
+\item A parent upgrades the directory entry for an address for one of
+  its children if and only if it sends a response for that child and
+  address
 \item The state or directory entry changes for an address only on sending and
 receiving an response for that address, and they change to the \myto-field of the response.
 \end{enumerate}
@@ -235,7 +235,7 @@ for a source-destination pair, for the same address.
 \label{resps}
 \end{figure}
 
-Figure \ref{resps} shows an example of the effect of Invariants
+Figure~\ref{resps} shows an example of the effect of Invariants
 \fullref{stateChange}, \fullref{noCross} and \fullref{respFIFO}. The directory
 entry of the parent or the state of the child changes on sending and receiving
 a response and the new state is showed at the points of sending or receiving
@@ -246,23 +246,24 @@ The receiver can not send any response before receiving because of
 \fullref{noCross}, thereby eliminating any scenarios where the lagging makes
 reasoning complicated.
 
-Using these three invariants (Invariant \ref{stateChange} to \ref{respFIFO}, it
+Using these three invariants (Invariant~\ref{stateChange} to \ref{respFIFO}, it
 is easy to see that Invariant \fullref{conservative} holds. Intuitively, going
-back to Figure \ref{resps}, we can see that at all times, either there is no
+back to Figure~\ref{resps}, we can see that at all times, either there is no
 response in flight, or only responses from parent in flight, or responses from
 child in flight. A response from child downgrades the state and a response from
 parent upgrades the directory. Since the other side simply lags behind,
-Invariant \fullref{conservative} holds. Since Invariants \ref{stateChange} to
+Invariant~\fullref{conservative} holds. Since Invariants~\ref{stateChange} to
 \ref{respFIFO} deals with just one cache's state for a single address and the
 corresponding directory entry, these properties can potentially be verified
 using model-checking techniques for an invalidation-based protocol.
 
-Proving the other 3 invariants in Section \ref{secondLevel} requires using
-more properties of the MSI transistions of Figure \ref{trans}, though it is
-straightforward. Analysing a parent-child pair will suffice in proving Invariants
-\fullref{localCompatibility1} and \fullref{localCompatibility2}. Proof of Invariant
-\fullref{noTransitWrite} is similar to the proof of Invariant
-\fullref{nonAncestorCompatible}.
+Proving the other 3 invariants in Section~\ref{secondLevel} requires
+using more properties of the MSI transistions of Figure~\ref{trans},
+though it is straightforward. Analysing a parent-child pair will
+suffice in proving Invariants~\fullref{localCompatibility1} and
+\fullref{localCompatibility2}. Proof of
+Invariant~\fullref{noTransitWrite} is similar to the proof of
+Invariant~\fullref{nonAncestorCompatible}.
 
 %To prove Invariant \fullref{conservative} at some time $t$, consider the case
 %when a child cache $c$ has sent to or received from the parent $p$ some message
