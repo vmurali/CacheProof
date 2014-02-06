@@ -6,8 +6,8 @@ In this section, we present the structure of the proof of Theorem
 Figure~\ref{trans}.
 
 We first reduce the proof of store atomicity to 4 invariants, presented in
-Section \ref{firstLevel}. These invariants in turn can be reduced to 4 more
-invariants presented in Section \ref{secondLevel}. The reason for choosing the 8
+Section~\ref{firstLevel}. These invariants in turn can be reduced to 4 more
+invariants presented in Section~\ref{secondLevel}. The reason for choosing the 8
  invariants is because they are not specific to MSI protocol
 alone; any other protocol which obeys these invariants obeys Theorem
 \fullref{storeAtomicity}. We finally present the key insight which we
@@ -18,7 +18,7 @@ any of its children contains) like MESI, MOSI and MOESI also
 satisfy these 3 fundamental properties, making their verification easier by reusing
 portions of our MSI proof.
 We informally show why this is the case using the example of MESI,
-MOSI and MOESI in Section \ref{mosi}.
+MOSI and MOESI in Section~\ref{mosi}.
 
 %We use the terms write to mean handling a store request, \ie{} executing the
 %StoreReq transition and read to mean handling a load request, \ie{} executing

@@ -1,13 +1,13 @@
 \section{Correctness of a Cache Coherence Protocol}
 \label{Background}
 
-Before we can discuss our protocol and proof framework, we must first establish
-exactly what it means for a cache coherence protocol to be correct. 
-
-Intuitively, the simplest view of shared memory is as an array of addressible
-objects in which a single entry can be read or written by one of the many
-processors at a time.  In this view, all operations in the system appear to
-have a single unique total ordering.
+Before we can discuss our protocol and proof framework, we must first
+establish exactly what it means for a cache coherence protocol to be
+correct. Intuitively, the simplest view of shared memory is as an
+array of addressable objects in which a single entry can be read or
+written by one of the many processors at a time.  In this view, all
+operations in the system appear to have a single unique total
+ordering.
 
 All modern systems have caches between the processor and memory for faster
 memory access. It is often also useful to reorder requests from a processor to
@@ -35,6 +35,7 @@ behavior unless the caches coordinate via a \emph{cache coherence protocol}.
 We will now provide the formal definition of store atomicity.
 
 \subsection{Formal Definition of Store Atomicity}
+
 A memory subsystem can be modeled as the following function. Its input models a
 set of infinite number of requests ever sent by any processor, and its output
 models a set of (possibly infinite number of) responses ever sent by the memory
@@ -155,4 +156,3 @@ Using the above definitions, we can define the store-atomicity theorem as follow
 The technical meat of this paper is a framework for proving this store atomicity
 property for a whole family of cache coherence protocols, based on parameterization
 points corresponding to key architectural choices.
-

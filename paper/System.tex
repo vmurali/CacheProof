@@ -10,7 +10,7 @@ number in other nodes. In the following, $\leaf(c)$ indicates
 that a cache $c$ is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
 $c$.
 
-Each node contains the fields mentioned in Figure \ref{hier}. We will
+Each node contains the fields mentioned in Figure~\ref{hier}. We will
 explain what the fields mean in the following discussion.
 
 \begin{figure}
@@ -42,7 +42,7 @@ processed only if it is in the \Mo{} state. The state of a non-leaf cache indica
 an \emph{upper bound} on the permission level of any cache in the associated subtree.
 If a cache does not include a particular location,
 we consider that address to have permission \In.  Initially, all addresses in
-each cache are in the \In{} state, save for those in the root cache (i.e., main memory),
+each cache are in the \In{} state, save for those in the root cache (\ie{} main memory),
 which are in the \Mo{} state.
 
 %Of course, all these invariants have to be enforced by the protocol.
@@ -118,7 +118,7 @@ directory state of a child for \Resp{}\\
 \label{format}
 \end{figure}
 
-In addition to the actual permission states, each cache also maintains a
+In addition to the permission states, each cache also maintains a
 temporary \emph{wait state} for each address to deal with transitioning between
 permission levels. The wait state consists of two parts: (a) a Boolean
 representing whether the cache has sent a request to its parent cache earlier
@@ -131,33 +131,33 @@ from its child $c$ for address $a$, and $p.\dwaitS[c][a]$ denotes the state to
 which $p$ is waiting for $c$ to downgrade. Both \wait{} and \dwait{} are
 +\False{} initially for all caches and addresses,
 because no cache is waiting for any response from either its child or its
-parent initially.
+parent.
 
 The behavior of the system is described via the atomic state transitions, which
 are effectively a nondeterministic operational semantics. These transitions
 have two parts: (a) the guard dictating when the transition can fire, and (b)
 the action defining how the state of the system changes when the transition
 happens. Logically, these transitions happen one at a time.  Figure~\ref{trans}
-gives the atomic transitions for the MIS protocol.  The actions in the
-transitions in Figure \ref{trans} show only the specific states that change,
+gives the atomic transitions for the MSI protocol.  The actions in the
+transitions in Figure~\ref{trans} show only the specific states that change,
 and other state components are assumed to remain the same.  The notation ($x
 \Leftarrow y$;) in a transition indicates setting of a specific state $x$ of
 the overall system to value $y$.
 
-We first give an intuition on how the transitions work in the common case.
-A cache can decide, unsolicitedly \xxx{is this a word?}, to upgrade its state,
-in which case it sends an upgrade request to its parent. The parent then makes
-a local decision on whether to send a response to the requesting child or not
-(based on its directory approximation, and its own state). If its own state is
-lower the requested upgrade, then it can not handle the request. The parent
-must instead, decide to upgrade its state -- the transition for doing so has
-nothing to do with the incoming request.  Once the parent's state is not lower
-than the requested upgrade, it makes sure that the rest of its children are
-``compatible'' with the requested upgrade. If not, the parent must, send
-requests to the uncompatible children to downgrade -- again the transition for
-doing so has nothing to do with the incoming request. If the children are
-compatible and its own state is higher, then the request can be handled and a
-response is sent. Each of the transitions is explained in greater detail below.
+We first give an intuition on how the transitions work in the common case.  A
+cache may spontaneously choose to upgrade its state, in which case it sends an
+upgrade request to its parent. The parent then makes a local decision on whether
+to send a response to the requesting child or not (based on its directory
+approximation, and its own state). If its own state is lower the requested
+upgrade, then it can not handle the request. The parent must instead, decide to
+upgrade its state -- the transition for doing so has nothing to do with the
+incoming request.  Once the parent's state is not lower than the requested
+upgrade, it makes sure that the rest of its children are ``compatible'' with the
+requested upgrade. If not, the parent must, send requests to the incompatible
+children to downgrade -- again the transition for doing so has nothing to do
+with the incoming request. If the children are compatible and its own state is
+higher, then the request can be handled and a response is sent. Each of the
+transitions is explained in greater detail below.
 
 Figure~\ref{childside} shows the transitions that result in an upgrade of the
 state of a cache. It involves a cache sending an upgrade request to the its
@@ -167,15 +167,15 @@ from the parent (ChildSendReq). This request is received by the parent
 \emph{compatible} with the upgrade request, and the parent's permission state has
 at least the requested value, it sends an upgrade response to the cache, while
 changing the appropriate directory state. The notation \compat{} used in
-the ParentRecvReq transition of Figure \ref{trans} is defined as follows:
+the ParentRecvReq transition of Figure~\ref{trans} is defined as follows:
 \begin{multline*}
 \small
 \compat(p, c, a, s) = \forall i \ne c,
 \mylet s_i := p.\dstate[i][a] \myin\\
  (s = \Mo @-> s_i = \In) \wedge (s = \Sh @-> s_i = \Sh) \wedge (s = \In @-> s_i = \Mo)
 \end{multline*}
-Finally, the child cache receives the response from the parent (ChildRecvResp)
-and sets its state while resetting its wait state if the response contains the
+Finally, the child receives the response from the parent (ChildRecvResp)
+and sets its state, resetting its wait state if the response contains the
 desired upgrade.
 
 Figure~\ref{parentside} shows the similar sequence of transitions that results
@@ -196,7 +196,7 @@ address (ChildVolResp).
 
 Because of the presence of voluntary response, a child could have already
 downgraded to a state required by a downgrade request from its parent. In such
-a case, the child simply drops the downgrade request (ChildDropReq).
+cases, the child simply drops the downgrade request (ChildDropReq).
 
 Figure~\ref{procside} shows the transitions that serve a processor's request in
 the leaf caches. LoadReq and StoreReq show the processing of a load and store
@@ -302,8 +302,7 @@ its parent}\\
 \hline
 Guard: & $(\forall i, \parent(i, c) \rightarrow c.\dstate[i][a] \le x) \wedge x < c.\state[a] \wedge c.\wait[a] = \False$\\
 \hline
-Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,%$\\
-%& $\;\;\;%
+Action: & $\enq(\cpResp[c], \langle c.\state[a], x, a,
 \myif c.\state[a] = \Mo \mythen c.\data[a] \myelse \_\rangle)$;\\
 & $c.\state[a] \Leftarrow x$;\\
 \hline
@@ -350,7 +349,7 @@ Action:& $c.\pos \Leftarrow c.\pos + 1$; $c.\data[q.\addrQ] \Leftarrow q.\dataQ$
 Note that the atomic transitions in Figure~\ref{trans} access only local states,
 \ie{} a transition can read or write states only corresponding to a single cache
 and/or the channel the cache is connected to. This restriction allows such a
-system to be implemented directly into hardware. Bluespec System Verilog (BSV),
+system to be implemented directly into hardware. Bluespec SystemVerilog (BSV),
 for instance, directly converts these transitions into efficient synchronous
 hardware. Though these transitions logically happen one by one, BSV executes
 several transitions simultaneously, as long as they do not access the same
