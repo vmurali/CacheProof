@@ -13,18 +13,20 @@ using model-checking based approaches. This significantly restricts the size as
 well as complexity of the system that has to be verified; most model-checking
 based approaches cannot handle more than one level of hierarchy. To the best of
 our knowledge, the largest system that has been verified using model-checking
-based approaches has only 12 processors~\cite{Chen:2008:VHC:1559300}.
+based approaches has only 12 processors~\cite{Chen:2008:VHC:1559300}, in an era
+when many observers are predicting mainstream systems with hundreds of processor
+cores.
 
-Apart from scalability concerns, another problem with model-checking based
-approaches is that it provides no intuition as to why a protocol is correct, if
+Apart from scalability concerns, another downside of model checking
+is that it provides no intuition as to why a protocol is correct, if
 the model checker successfully proves a protocol. Developing a new protocol
-therefore cannot use any intuition that could have been gained from the first
-protocol. Moreover the new protocol has to be verified from scratch.
+therefore cannot use any intuition that could have been gained from
+the first protocol. Moreover, the new protocol has to be verified from scratch.
 
 We propose a theorem-prover based approach for proving cache coherence
 protocols. Using this approach eliminates the scalability and complexity
-problems faced by model-checkers. But, the downside is that considerable
-laborious effort is needed by verification people to provide a proof for the
+problems faced by model checkers, but the downside is that considerable
+laborious effort is needed by verification experts to provide a proof for the
 protocol, and the complexity of the protocol directly translates into effort.
 Our motivating question in this paper is,
 \emph{can we modularize formal proofs of cache coherence protocols so that
@@ -32,32 +34,33 @@ verification experts do the hard work once and for all, and then hardware
 designers can instantiate the results to different designs with much less
 effort?}
 
-While we have not reached a push-button state in our work, we do
-develop a modular proof strategy, where portions of our proof can be
-used \emph{as is} to prove other related but distinct
-protocols. Further, the proof gives solid insights on how the protocol
-works correctly, which can be used to design other protocols.
+While our present approach is not push-button, we have developed a
+modular proof strategy, where portions of our proof can be used \emph{as is} to
+prove other related but distinct protocols. Moreover, the proof gives
+insights on why the protocol works correctly, which can be used to design other
+protocols.
 
-The main contributions of this paper are as follows:
+The main contribution of this paper is \textbf{the first verification of a
+cache coherence protocol that is parametric over an infinite family of
+memory hierarchies}.  Our proof is implemented in the Coq proof assistant and
+checked via a very small trusted code base.  We also want to draw attention to
+a few key elements of our methodology that should be of interest for future
+verifications of this kind, both through literal code reuse and through insights
+about key invariants that should generalize across protocols.
 \begin{enumerate}
 
-\item \emph{We give a precise formal definition of a cache coherent
-  system as one which obeys store atomicity. The definition is
-  abstract in that it does not rely on any hardware implementation.}
-
-\item \emph{We provide a Coq-based proof of the directory-based MSI
-  cache coherence protocol with inclusive caches, and no silent
-  drops.}
-
-\item \emph{We present a set of invariants which are not restricted to
-  the MSI protocol, but would imply store atomicity. Thus, other
-  protocols will also satisfy store atomicity as long as they obey the
-  invariants.}
-
-\item \emph{We present what we believe to be the key insight behind
-  the correctness of the MSI protocol. We believe that this property
-  is true also of other protocols like MESI, MOSI and MOESI, enabling
-  reuse of portions of our MSI proof for their verification.}
+\item We give a \emph{precise formal definition of a cache-coherent system} as one
+that obeys \emph{store atomicity}. The definition is abstract in that it does not
+rely on any hardware implementation.
+\item We provide a \emph{Coq-based proof of the directory-based MSI cache coherence
+protocol} with inclusive caches and no silent drops.
+\item We present \emph{a set of invariants} that are not restricted to the MSI
+protocol but which imply store atomicity. Thus, other protocols will also
+satisfy store atomicity as long as they obey the invariants.
+\item We present what we believe to be \emph{the key insight behind the
+correctness of the MSI protocol}. We believe that this property is true also of
+other protocols like MESI, MOSI, and MOESI, enabling reuse of portions of our
+MSI proof for their verification.
 
 \end{enumerate}
 
@@ -142,7 +145,7 @@ the specification is formally verified.
 %operational semantics in Coq.
 
 \noindent\textbf{Paper Outline}. In Section~\ref{Background} we give a
-formal definition of cache coherent system as one which obeys store atomicity.
+formal definition of a cache-coherent system as one that obeys store atomicity.
 We describe memory subsystems as mathematical functions and define store
 atomicity as a property of the input/output pairs of the memory subsystem
 function. We describe our MSI protocol and its representation as a
@@ -154,3 +157,5 @@ the key insight that enables these invariants to be proved.
 %We discuss some refinements in
 %Section~\ref{Sec:Refinements} and conclude with a general discussion
 %of the applicability of our technique.
+
+\adamc{This might be a good place to include a link to the Coq source code.}

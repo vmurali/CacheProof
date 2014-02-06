@@ -1,12 +1,12 @@
-\section{MSI-based cache coherence protocol}
+\section{MSI-Based Cache Coherence Protocol}
 \label{sec:System}
 
 We have chosen as our concrete example a hierarchical MSI
 protocol~\cite{MSI}. Logically, the system is organized in a tree
 structure, with the root connected to the main memory and each leaf interfaced
 with a processor (Figure~\ref{hier}). The system is parameterized by the shape
-of the tree, and each node can have any number of children independent of the
-number in other nodes. In the following, $\leaf(c)$ indicates
+of the tree, and each node can have any number of children.
+In the following, $\leaf(c)$ indicates
 that a cache $c$ is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
 $c$.
 
@@ -20,24 +20,22 @@ explain what the fields mean in the following discussion.
 \label{hier}
 \end{figure}
 
-Input and output happens at the leaves in the form of memory requests
-issued from and responses issued to the associated processor. These will be
+Input and output happen at the leaves in the form of memory requests
+issued from and responses issued to the associated processors. These will be
 represented by two mappings, one from $\mathbb{N}$ to requests and the other
 from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
 sequence number of the next request to process; it is set to $0$ initially.
-\xxx{Fixed???? \adamc{What is a ``position'' here?  Is ``sequence number'' a better choice?}
-\adamc{I hope the diagram explains what these mappings mean, and in general what
-the tree structure really means.}}
+\adamc{Add processors and main memory, labeled explicitly, to the diagram?}
 
 Each node maintains a permission state for each address $a$, $c.\state[a]$, in
 addition to the data associated with the address, $c.\data[a]$. The permission
 state denotes which operations may be performed on the data. An address may be
 in the \emph{read-write} state \Mo{} (for ``modifiable''),
 the \emph{read-only} state \Sh{} (for ``shared''), or in the \emph{invalid} state
-\In{} (indicating that it can be neither read nor written). The options form a natural
+\In{} (indicating that it may be neither read nor written). The options form a natural
 total order of permissions ($\In < \Sh < \Mo$). For a leaf cache, the meaning
-of these permission states is straightforward: a load request can be processed
-only if the leaf is at least in the \Sh{} state, and a store request can be
+of these permission states is straightforward: a load request may be processed
+only if the leaf is at least in the \Sh{} state, and a store request may be
 processed only if it is in the \Mo{} state. The state of a non-leaf cache indicates
 an \emph{upper bound} on the permission level of any cache in the associated subtree.
 If a cache does not include a particular location,
@@ -78,7 +76,7 @@ channels between caches. In each of the channels $ch$, a message $m$
 can be enqueued ($\enq(ch, m)$) or dequeued ($\deq(ch)$), and the
 channels can be examined for the first element ($\first(ch)$) or for
 availability of any message in the channel
-($\avail(ch)$). Each of these channels start out empty, \ie{} $\forall ch,
+($\avail(ch)$). Each of these channels start out empty, \ie{} $\forall ch. \;
 \neg \avail(ch)$, initially.
 
 \begin{figure}
@@ -114,7 +112,8 @@ directory state of a child for \Resp{}\\
 \hline
 \end{tabular}
 \end{subfigure}
-\caption{Data types for messages between caches}
+\caption{Data types for messages between caches
+\adamc{Names here don't match those in the preceding text.}}
 \label{format}
 \end{figure}
 
@@ -144,19 +143,21 @@ and other state components are assumed to remain the same.  The notation ($x
 \Leftarrow y$;) in a transition indicates setting of a specific state $x$ of
 the overall system to value $y$.
 
-We first give an intuition on how the transitions work in the common case.  A
-cache may spontaneously choose to upgrade its state, in which case it sends an
-upgrade request to its parent. The parent then makes a local decision on whether
-to send a response to the requesting child or not (based on its directory
-approximation, and its own state). If its own state is lower the requested
-upgrade, then it can not handle the request. The parent must instead, decide to
-upgrade its state -- the transition for doing so has nothing to do with the
-incoming request.  Once the parent's state is not lower than the requested
-upgrade, it makes sure that the rest of its children are ``compatible'' with the
-requested upgrade. If not, the parent must, send requests to the incompatible
-children to downgrade -- again the transition for doing so has nothing to do
-with the incoming request. If the children are compatible and its own state is
-higher, then the request can be handled and a response is sent. Each of the
+We first give an intuition on how the transitions work in the common
+case.  A cache can decide, unprovoked, to upgrade its state, in which
+case it sends an upgrade request to its parent. The parent then makes
+a local decision on whether to send a response to the requesting child
+or not (based on its directory approximation, and its own state). If
+its own state is lower the requested upgrade, then it cannot handle
+the request. The parent must instead decide to upgrade its state --
+the transition for doing so has nothing to do with the incoming
+request.  Once the parent's state is not lower than the requested
+upgrade, it makes sure that the rest of its children are
+``compatible'' with the requested upgrade. If not, the parent must
+send requests to the incompatible children to downgrade -- again the
+transition for doing so has nothing to do with the incoming
+request. If the children are compatible and its own state is higher,
+then the request can be handled and a response is sent. Each of the
 transitions is explained in greater detail below.
 
 Figure~\ref{childside} shows the transitions that result in an upgrade of the
@@ -170,7 +171,7 @@ changing the appropriate directory state. The notation \compat{} used in
 the ParentRecvReq transition of Figure~\ref{trans} is defined as follows:
 \begin{multline*}
 \small
-\compat(p, c, a, s) = \forall i \ne c,
+\compat(p, c, a, s) = \forall i \ne c. \;
 \mylet s_i := p.\dstate[i][a] \myin\\
  (s = \Mo @-> s_i = \In) \wedge (s = \Sh @-> s_i = \Sh) \wedge (s = \In @-> s_i = \Mo)
 \end{multline*}
@@ -194,7 +195,7 @@ FIFO for such a message. Such a voluntary response for an address can take
 place only if the cache is not waiting for a response from its parent for that
 address (ChildVolResp).
 
-Because of the presence of voluntary response, a child could have already
+Because of the presence of voluntary responses, a child could have already
 downgraded to a state required by a downgrade request from its parent. In such
 cases, the child simply drops the downgrade request (ChildDropReq).
 
@@ -355,7 +356,7 @@ hardware. Though these transitions logically happen one by one, BSV executes
 several transitions simultaneously, as long as they do not access the same
 state, \ie{} do not \emph{conflict}~\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
 Sometimes, these transitions (both the guards and the actions) may not be
-amenable to single cycle implementations in hardware. For example, writing a
+amenable to single-cycle implementations in hardware. For example, writing a
 register array can actually take several hardware clock cycles, though
 logically it is a single transition. Karczmarek \etal \cite{Karczmarek} has
 provided a scheme to convert atomic transitions into synchronous hardware in
