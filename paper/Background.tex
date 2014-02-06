@@ -18,7 +18,7 @@ the semantics of a system in the presence of caches and reorderings.
 Most memory consistency models can be partitioned into two
 parts~\cite{Arvind-memory-model}: (a) a ``global'' store-atomicity property
 stating that for each location/address in memory, every read and write access
-to that location from any processor, occurs in some total order, with
+to that location, from any processor, occurs in some total order, with
 each operation seeing the effects of previous operations and not later ones (in
 other words, each location behaves like an atomic register) and (b), a
 ``local'' reordering restriction between requests to different locations within
@@ -35,52 +35,55 @@ behavior unless the caches coordinate via a \emph{cache coherence protocol}.
 We will now provide the formal definition of store atomicity.
 
 \subsection{Formal Definition of Store Atomicity}
-A memory subsystem can be modeled as the following function. Its input models a
-set of infinite number of requests ever sent by any processor, and its output
-models a set of (possibly infinite number of) responses ever sent by the memory
-subsystem to any processor.
+A memory subsystem can be modeled as the following function. Its input is a
+potentially infinite set of requests sent by processors in the course of some
+full-system execution, and its output is a potentially infinite set of
+the responses sent by the memory subsystem processors.
 
 Each input to the memory subsystem is isomorphic to a function
-$\reqFn:(Processor*\mathbb{N}) @-> \Request$, where $\reqFn(p, i)$ models the
-$i^{th}$ request issued by processor $p$. An element of the range-set of
-\reqFn{}, \viz \Request{} contains fields (a) address (\addrQ) corresponding to
-the request, (b) \desc{} indicating whether the request is a load or a store
+$\reqFn : Processor \times \mathbb{N} @-> \Request$, where $\reqFn(p, i)$ models the
+$i^{th}$ request issued by processor $p$. An element of the set \Request{} (the
+range of \reqFn{}) contains fields (a) address (\addrQ) corresponding to
+the request, (b) \desc{} indicating whether the request is a load or a store,
 and (c) data (\dataQ) containing the data supplied by the processor for stores.
 
-Each output of the memory subsystem contains a set (called \Response) of
-elements containing the fields (a) \labelR, containing a pair from the set
-$Processor*\mathbb{N}$, which is meant to identify a request uniquely, (b)
-\dataR, meant to model the data returned from the memory subsystem and (c)
-\timeR, a value from set $\mathbb{N}$, meant to represent the ``time'' at which
+An output of the memory subsystem is a set \Response{} of exactly the responses generated
+in a particular protocol execution.  Each response includes the fields
+(a) \labelR, containing a pair from the set
+$Processor \times \mathbb{N}$, which is meant to identify a request uniquely, (b)
+\dataR, meant to model the data returned from the memory subsystem, and (c)
+\timeR{} in $\mathbb{N}$, meant to represent the ``time'' at which
 the corresponding request (identified by \labelR) is handled by the memory
-subsystem. \timeR{} does not have a counterpart in a real implementation, it is
+subsystem. This last field does not have a counterpart in a real implementation; it is
 present solely as a specificational device to capture store atomicity. Since a
 request corresponding to a response is identified using the field \labelR, for
 notational convenience, we will access the fields of the corresponding request
 directly from the response. For instance, $r.\addrQ$ for $r \in \Response$
-denotes $(r.\labelR).\addrQ$, \etc.
+denotes $(r.\labelR).\addrQ$, \etc
 
 If \reqFn{} is an input to the memory subsystem, and the set \Response{} is the
-produced output, then the memory subsystem is said to be store atomic if it
+corresponding output, then the memory subsystem is said to be \textbf{store atomic} if it
 obeys Theorem \fullref{storeAtomicity} defined as follows. We use the word
-response to denote an element in the set \Response{}.
+``response'' to denote an element in the set \Response{}.
 %
-\begin{defn} (Responses have unique labels)
+\begin{defn} (Responses have unique labels.)
 \small
 \begin{multline*}
-\textit{uniqRespLabels} := \forall (r_1, r_2 \in \Response),
+\textit{uniqRespLabels} := \forall (r_1, r_2 \in \Response). \;
 r_1.\labelR = r_2.\labelR @-> \\ r_1.\timeR = r_2.\timeR \wedge
 r_1.\dataR = r_2.\dataR
 \end{multline*}
 \label{uniqRespLabels}
 \end{defn}
-%
+
+\vspace{-.3in}
+
 \begin{defn} (No response can share a \timeR{} value with another store
-response for the same address.)
+response for the same address, imposing a total order on stores within an address.)
 \small
 \begin{multline*}
 \textit{uniqStTimes} := 
-\forall (r_1, r_2 \in \Response),
+\forall (r_1, r_2 \in \Response). \;
 r_1.\timeR = r_2.\timeR @-> \\
 r_1.\addrQ = r_2.\addrQ @->
 r_1.\desc = \St @->
@@ -88,30 +91,36 @@ r_1.\labelR = r_2.\labelR
 \end{multline*}
 \label{uniqStTimes}
 \end{defn}
-%
+
+\vspace{-.3in}
+
 \begin{defn} (The global ordering of responses to the same processor should not
-violate the ordering of the corresponding requests within the processor)
+violate the ordering of the corresponding requests within the processor.)
 \small
 \begin{multline*}
 \textit{localOrdering} :=
-\forall (r_1, r_2 \in \Response), r_1.\labelR.\fst = r_2.\labelR.\fst @->\\
+\forall (r_1, r_2 \in \Response). \; r_1.\labelR.\fst = r_2.\labelR.\fst @->\\
 r_1.\labelR.\snd < r_2.\labelR.\snd @-> r_1.\timeR \le r_2.\timeR
 \end{multline*}
 \label{localOrdering}
 \end{defn}
-%
+
+\vspace{-.3in}
+
 \begin{defn} (If a response to a particular request from a processor exists in the \Response{} set,
-then responses for all previous requests from that processor must exist)
+then responses for all previous requests from that processor must exist.)
 \small
 \begin{multline*}
 \textit{allPrevious} :=
-\forall (r \in \Response), \forall i < r.\labelR.\snd, \\
-\exists (r' \in \Response) \text{ such that } r'.\labelR.\fst = r.\labelR.\fst \wedge r'.\labelR.\snd = i
+\forall (r \in \Response). \; \forall i < r.\labelR.\snd. \\
+\exists (r' \in \Response). \; r'.\labelR.\fst = r.\labelR.\fst \wedge r'.\labelR.\snd = i
 \end{multline*}
 \label{allPrevious}
 \end{defn}
-%
-This brings us to the main condition for store atomicity, which states that the
+
+\vspace{-.3in}
+
+Now we are ready to give the main condition for store atomicity, which states that the
 data returned for a load response corresponds to the \emph{last earlier} store
 request from any processor that has been handled for that address, \emph{last}
 and \emph{earlier} being defined according to the field \timeR{} returned in
@@ -123,36 +132,42 @@ value for the address ($\initData(a)$), the whole proposition indicated by
 \begin{defn}
 \small
 \begin{multline*}
-\textit{useInitialValue}(r) := r.\dataR = \initData(a) \; \wedge \neg \exists (r' \in \Response), \\
-r'.\timeR < t \wedge r'.\addrQ = r.\addrQ \wedge r'.\desc = \St
+\textit{useInitialValue}(r) := r.\dataR = \initData(a) \; \wedge \neg \exists (r' \in \Response). \\
+r'.\timeR < r.\timeQ \wedge r'.\addrQ = r.\addrQ \wedge r'.\desc = \St
 \end{multline*}
 \label{useInitialValue}
 \end{defn}
-%
+
+\vspace{-.3in}
+
 \begin{defn}
 \small
 \begin{multline*}
-\textit{lastEarlierValue}(r) := \exists (r_m \in \Response), r_m.\dataQ = r.\dataQ \; \wedge 
+\textit{lastEarlierValue}(r) := \exists (r_m \in \Response). \; r_m.\dataQ = r.\dataQ \; \wedge 
 \\ r_m.\desc = \St \wedge r_m.\addrQ = r.\addrQ \wedge
-\neg \exists (r' \in \Response), \\
-r_m.\timeR < r'.\timeR < t \wedge r'.\addrQ = r.\addrQ \wedge r'.\desc = \St
+\neg \exists (r' \in \Response). \\
+r_m.\timeR < r'.\timeR < r.\timeQ \wedge r'.\addrQ = r.\addrQ \wedge r'.\desc = \St
 \end{multline*}
 \label{lastEarlierValue}
 \end{defn}
-%
+
+\vspace{-.3in}
+
 Using the above definitions, we can define the store-atomicity theorem as follows:
 \begin{thm}\textit{storeAtomicity}:
 \small
 \begin{multline*}
 \textit{uniqRespLabels} \wedge
 \textit{uniqStTimes} \wedge \textit{localOrdering} \wedge \textit{allPrevious} \; \wedge \\
-(\forall (r \in \Response), r.\desc = \Ld \; @-> \\
+(\forall (r \in \Response). \; r.\desc = \Ld \; @-> \\
 (\textit{useInitialValue}(r) \vee \textit{lastEarlierValue}(r)))
 \end{multline*}
 \label{storeAtomicity}
 \end{thm}
 
-The technical meat of this paper is a framework for proving this store atomicity
-property for a whole family of cache coherence protocols, based on parameterization
-points corresponding to key architectural choices.
+\vspace{-.3in}
 
+The technical meat of this paper is a framework for proving this store atomicity
+property independently of details of memory hierarchies.  In the next section,
+we formalize memory hierarchies and a specific nondeterministic algorithm for
+generating their possible event traces.
