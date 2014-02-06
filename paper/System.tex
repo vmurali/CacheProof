@@ -70,27 +70,25 @@ child.
 We have dedicated channels between each parent-child pair. The three channels
 are indexed by the name of the child that uses that channel (denoted by
 $\textit{ch}[c]$ for the \textit{ch} channel associated
-with cache $c$).  Figure~\ref{format} shows the message formats
-transmitted in the 3
-channels between caches. In each of the channels $ch$, a message $m$
-can be enqueued ($\enq(ch, m)$) or dequeued ($\deq(ch)$), and the
+with cache $c$).  Figure~\ref{format} shows the fields of the messages
+transmitted in the 3 channels between caches. In each of the channels $ch$, a
+message $m$ can be enqueued ($\enq(ch, m)$) or dequeued ($\deq(ch)$), and the
 channels can be examined for the first element ($\first(ch)$) or for
-availability of any message in the channel
-($\avail(ch)$). Each of these channels start out empty, \ie{} $\forall ch. \;
-\neg \avail(ch)$, initially.
+availability of any message in the channel ($\avail(ch)$). Each of these
+channels start out empty, \ie{} $\forall ch. \; \neg \avail(ch)$, initially.
 
 \begin{figure}
 \begin{subfigure}{6.8cm}
 \begin{tabular}{|lp{5.8cm}|}
 \hline
-\multicolumn{2}{|c|}{\Reqcp}\\
+\multicolumn{2}{|c|}{A message in \cpReq}\\
 \hline
 \from: & Current state of child\\
 \myto: & Desired (higher) state of child\\
 \addr: & Address associated with the request\\
 \hline
 \hline
-\multicolumn{2}{|c|}{\Respcp}\\
+\multicolumn{2}{|c|}{A message in \cpResp}\\
 \hline
 \from: & Current state of child\\
 \myto: & Downgraded state of child\\
@@ -102,7 +100,7 @@ availability of any message in the channel
 \begin{subfigure}{5.4cm}
 \begin{tabular}{|lp{4.4cm}|}
 \hline
-\multicolumn{2}{|c|}{\Mpc}\\
+\multicolumn{2}{|c|}{A message in \pc}\\
 \hline
 \typ: & \Req{} (for requests) and \Resp{} (for responses)\\
 \myto: & Desired (lower) directory state of a child for \Req{} and upgraded
