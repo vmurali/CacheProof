@@ -19,7 +19,7 @@ satisfy these 3 fundamental properties, making their verification easier by reus
 portions of our MSI proof.
 We informally show why this is the case using the examples of MESI,
 MOSI and MOESI in Section~\ref{sec:Refinements}.
-\adamc{...and maybe we don't, for space reasons. \texttt{:-)}}
+%\adamc{...and maybe we don't, for space reasons. \texttt{:-)}}
 
 %We use the terms write to mean handling a store request, \ie{} executing the
 %StoreReq transition and read to mean handling a load request, \ie{} executing
@@ -30,8 +30,8 @@ from the initial state. We write ``time $t$'' for the global state
 reached after firing $t$ transitions.
 
 While we have proofs in Coq for each invariant, our discussion will be mainly
-informal for brevity. A full description can be found at~\xxx{MURALI PUT
-REFERENCE HERE}. \adamc{or just remind of the source code URL given earlier}
+informal for brevity. As mentioned earlier, all the proofs can be found at~\xxx{MURALI PUT
+REFERENCE HERE}. %\adamc{or just remind of the source code URL given earlier}
 
 \subsection{First-Level Invariants}
 \label{firstLevel}
@@ -228,8 +228,8 @@ for a source-destination pair, for the same address.
 \begin{figure}
 \centering
 \includegraphics[scale=.5]{resps}
-\caption{An example showing a sequence of responses ping-ponging between a child and its parent
-\adamc{For a camera-ready version, we should replace these bitmap images with vector images, for better printing.}}
+\caption{An example showing a sequence of responses ping-ponging between a child and its parent}
+%\adamc{For a camera-ready version, we should replace these bitmap images with vector images, for better printing.}}
 \label{resps}
 \end{figure}
 

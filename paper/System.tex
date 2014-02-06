@@ -25,7 +25,7 @@ issued from and responses issued to the associated processors. These will be
 represented by two mappings, one from $\mathbb{N}$ to requests and the other
 from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
 sequence number of the next request to process; it is set to $0$ initially.
-\adamc{Add processors and main memory, labeled explicitly, to the diagram?}
+%\adamc{Add processors and main memory, labeled explicitly, to the diagram?}
 
 Each node maintains a permission state for each address $a$, $c.\state[a]$, in
 addition to the data associated with the address, $c.\data[a]$. The permission
@@ -110,8 +110,8 @@ directory state of a child for \Resp{}\\
 \hline
 \end{tabular}
 \end{subfigure}
-\caption{Data types for messages between caches
-\adamc{Names here don't match those in the preceding text.}}
+\caption{Data types for messages between caches}
+%\adamc{Names here don't match those in the preceding text.}}
 \label{format}
 \end{figure}
 
