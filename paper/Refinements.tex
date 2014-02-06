@@ -2,9 +2,9 @@
 \label{sec:Refinements}
 
 In this section we consider the complications in proving the invariants
-of Section \ref{safety} for the MESI, MOSI, and MOESI protocols.
+of Section~\ref{safety} for the MESI, MOSI, and MOESI protocols.
 
-The MESI protocol is a minor variation of the MSI protocol discussed in Section \ref{sec:System}.
+The MESI protocol is a minor variation of the MSI protocol discussed in Section~\ref{sec:System}.
 A cache, in addition to the states mentioned in Section
 \ref{sec:System}, contains a ``dirty'' Boolean value associated with each
 address.  Whenever a cache gets new data from its parent, this value is set to
@@ -14,7 +14,7 @@ whether the data in the cache matches that of its parent.  Whenever a
 child downgrades from \Mo{}, when the data is not dirty, instead of sending the
 non-updated data back to the parent, a special response message indicating that
 the data has not been updated is sent (to reduce the size of the message being
-sent). Proving that this protocol obeys the invariants in Section \ref{safety}
+sent). Proving that this protocol obeys the invariants in Section~\ref{safety}
 is straightforward.
 
 A more interesting variation is the MOSI protocol (and its E-variant MOESI --

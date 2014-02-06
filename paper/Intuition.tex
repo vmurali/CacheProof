@@ -6,8 +6,8 @@ In this section, we present the structure of the proof of Theorem
 Figure~\ref{trans}.
 
 We first reduce the proof of store atomicity to 4 invariants, presented in
-Section \ref{firstLevel}. These invariants in turn can be reduced to 4 more
-invariants presented in Section \ref{secondLevel}. The reason for choosing the 8
+Section~\ref{firstLevel}. These invariants in turn can be reduced to 4 more
+invariants presented in Section~\ref{secondLevel}. The reason for choosing the 8
  invariants is because they are not specific to the MSI protocol;
 any other protocol that obeys these invariants obeys Theorem
 \fullref{storeAtomicity}. We finally present the key insight that we
@@ -18,7 +18,7 @@ any of its children contains) like MESI, MOSI and MOESI also
 satisfy these 3 fundamental properties, making their verification easier by reusing
 portions of our MSI proof.
 We informally show why this is the case using the examples of MESI,
-MOSI and MOESI in Section \ref{sec:Refinements}.
+MOSI and MOESI in Section~\ref{sec:Refinements}.
 \adamc{...and maybe we don't, for space reasons. \texttt{:-)}}
 
 %We use the terms write to mean handling a store request, \ie{} executing the
@@ -271,7 +271,7 @@ Invariant~\fullref{conservative} holds. Since Invariants~\ref{stateChange} to
 corresponding directory entry, these properties can potentially be verified
 using model-checking techniques for an invalidation-based protocol.
 
-Proving the other 3 invariants in Section \ref{secondLevel} requires using
+Proving the other 3 invariants in Section~\ref{secondLevel} requires using
 more properties of the MSI transistions of Figure~\ref{trans}, though the argument is
 straightforward. Analyzing a parent-child pair will suffice in proving Invariants~
 \fullref{localCompatibility1} and \fullref{localCompatibility2}. Proof of Invariant~
@@ -379,7 +379,7 @@ straightforward. Analyzing a parent-child pair will suffice in proving Invariant
 %Invariant~\textit{conservative} at any time $t$ for child cache $c$ and parent
 %$p$ for an address $a$ can be proved as follows. Consider the case when
 %$c.\state[a]$ never changed before $t$, then $c.\state[a] = \In$ because of the
-%initialization conditions described in Section \ref{System}. No response would
+%initialization conditions described in Section~\ref{System}. No response would
 %have been sent by $c$ to its parent for address $a$ before $t$, otherwise
 %$c.\state[a]$ would have changed. Thus the parent would not have received any
 %response from $c$, $p.\dstate[c][a]$ could have changed only by sending a
