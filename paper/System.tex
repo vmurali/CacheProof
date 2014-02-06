@@ -169,6 +169,7 @@ at least the requested value, it sends an upgrade response to the cache, while
 changing the appropriate directory state. The notation \compat{} used in
 the ParentRecvReq transition of Figure \ref{trans} is defined as follows:
 \begin{multline*}
+\small
 \compat(p, c, a, s) = \forall i \ne c,
 \mylet s_i := p.\dstate[i][a] \myin\\
  (s = \Mo @-> s_i = \In) \wedge (s = \Sh @-> s_i = \Sh) \wedge (s = \In @-> s_i = \Mo)

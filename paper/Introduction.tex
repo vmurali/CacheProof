@@ -3,94 +3,146 @@
 
 Shared memory is a common abstraction for distributed systems, as it provides
 an easily understood model of interaction. To achieve this abstraction
-efficiently, many hardware systems implement \emph{cache coherence
-protocols}.
-
+efficiently, many hardware systems implement \emph{cache coherence protocols}.
 Since the correctness of this abstraction is paramount in the correct
-functioning of the system, significant effort is expended in making sure that
-the cache coherence engine is correct. In practice, verification proceeds in
-two steps. First, a cache coherence protocol is constructed and verified. This
-protocol generally directly represents many of the key concurrent aspects of an
-implementation (\eg{} reads and writes to the system are broken into local
-atomic micro-operations) but ignores implementation details (\eg{} buffer
-sizing and memory access times). Second, once the protocol has been verified,
-it is handed to hardware experts who fill in the missing implementation details
-and realize it at the Register Transfer Level (RTL) of gates, wires, and
-registers, via further breaking down of local micro-operations to make them
-realizable in hardware. This effort is not a one-time translation, as
-performance properties are not easily estimated; a significant amount of
-performance testing is requires to select a good implementation. 
+functioning of the system, it is imperative to ensure that the cache coherence
+protocol implementation is correct.
 
-\adamc{I don't understand what this paragraph is saying.}
-From a methodological perspective, this two-step process leaves much to be
-desired. The significant effort of verification is effectively lost by the
-concurrent non-trivial tasks of translation from the protocol representation to
-a hardware description and the necessary refinement to add missing
-implementation details to the protocol. 
+Formal verification of cache coherence protocols has traditionally been done
+using model-checking based approaches. This signficantly restricts the size as
+well as complexity of the system that has to be verified; most model-checking
+based approaches can not handle more than one level of hierarchy. To the best
+of our knowledge, the largest system that has been verified using
+model-checking based approaches has only 12 processors. \xxx{citation:
+http://www.cs.utah.edu/formal\_verification/pdf/xiaofang\_dissertation.pdf (used
+data from their related work must cite)}.
 
-Verified protocols are often described via Term Rewrite
-Systems (TRS) \adamc{citation for TRSes?}, which apply equational logic to describe systems at an
-interesting point on the spectrum between declarative and operational methods.
-It was shown by Dave
-\etal{}~\cite{DNA:CoherenceImplementation} that such a verified
-protocol could be transliterated into Bluespec~\cite{Bluespec:TFRG}, a
-hardware description language based on Guarded Atomic Actions, a
-restriction of TRS~\cite{Hoe:TCAD}. In this way one reduces the correctness of
-the implementation to the correctness of the protocol, with no need
-for separate reasoning about an implementation. While the current Bluespec compiler
-does not support some implementation elements that are common in practice
-(\eg{} fairness guarantees, atomic actions running over multiple clock cycles),
-recent work has provided key insights toward lifting the
-restrictions~\cite{DNA:CoherenceImplementation, Karczmarek}.  We
-believe that Bluespec and its future evolutions represent a
-very promising platform for productive implementation and
-verification of hardware components, including cache-coherent
-shared memories.
+Apart from scalability concerns, another problem with model-checking based
+approaches is that it provides no intuition as to why a protocol is correct, if
+the model checker successfully proves a protocol. Developing a new protocol
+therefore therefore can not use any intuition that could have been gained from
+the first protocol. Moreover the new protocol has to be verified from scratch.
 
-Even though the protocol transliteration approach cuts out one
-layer of verification effort, it may not be practical in practice.
-Design of a hardware system requires many tweaks to reach
-optimal performance, since low-level performance details often
-can only be found empirically.  Each performance tweak potentially
-breaks correctness, or at least breaks the structure of the old
-\emph{proof} of correctness, so that a full \emph{reverification}
-of correctness is needed in principle. Hardware designers are
-unlikely to have the expertise or skill to do each such
-verification.  Our motivating question in this paper is, \emph{can
-we modularize formal proofs of cache coherence protocols so that
-verification experts do the hard work once and for all, and then
-hardware designers can instantiate the results to different designs
-with much less effort?}
+We propose a theorem-prover based approach for proving cache coherence
+protocols. Using this approach eliminates the scalability and complexity
+problems faced by model-checkers. But, the downside is that considerable
+laborious effort is needed by verification people to provide a proof for the
+protocol, and the complexity of the protocol directly translates into effort.
+Our motivating question in this paper is,
+\emph{can we modularize formal proofs of cache coherence protocols so that
+verification experts do the hard work once and for all, and then hardware
+designers can instantiate the results to different designs with much less
+effort?}
 
-In practice, protocol variants rely on a small set of general ``local
-building block'' properties, like guaranteed delivery of messages sent
-between processors, or guaranteed state changes in processors upon
-receiving certain messages.  These properties are
-easily verifiable, since they correspond to a small partition of the
-system, for instance a single cache.  The details of how these
-properties hold vary depending on the precise design variant. For
-instance, the reason why some property holds, like the point-to-point
-FIFO ordering for messages transferred between two nodes, depends on
-the type of network; the proof will be very different for a mesh
-network compared to a point-to-point network.
+While we have not reached a push-button state in our work, we do develop a
+modular proof strategy, where portions of our proof can be used \emph{as is} to
+prove other related but distinct protocols. Moreover, the proof gives solid
+insights on how the protocol works correctly, which can be used to design other
+protocols.
 
-In this paper, we describe an approach to provide this proof framework
-for any particular cache coherence protocol via the example of an
-MSI-style protocol.  We also show how it can be extended to other protocols
-like MESI and MOESI.  We present a modular proof architecture,
-where modification of microarchitectural
-aspects of design only necessitates reverification of relatively shallow
-local building block properties. Our framework and several instantiations
-for it are mechanized in the Coq proof assistant system, providing the
-highest levels of formal assurance upon a small trusted code base.
-We implemented and verified one particular MSI protocol via an
-operational semantics in Coq.
+The main contributions of this paper are as follows:
+\begin{enumerate}
+\item \emph{We give a precise formal definition of a cache coherent system as one
+which obeys store atomicity. The definition is abstract in that it does not
+rely on any hardware implementation.}
+\item \emph{We provide a Coq-based proof of the directory-based MSI cache coherence
+protocol with inclusive caches, and no silent drops.}
+\item \emph{We present a set of invariants which are not restricted to the MSI
+protocol, but would imply store atomicity. Thus, other protocols will also
+satisfy store atomicity as long as they obey the invariants.}
+\item \emph{We present what we believe to be the key insight behind the
+correctness of the MSI protocol. We believe that this property is true also of
+other protocols like MESI, MOSI and MOESI, enabling reuse of portions of our
+MSI proof for their verification.}
+\end{enumerate}
+%In practice, verification proceeds in
+%two steps. First, a cache coherence protocol is constructed and verified. This
+%protocol generally directly represents many of the key concurrent aspects of an
+%implementation (\eg{} reads and writes to the system are broken into local
+%atomic micro-operations) but ignores implementation details (\eg{} buffer
+%sizing and memory access times). Second, once the protocol has been verified,
+%it is handed to hardware experts who fill in the missing implementation details
+%and realize it at the Register Transfer Level (RTL) of gates, wires, and
+%registers, via further breaking down of local micro-operations to make them
+%realizable in hardware. This effort is not a one-time translation, as
+%performance properties are not easily estimated; a significant amount of
+%performance testing is requires to select a good implementation. 
+%
+%\adamc{I don't understand what this paragraph is saying.}
+%From a methodological perspective, this two-step process leaves much to be
+%desired. The significant effort of verification is effectively lost by the
+%concurrent non-trivial tasks of translation from the protocol representation to
+%a hardware description and the necessary refinement to add missing
+%implementation details to the protocol. 
 
-\noindent\textbf{Paper Outline}. In Section~\ref{Sec:Background} we
-discuss our notion of correctness for our cache coherence protocol
-framework. We describe our MSI protocol example and its implementation
-in Section~\ref{Sec:System}. In Section~\ref{Sec:ProofStructure} we discuss
-the structuring of our proof framework and verification of the base
-protocol. We show implementation refinements in
-Section~\ref{Sec:Refinements} and conclude with a general discussion
-of the applicability of our technique.
+Protocols, post verification, are often described via Term Rewrite Systems
+(TRS) \adamc{citation for TRSes?}, which apply equational logic to describe
+systems at an interesting point on the spectrum between declarative and
+operational methods.  It was shown by Dave
+\etal{}~\cite{DNA:CoherenceImplementation} that such a protocol, after its
+verification, can be transliterated into Bluespec~\cite{Bluespec:TFRG}, a
+hardware description language based on Guarded Atomic Actions, a restriction of
+TRS~\cite{Hoe:TCAD}. Bluespec specification can be directly implemented into
+efficient hardware. In this way one reduces the correctness of the
+implementation to the correctness of the protocol, with no need for separate
+reasoning about an implementation. While the current Bluespec compiler does not
+support some implementation elements that are common in practice (\eg{}
+fairness guarantees, atomic actions running over multiple clock cycles), recent
+work has provided key insights toward lifting the
+restrictions~\cite{Karczmarek}. We believe that Bluespec and its future
+evolutions represent a very promising platform for productive implementation of
+hardware components, including cache coherent shared memories, starting from a
+description meant for making verification easier. Our model of the MSI protocol
+in Coq is described as an inductively defined set of transitions which is
+directly translatable into Guarded Atomic Actions. In fact, our Coq-based model
+is a direct transliteration of the MSI protocol specified in Bluespec.  This
+ensures that the final hardware synthesized from the specification is formally
+verified.
+
+%Even though the protocol transliteration approach cuts out one
+%layer of verification effort, it may not be practical in practice.
+%Design of a hardware system requires many tweaks to reach
+%optimal performance, since low-level performance details often
+%can only be found empirically.  Each performance tweak potentially
+%breaks correctness, or at least breaks the structure of the old
+%\emph{proof} of correctness, so that a full \emph{reverification}
+%of correctness is needed in principle. Hardware designers are
+%unlikely to have the expertise or skill to do each such
+%verification. 
+%
+%In practice, protocol variants rely on a small set of general ``local
+%building block'' properties, like guaranteed delivery of messages sent
+%between processors, or guaranteed state changes in processors upon
+%receiving certain messages.  These properties are
+%easily verifiable, since they correspond to a small partition of the
+%system, for instance a single cache.  The details of how these
+%properties hold vary depending on the precise design variant. For
+%instance, the reason why some property holds, like the point-to-point
+%FIFO ordering for messages transferred between two nodes, depends on
+%the type of network; the proof will be very different for a mesh
+%network compared to a point-to-point network.
+
+%In this paper, we describe an approach to provide this proof framework
+%for any particular cache coherence protocol via the example of an
+%MSI-style protocol.  We also show how it can be extended to other protocols
+%like MESI and MOESI.  We present a modular proof architecture,
+%where modification of microarchitectural
+%aspects of design only necessitates reverification of relatively shallow
+%local building block properties. Our framework and several instantiations
+%for it are mechanized in the Coq proof assistant system, providing the
+%highest levels of formal assurance upon a small trusted code base.
+%We implemented and verified one particular MSI protocol via an
+%operational semantics in Coq.
+
+\noindent\textbf{Paper Outline}. In Section~\ref{Background} we give a
+formal definition of cache coherent system as one which obeys store atomicity.
+We describe memory subsystems as mathematical functions and define store
+atomicity as a property of the input/output pairs of the memory subsystem
+function. We describe our MSI protocol and its representation as a
+transition relation in Coq in Section~\ref{sec:System}. In
+Section~\ref{safety} we discuss the structuring of our proof. We
+present the invariants that are sufficient to prove store atomicity and give
+the key insight that enables these invariants to be proved.
+%We discuss some refinements in
+%Section~\ref{Sec:Refinements} and conclude with a general discussion
+%of the applicability of our technique.

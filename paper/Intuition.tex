@@ -12,10 +12,12 @@ invariants presented in Section \ref{secondLevel}. The reason for choosing the 8
 alone; any other protocol which obeys these invariants obeys Theorem
 \fullref{storeAtomicity}. We finally present the key insight which we
 discovered for proving the second-level invariants in the form of 3 invariants.
-We believe that these properties are common in most, if not all
-invalidation-based protocols which do not perform silent drops (\ie{} protocols
-in which a cache that downgrades its state informs some other cache about the
-downgrade). We informally show why this is the case using the example of MESI,
+We believe that other invalidation-based protocols with inclusive caches (\ie{}
+those cache hierarchies where a parent cache contains all the locations that
+any of its children contains) like MESI, MOSI and MOESI also
+satisfy these 3 fundamental properties, making their verification easier by reusing
+portions of our MSI proof.
+We informally show why this is the case using the example of MESI,
 MOSI and MOESI in Section \ref{mosi}.
 
 %We use the terms write to mean handling a store request, \ie{} executing the
@@ -119,7 +121,7 @@ conditions for Theorem~\fullref{storeAtomicity} is satisfied given Invariants
 
 While Invariant \fullref{processReq} and \fullref{noReqAgain} can be seen
 directly from the MSI transitions, correctness of Invariants
-\fullref{localCompatibility1}, \fullref{localCompatibility2} and \fullref{latestValue} require further
+\fullref{nonAncestorCompatible} and \fullref{latestValue} require further
 decomposition. We present 4 more invariants for proving those two invariants.
 
 \begin{inv}
@@ -250,11 +252,17 @@ back to Figure \ref{resps}, we can see that at all times, either there is no
 response in flight, or only responses from parent in flight, or responses from
 child in flight. A response from child downgrades the state and a response from
 parent upgrades the directory. Since the other side simply lags behind,
-Invariant \fullref{conservative} holds.
+Invariant \fullref{conservative} holds. Since Invariants \ref{stateChange} to
+\ref{respFIFO} deals with just one cache's state for a single address and the
+corresponding directory entry, these properties can potentially be verified
+using model-checking techniques for an invalidation-based protocol.
 
 Proving the other 3 invariants in Section \ref{secondLevel} requires using
 more properties of the MSI transistions of Figure \ref{trans}, though it is
-straightforward.
+straightforward. Analysing a parent-child pair will suffice in proving Invariants
+\fullref{localCompatibility1} and \fullref{localCompatibility2}. Proof of Invariant
+\fullref{noTransitWrite} is similar to the proof of Invariant
+\fullref{nonAncestorCompatible}.
 
 %To prove Invariant \fullref{conservative} at some time $t$, consider the case
 %when a child cache $c$ has sent to or received from the parent $p$ some message
