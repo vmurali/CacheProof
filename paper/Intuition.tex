@@ -31,6 +31,7 @@ informal for brevity. A full description can be found at~\xxx{MURALI PUT
 REFERENCE HERE}.
 
 \subsection{First level invariants}
+\label{firstLevel}
 Intuitively our protocol is correct because it guarantees that at most one
 cache can handle a store request at a time, and that any cache that attempts to
 handle a load request has the ``latest'' value. We can state this formally with
@@ -114,7 +115,7 @@ conditions for Theorem~\fullref{storeAtomicity} is satisfied given Invariants
 
 
 \subsection{Second-level Invariants}
-\label{second-level}
+\label{secondLevel}
 
 While Invariant \fullref{processReq} and \fullref{noReqAgain} can be seen
 directly from the MSI transitions, correctness of Invariants
