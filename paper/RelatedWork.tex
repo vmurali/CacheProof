@@ -1,0 +1,17 @@
+\section{Related work}
+\label{relatedWork}
+These are lifted as is from that guy. Need to figure out how to restate them, and make it more concise.
+
+For verification of high level specifications, modern industrial practice
+consists of modeling small instances of the protocols, e.g., three CPUs
+handling two addresses and one bit of data, in terms of interleaving atomic
+steps, in guard/action languages such as Murphi \cite{tla} or TLA+ \cite{tla}, and
+exploring the reachable states through explicit state enumeration.
+Symbolic methods, e.g., BDD [31] or SAT [129, 142], are yet to succeed for the
+verification of cache coherence protocols.
+Monolithic formal verification methods – methods that treat the protocol as a whole – have
+been used fairly routinely for verifying cache coherence protocols from the early 1990s
+[10 (2 nodes, murphi), 61 (), 141]. However, these monolithic techniques will not be able to handle the very
+large state space of hierarchical protocols. Compositional verification techniques are essential. 
+
+
