@@ -26,10 +26,11 @@ the siblings can be in \Mo{} or \Ow{} state.  Whenever data has to be supplied
 to a new cache $c$, the parent directs a sibling of $c$ in the \Ow{} or \Mo{}
 state (if any) to supply the data to $c$.
 
-Since Invariant~\fullref{conservative} depends solely on the fundamental Invariants~\fullref{stateChange}, \fullref{noCross} and \fullref{respFIFO}, it holds true
-as long as the 3 fundamental invariants hold (which is the case in the MOSI
-protocol). The proof of Invariant~\fullref{localCompatibility1} in MOSI is more
-or less the same as in MSI.
+Since Invariant~\fullref{conservative} depends solely on the fundamental
+Invariants~\fullref{stateChange}, \fullref{noCross} and \fullref{respFIFO}, it
+holds true as long as the 3 fundamental invariants hold (which is the case in
+the MOSI protocol). The proof of Invariant~\fullref{localCompatibility1} in
+MOSI is more or less the same as in MSI.
 
 Proving the Invariants~\fullref{localCompatibility2} and
 \fullref{noTransitWrite} is more involved. The parent's directory can
