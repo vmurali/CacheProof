@@ -156,43 +156,32 @@ $a$, and the data must be sent from a \textit{clean} cache.
 \label{noTransitWrite}
 \end{inv}
 
-Invariants~\fullref{conservative} and \fullref{localCompatibility1} defines a
+Invariants~\fullref{conservative} and \fullref{localCompatibility1} define a
 $\ge$ relation between the states of a parent and its child for any address.
 Since the ancestor relation is the reflexive-transitive closure of the parent
 relation, the $\ge$ relation is preserved between the states of two caches $p$
 and $c$ where $p$ is the ancestor of $c$.
 
 Any two caches $c_1, c_2$ neither of which is an ancestor of the other have a
-lowest common ancestor $x$ that is an ancestor of both $c_1$ and $c_2$. $x$
-has two distinct children $x_1$ and $x_2$ such that they are the ancestors of
-$c_1$ and $c_2$ respectively. For any address $a$, $x_1.\state[a]$ and
-$x_2.\state[a]$ are compatible by 
-Invariant~\fullref{localCompatibility2}. It follows that $x_1.\state[a]$ and
-$x_2.\state[a]$ are compatible since these values are smaller than the
-respective directory values. From the previous paragraph about the relation
-between the states of a cache and its ancestor, it follows that $c_1$ and $c_2$
-are also compatible. This proves Invariant~\fullref{nonAncestorCompatible}.
+lowest common ancestor $x$ that is an ancestor of both $c_1$ and $c_2$. $x$ has
+two distinct children $x_1$ and $x_2$ such that they are the ancestors of $c_1$
+and $c_2$ respectively. For any address $a$, $x_1.\state[a]$ and
+$x_2.\state[a]$ are compatible by Invariant~\fullref{localCompatibility2}. It
+follows that $x_1.\state[a]$ and $x_2.\state[a]$ are compatible since these
+values are smaller than the respective directory values. From the previous
+paragraph about the relation between the states of a cache and its ancestor, it
+follows that $c_1$ and $c_2$ are also compatible. This proves
+Invariant~\fullref{nonAncestorCompatible}.
 
-We prove Invariant~\fullref{latestValue} by strong induction on time. Consider
-two cases: (a) cache $c$ is already \clean{} for an address $a$ at time $t$ or
-(b) the contrary.  If \clean{}, then it has the latest value at time $t$. Since
-none of its children's directory entries can be in \Mo{}, all its descendants
-should be no greater than \Sh{} for that address (because of Invariant~\fullref{conservative} and the fact that the $\ge$ relation is preserved for the
-state of a cache and that of its ancestor). Any non-ancestor of $c$ and
-non-descendant of $c$ must be compatible (as discussed in the previous
-paragraph).  Since $c$ is \clean, it is at least in the \Sh{} state, so
-compatibility means that non-descendants cannot be in \Mo{} state. All of
-$c$'s ancestors are non-leaves, so they cannot process any store requests.
-Therefore, no cache save $c$ may have processed a store request, which means that
-$c$ contains the latest value for address $a$ at time $t+1$ if it was \clean{}
-at time $t$.
-
-If $c$ was not clean at time $t$, it must have received data from either its
-parent or its child, and the sender is \clean{} by Invariant~\ref{noTransitWrite}. By the induction hypothesis, it means that the sender has
-the latest value for the address. Again, because of
-Invariant~\ref{noTransitWrite}, no store request can be processed when the data
-is in transit, which means $c$ will have the latest value for address $a$ at
-time $t+1$, establishing Invariant~\fullref{latestValue}.
+Using the properties discussed in the last two paragraphs, it is easy to prove
+Invariant~\ref{latestValue}. The proof is by induction on time $t$. We consider
+the cases when a node is either \clean{} in the previous state or not. One can
+easily prove that if it was \clean{} in the previous state, then no cache, save
+itself, can process a store request, proving the invariant.  If the cache was
+not \clean{} in the previous state, it will receive data from a \clean{} cache
+and no store requests can be processed when the data is in transit (by
+Invariant~\ref{noTransitWrite}). Therefore, by the induction hypothesis it has
+the up-to-date data.
 
 The full version of this proof is also implemented in Coq, providing an even
 higher-level starting point for verification of a new protocol.
@@ -265,9 +254,12 @@ Invariant~\fullref{conservative} holds. Since Invariants~\ref{stateChange} to
 corresponding directory entry, these properties can potentially be verified
 using model-checking techniques for an invalidation-based protocol.
 
-Proving the other 3 invariants in Section~\ref{secondLevel} requires using
-more properties of the MSI transistions of Figure~\ref{trans}, though the argument is
-straightforward. Analyzing a parent-child pair will suffice in proving Invariants~\fullref{localCompatibility1} and \fullref{localCompatibility2}. Proof of Invariant~\fullref{noTransitWrite} is similar to the proof of Invariant~\fullref{nonAncestorCompatible}.
+Proving the other 3 invariants in Section~\ref{secondLevel} requires using more
+properties of the MSI transistions of Figure~\ref{trans}, though the argument
+is straightforward. Analyzing a parent-child pair will suffice in proving
+Invariants~\fullref{localCompatibility1} and \fullref{localCompatibility2}.
+Proof of Invariant~\fullref{noTransitWrite} is similar to the proof of
+Invariant~\fullref{nonAncestorCompatible}.
 
 %To prove Invariant \fullref{conservative} at some time $t$, consider the case
 %when a child cache $c$ has sent to or received from the parent $p$ some message
