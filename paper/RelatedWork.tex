@@ -1,25 +1,25 @@
 \section{Related work}
 \label{relatedWork}
 
-Formal verification of hardware-oriented cache coherence protocols, is mainly
-done using model checking. In practice, explicit state model checking tools like
+Formal verification of hardware-oriented cache coherence protocols is mainly
+done using model checking. In practice, explicit-state model checking tools like
 Murphi \cite{murphi} or TLC \cite{tlc} are only able to handle small and
 simplified systems, \eg{} a single-level cache hierarchy with three CPUs, two
 addresses, and one bit of data. Symbolic model checking techniques have fared
 slightly better; McMillan \etal{} have verified a 2-level MSI protocol based on
-Gigamax distributed multiprocessor using SMV.  Optimizations on these techniques
+the Gigamax distributed multiprocessor using SMV.  Optimizations on these techniques
 (\eg{} partial order reduction \cite{part}, symmetry reduction \cite{sym1,
-  sym2}, compositional reasoning \cite{somethink}, \etc{} scale the approach
+  sym2}, compositional reasoning \cite{somethink}, \etc{}) scale the approach
 further, but they are still unable to handle realistic hierarchical protocols.
 
 Theorem provers have also been used in verifying cache coherence protocols. The
 FLASH coherence protocol \cite{flash} was verified using Aggregation of
-Distributed transactions \cite{park}, where several state transitions accessing
+Distributed \adamc{why are these words capitalized?} transactions \cite{park}, where several state transitions accessing
 localized state intuitively correspond to an aggregate atomic transition
 accessing all global state. A proof of a mapping between the local transitions
-and the agreggate one must be provided. Once this is done, a model checker can
-be used to verify the aggregate model is correct. However, We believe that the
-verification challenge here is precisely the proof of such a mapping which was
+and the agreggate one must be provided, at which point a model checker can
+be used to verify that the aggregate model is correct. However, we believe that the
+verification challenge here is precisely the proof of such a mapping, which was
 not discussed.
 
 Other approaches involve correct-by-construction
