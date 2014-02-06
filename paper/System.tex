@@ -154,7 +154,9 @@ than the requested upgrade, it makes sure that the rest of its children are
 requests to the incompatible children to downgrade -- again the transition for
 doing so has nothing to do with the incoming request. If the children are
 compatible and its own state is higher, then the request can be handled and a
-response is sent. Each of the transitions is explained in greater detail below.
+response is sent. The transitions for sending requests are allowed to happen
+spontaneously without any trigger to model a family of protocols differing in
+the policy for sending requests.
 
 Figure~\ref{childside} shows the transitions that result in an upgrade of the
 state of a cache. It involves a cache sending an upgrade request to the its
