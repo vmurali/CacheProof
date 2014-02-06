@@ -1,16 +1,31 @@
 \section{Conclusions and future work}
 
-* Present work
-- Abstract converted into ``have showns''
-- Replacement policies/policies to decide when a request a sent etc (along with
-  associativity/sizing of caches) is parameterized
-* Future work
-- Forward progress/liveness property
-  - closely related to network/buffers
-  - in presence of bounded buffers
-  - in presence of communication fabric
-- Automating Bluespec specification into Coq/vice versa
-  - Verified compiler
+In this paper, we provided a formal definition of cache coherence via the store
+atomicity property and provided a concrete hierarchy-parametric directory-based
+MSI protocol whose correct we formally checked via a Coq-based proof. To our
+knowledge this is the first instance of a formal proof of a protocol parametric
+over the memory hierarchy.
+
+Our protocol is described in a style amenable to mechanical transliteration to a
+Bluespec SystemVerilog hardware description allowing us to provide high-quality
+verified cache coherence engine. As the protocol and associated proof are robust
+to many microarchitecture-oriented changes (\eg{} arbitrary hierarchy and
+arbitrary cache size, associativity, and replacement policy choices in each
+node), we should be able to produce a performant formally verified hardware
+cache coherence system.
+
+Moving this work towards generating a fully verified MSI implementation requires
+a number of small steps. First, the simple transliteration of descriptions
+between Bluespec and Coq, must be done in a mechanical way. Second, the
+compilation of Bluespec to hardware is unverified; to fully trust the
+implementation the Bluespec compiler must be verified. Some initial work on this
+has already been done~\cite{TDBLP:conf/cav/BraibantC13}. Finally, we must extend
+our notion of correctness to apply to the hardware substrate and not just the
+level of atomic transactions. Most notably, this requires the some guarantee of
+liveness and fairness in handling of messages in the final design. We have
+initial Coq-based proofs that with finite buffers a local fairness in
+transaction our protocol will have this property, but more work is needed to
+fully resolve this venture. 
 
 
 
@@ -45,3 +60,5 @@
 %% Further, to fully guarantee correctness of the resulting hardware, we should
 %% also verify the hardware synthesis compiler, possibly using FeSi~\cite{Tomas}.
 
+
+%%  LocalWords:  associativity atomicity
