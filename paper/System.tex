@@ -10,7 +10,7 @@ In the following, $\leaf(c)$ indicates
 that a cache $c$ is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
 $c$.
 
-Each node contains the fields mentioned in Figure \ref{hier}. We will
+Each node contains the fields mentioned in Figure~\ref{hier}. We will
 explain what the fields mean in the following discussion.
 
 \begin{figure}
@@ -136,7 +136,7 @@ have two parts: (a) the guard dictating when the transition can fire, and (b)
 the action defining how the state of the system changes when the transition
 happens. Logically, these transitions happen one at a time.  Figure~\ref{trans}
 gives the atomic transitions for the MSI protocol.  The actions in the
-transitions in Figure \ref{trans} show only the specific states that change,
+transitions in Figure~\ref{trans} show only the specific states that change,
 and other state components are assumed to remain the same.  The notation ($x
 \Leftarrow y$;) in a transition indicates setting of a specific state $x$ of
 the overall system to value $y$.
@@ -164,7 +164,7 @@ from the parent (ChildSendReq). This request is received by the parent
 \emph{compatible} with the upgrade request, and the parent's permission state has
 at least the requested value, it sends an upgrade response to the cache, while
 changing the appropriate directory state. The notation \compat{} used in
-the ParentRecvReq transition of Figure \ref{trans} is defined as follows:
+the ParentRecvReq transition of Figure~\ref{trans} is defined as follows:
 \begin{multline*}
 \small
 \compat(p, c, a, s) = \forall i \ne c. \;
