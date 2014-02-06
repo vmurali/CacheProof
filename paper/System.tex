@@ -14,6 +14,7 @@ Each node contains the fields mentioned in Figure \ref{hier}. We will
 explain what the fields mean in the following discussion.
 
 \begin{figure}
+\centering
 \includegraphics[scale=.5]{hier}
 \caption{A cache hierarchy, and the fields in each node}
 \label{hier}
@@ -24,9 +25,9 @@ issued from and responses issued to the associated processor. These will be
 represented by two mappings, one from $\mathbb{N}$ to requests and the other
 from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
 sequence number of the next request to process; it is set to $0$ initially.
-\adamc{What is a ``position'' here?  Is ``sequence number'' a better choice?}
+\xxx{Fixed???? \adamc{What is a ``position'' here?  Is ``sequence number'' a better choice?}
 \adamc{I hope the diagram explains what these mappings mean, and in general what
-the tree structure really means.}
+the tree structure really means.}}
 
 Each node maintains a permission state for each address $a$, $c.\state[a]$, in
 addition to the data associated with the address, $c.\data[a]$. The permission
