@@ -127,11 +127,11 @@ sibling of $c$ in the \Ow{} or \Mo{} state (if any) to supply the data to $c$.
 
 The invariants in Section \ref{safety} almost holds as is in this protocol too,
 except for the definition of compatibility between two states and Invariant
-\fullref{localCompatibility}. If a state is in \Ow{}, then it is compatible only
+\fullref{localCompatibility2}. If a state is in \Ow{}, then it is compatible only
 with another state in \Sh{} or \In{}. The total order for the states is now
 ($\Mo > \Ow > \Sh > \In$). A child cache always requests an upgrade to \Ow{}
 instead of \Sh{} whenever it requires read permission. The second clause of
-Invariant \fullref{localCompatibility} is no longer true. Instead, we can prove
+Invariant \fullref{localCompatibility2} is no longer true. Instead, we can prove
 a weaker clause, \viz the states of two siblings for an address are compatible
 (instead of the directory entries at the parent for the two siblings being
 compatible).  This is because in the protocol, the parent sends an upgrade, say

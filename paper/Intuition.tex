@@ -159,8 +159,8 @@ Any two caches $c_1, c_2$ neither of which are an ancestor of the other has a
 lowest common ancestor $x$ which is an ancestor of both $c_1$ and $c_2$. $x$
 has two distinct children $x_1$ and $x_2$ such that they are the ancestors of
 $c_1$ and $c_2$ respectively. For any address $a$, $x_1.\state[a]$ and
-$x_2.\state[a]$ are compatible by the second part of
-Invariant~\fullref{localCompatibility}. It follows that $x_1.\state[a]$ and
+$x_2.\state[a]$ are compatible by 
+Invariant~\fullref{localCompatibility2}. It follows that $x_1.\state[a]$ and
 $x_2.\state[a]$ are compatible since these values are smaller than the
 respective directory values. From the previous paragraph about the relation
 between the states of a cache and its ancestor, it follows that $c_1$ and $c_2$
@@ -252,7 +252,7 @@ child in flight. A response from child downgrades the state and a response from
 parent upgrades the directory. Since the other side simply lags behind,
 Invariant \fullref{conservative} holds.
 
-Proving the other 3 invariants in Section \ref{second-level} requires using
+Proving the other 3 invariants in Section \ref{secondLevel} requires using
 more properties of the MSI transistions of Figure \ref{trans}, though it is
 straightforward.
 
