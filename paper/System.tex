@@ -4,7 +4,9 @@
 We have chosen as our concrete example a hierarchical MSI
 protocol~\cite{MSI}. Logically, the system is organized in a tree
 structure, with the root connected to the main memory and each leaf interfaced
-with a processor (Figure~\ref{hier}). In the following, $\leaf(c)$ indicates
+with a processor (Figure~\ref{hier}). The system is parameterized by the shape
+of the tree, and each node can have any number of children independent of the
+number in other nodes. In the following, $\leaf(c)$ indicates
 that a cache $c$ is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
 $c$.
 
@@ -131,16 +133,30 @@ because no cache is waiting for any response from either its child or its
 parent initially.
 
 The behavior of the system is described via the atomic state transitions, which
-are effectively a nondeterministic operational semantics. These
-transitions have two parts: (a) the guard dictating when the transition can
-fire, and (b) the action defining how the state of the system changes when the
-transition happens. Logically, these transitions happen one at a time.
-Figure~\ref{trans} gives the atomic transitions for the MIS protocol.  The
-actions in the transitions in Figure \ref{trans} show only the specific states
-that change, and other state components are assumed to remain the same.
-The notation ($x \Leftarrow
-y$;) in a transition indicates setting of a specific state $x$ of the overall
-system to value $y$.
+are effectively a nondeterministic operational semantics. These transitions
+have two parts: (a) the guard dictating when the transition can fire, and (b)
+the action defining how the state of the system changes when the transition
+happens. Logically, these transitions happen one at a time.  Figure~\ref{trans}
+gives the atomic transitions for the MIS protocol.  The actions in the
+transitions in Figure \ref{trans} show only the specific states that change,
+and other state components are assumed to remain the same.  The notation ($x
+\Leftarrow y$;) in a transition indicates setting of a specific state $x$ of
+the overall system to value $y$.
+
+We first give an intuition on how the transitions work in the common case.
+A cache can decide, unsolicitedly \xxx{is this a word?}, to upgrade its state,
+in which case it sends an upgrade request to its parent. The parent then makes
+a local decision on whether to send a response to the requesting child or not
+(based on its directory approximation, and its own state). If its own state is
+lower the requested upgrade, then it can not handle the request. The parent
+must instead, decide to upgrade its state -- the transition for doing so has
+nothing to do with the incoming request.  Once the parent's state is not lower
+than the requested upgrade, it makes sure that the rest of its children are
+``compatible'' with the requested upgrade. If not, the parent must, send
+requests to the uncompatible children to downgrade -- again the transition for
+doing so has nothing to do with the incoming request. If the children are
+compatible and its own state is higher, then the request can be handled and a
+response is sent. Each of the transitions is explained in greater detail below.
 
 Figure~\ref{childside} shows the transitions that result in an upgrade of the
 state of a cache. It involves a cache sending an upgrade request to the its
@@ -167,14 +183,14 @@ each of $c$'s children should not be greater than the requested
 downgrade, in order for $c$ to accept a request and send a downgrade
 response.
 
-Figure~\ref{childextra} shows transitions that happen in a non-root
-cache due to the presence of \emph{voluntary} responses, which model eviction
-from a cache to make room for a new location. This eviction usually
+Figure~\ref{childextra} shows transitions that happen in a non-root cache due
+to the presence of \emph{voluntary} responses, which model eviction of a
+location from a cache to make room for a new location. This eviction usually
 causes the permission state of the cache for that address to go to $\In$, while
 we allow any downgrade to take place voluntarily.  We use the same \cpResp{}
 FIFO for such a message. Such a voluntary response for an address can take
-place only if the cache is not waiting for a response from its parent for
-that address (ChildVolResp).
+place only if the cache is not waiting for a response from its parent for that
+address (ChildVolResp).
 
 Because of the presence of voluntary response, a child could have already
 downgraded to a state required by a downgrade request from its parent. In such
@@ -340,6 +356,6 @@ state, \ie{} do not \emph{conflict}~\cite{Hoe:TCAD,HoeArvind:TRSSynthesis1}.
 Sometimes, these transitions (both the guards and the actions) may not be
 amenable to single cycle implementations in hardware. For example, writing a
 register array can actually take several hardware clock cycles, though
-logically it is a single transition.  Karczmarek \etal~\cite{Karczmarek} has
+logically it is a single transition. Karczmarek \etal~\cite{Karczmarek} has
 provided a scheme to convert atomic transitions into synchronous hardware in
 which each transition can span several clock cycles.
