@@ -8,11 +8,20 @@ with a processor (Figure~\ref{hier}). In the following, $\leaf(c)$ indicates
 that a cache $c$ is a leaf, and $\parent(c,p)$ indicates that $p$ is the parent of
 $c$.
 
+Each node contains the fields mentioned in Figure \ref{hier}. We will
+explain what the fields mean in the following discussion.
+
+\begin{figure}
+\includegraphics[scale=.5]{hier}
+\caption{A cache hierarchy, and the fields in each node}
+\label{hier}
+\end{figure}
+
 Input and output happens at the leaves in the form of memory requests
 issued from and responses issued to the associated processor. These will be
 represented by two mappings, one from $\mathbb{N}$ to requests and the other
 from $\mathbb{N}$ to responses. For each leaf $c$, $c.\pos$ represents the
-position of the next request to process; it is set to $0$ initially.
+sequence number of the next request to process; it is set to $0$ initially.
 \adamc{What is a ``position'' here?  Is ``sequence number'' a better choice?}
 \adamc{I hope the diagram explains what these mappings mean, and in general what
 the tree structure really means.}
@@ -40,7 +49,6 @@ each of its children in a \emph{directory} for every address. The directory
 entry for a cache $c$ whose parent is $p$ for address $a$ is denoted by
 $p.\dstate[c][a]$. A directory entry for a cache is never
 less than the actual cache's permission state for the corresponding address.
-
 
 In order for a cache to change to a higher state for a given address, \ie{}
 \emph{upgrade}, it has to \emph{request} its parent.  For changing to a lower

@@ -1,34 +1,32 @@
 \section{Introduction}
 \label{sec:Introduction}
 
-Shared memory is a common abstraction for distributed systems, as it
-provides an easily understood model of interaction. To achieve this
-abstraction efficiently, many hardware systems implement \emph{cache
-coherence implementation}.
+Shared memory is a common abstraction for distributed systems, as it provides
+an easily understood model of interaction. To achieve this abstraction
+efficiently, many hardware systems implement \emph{cache coherence
+protocols}.
 
 Since the correctness of this abstraction is paramount in the correct
 functioning of the system, significant effort is expended in making sure that
-the cache coherence engine is correct. In practice, verification proceeds
-in two steps. First, a cache coherence protocol is constructed and
-verified. This protocol generally directly represents many of
-the key concurrent aspects of an implementation (\eg{} reads and
-writes to the system are broken into local atomic micro-operations) but
-ignores implementation details (\eg{} buffer sizing and memory access
-times). Second, once the protocol has been verified, it is handed to
-hardware experts who fill in the missing implementation details and
-realize it at the Register Transfer Level (RTL) of gates, wires, and
-registers, via further breaking down of local micro-operations to
-make them realizable in hardware. This effort is not a one-time translation, as
+the cache coherence engine is correct. In practice, verification proceeds in
+two steps. First, a cache coherence protocol is constructed and verified. This
+protocol generally directly represents many of the key concurrent aspects of an
+implementation (\eg{} reads and writes to the system are broken into local
+atomic micro-operations) but ignores implementation details (\eg{} buffer
+sizing and memory access times). Second, once the protocol has been verified,
+it is handed to hardware experts who fill in the missing implementation details
+and realize it at the Register Transfer Level (RTL) of gates, wires, and
+registers, via further breaking down of local micro-operations to make them
+realizable in hardware. This effort is not a one-time translation, as
 performance properties are not easily estimated; a significant amount of
 performance testing is requires to select a good implementation. 
 
 \adamc{I don't understand what this paragraph is saying.}
-From a methodological perspective, this two-step process leaves much
-to be desired. The significant effort of
-verification is effectively lost by the concurrent non-trivial tasks
-of translation from the protocol representation to a hardware
-description and the necessary refinement to add missing implementation
-details to the protocol. 
+From a methodological perspective, this two-step process leaves much to be
+desired. The significant effort of verification is effectively lost by the
+concurrent non-trivial tasks of translation from the protocol representation to
+a hardware description and the necessary refinement to add missing
+implementation details to the protocol. 
 
 Verified protocols are often described via Term Rewrite
 Systems (TRS) \adamc{citation for TRSes?}, which apply equational logic to describe systems at an
