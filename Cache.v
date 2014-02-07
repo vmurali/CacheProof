@@ -1,4 +1,3 @@
-
 Require Import Arith Omega Useful DataTypes Channel Coq.Logic.Classical MsiState ChannelAxiomHelp.
 
 
