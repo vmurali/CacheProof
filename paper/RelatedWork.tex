@@ -1,26 +1,28 @@
-\section{Related work}
+\section{Related Work}
 \label{relatedWork}
 
-Formal verification of hardware-oriented cache coherence protocols, is mainly
-done using model checking. In practice, explicit state model checking tools like
+Formal verification of hardware-oriented cache coherence protocols is mainly
+done using model checking. In practice, explicit-state model checking tools like
 Murphi \cite{murphi} or TLC \cite{tlc} are only able to handle small and
 simplified systems, \eg{} a single-level cache hierarchy with three CPUs, two
 addresses, and one bit of data. Symbolic model checking techniques have fared
 slightly better; McMillan \etal{} have verified a 2-level MSI protocol based on
-Gigamax distributed multiprocessor using SMV.  Optimizations on these techniques
+the Gigamax distributed multiprocessor using SMV \cite{gigamax}.  Optimizations on these techniques
 (\eg{} partial order reduction \cite{part}, symmetry reduction \cite{sym1,
-  sym2}, compositional reasoning \cite{somethink}, \etc{} scale the approach
+  sym2}, compositional reasoning \cite{comp}, \etc{}) scale the approach
 further, but they are still unable to handle realistic hierarchical protocols.
 
 Theorem provers have also been used in verifying cache coherence protocols. The
-FLASH coherence protocol \cite{flash} was verified using Aggregation of
-Distributed transactions \cite{park}, where several state transitions accessing
-localized state intuitively correspond to an aggregate atomic transition
-accessing all global state. A proof of a mapping between the local transitions
-and the agreggate one must be provided. Once this is done, a model checker can
-be used to verify the aggregate model is correct. However, We believe that the
-verification challenge here is precisely the proof of such a mapping which was
-not discussed.
+FLASH coherence protocol was verified using aggregation of
+distributed \adamc{why are these words capitalized?} transactions \cite{park},
+where several state transitions accessing localized state intuitively
+correspond to an aggregate atomic transition accessing all global state. A
+proof of a mapping between the local transitions and the agreggate one must be
+provided, at which point a model checker can be used to verify that the
+aggregate model is correct. However, we believe that the verification challenge
+here is precisely the proof of such a mapping, which was not discussed.
+
+\xxx{MUST WRITE ABOUT XIAOWEI's CACHET and JOE STOY'S PVS proof}
 
 
 %These are lifted as is from that guy. Need to figure out how to restate them, and make it more concise.
@@ -28,7 +30,7 @@ not discussed.
 %For verification of high level specifications, modern industrial practice
 %consists of modeling small instances of the protocols, e.g., three CPUs
 %handling two addresses and one bit of data, in terms of interleaving atomic
-%steps, in guard/action languages such as Murphi \cite{tla} or TLA+ \cite{tla}, and
+%steps, in guard/action languages such as Murphi [50] or TLA+ [84], and
 %exploring the reachable states through explicit state enumeration.
 %Symbolic methods, e.g., BDD [31] or SAT [129, 142], are yet to succeed for the
 %verification of cache coherence protocols.
@@ -39,7 +41,7 @@ not discussed.
 %
 %For coherence protocols which only consider one level (or nonhierarchical protocols),
 %various techniques have been proposed for the verification. These techniques basically
-%include explicit state enumeration \cite{sci-cache-coherence} and symbolic model checking \cite{gigamax}
+%include explicit state enumeration [133] and symbolic model checking [102]
 %Opti-
 %mizations on these techniques include partial order reduction [24], symmetry reduction
 %[25, 72], compositional reasoning [96], predicate abstraction [22, 49, 82], etc. There is

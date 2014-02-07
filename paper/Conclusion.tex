@@ -1,33 +1,33 @@
-\section{Conclusions and future work}
+\section{Conclusions and Future Work}
 
 In this paper, we provided a formal definition of cache coherence via the store
 atomicity property and provided a concrete hierarchy-parametric directory-based
 MSI protocol whose correctness we formally checked via a Coq-based proof. To our
-knowledge this is the first instance of a formal proof of a protocol parametric
+knowledge, this is the first instance of formal verification of a protocol parametric
 over the cache hierarchy. We have also provided a set of invariants not
-specific to MSI which imply store atomicity; other protocols that obey these
+specific to MSI that imply store atomicity; other protocols that obey these
 invariants are already proven to be correct. Finally, we have identified a set
-of key properties that seem to be shared with many other protocols which ease
+of key properties that seem to be shared with many other protocols and which ease
 the verification considerably.
 
 Our protocol is described in a style amenable to mechanical transliteration to a
-Bluespec SystemVerilog hardware description allowing us to provide high-quality
+Bluespec SystemVerilog hardware description, allowing us to provide high-quality
 verified cache coherence engines. As the protocol and associated proof are robust
 to many microarchitecture-oriented changes (\eg{} arbitrary hierarchy and
 arbitrary cache size, associativity, replacement policy choices, policies to
 handle incoming requests, \etc{} in each node), we should be able to produce a
-high performance performance formally verified hardware cache coherence system.
+high-performance formally verified hardware cache coherence system.
 
 Moving this work towards generating a fully verified MSI implementation
 requires a number of small steps. First, the simple transliteration of
-descriptions between Bluespec and Coq, must be done in a mechanical way.
+descriptions between Bluespec and Coq must be done in a mechanical way.
 Second, the compilation of Bluespec to hardware is unverified; to fully trust
-the implementation the Bluespec compiler must be verified. Some initial work on
-this has already been done~\cite{TDBLP:conf/cav/BraibantC13}. Finally, we must
+the implementation, the Bluespec compiler must be verified. Some first steps
+have been taken in that direction~\cite{DBLP:conf/cav/BraibantC13}. Finally, we must
 extend our notion of correctness to provide some guarantee of
 liveness and fairness in handling of requests from processors. We have
-initial Coq-based proofs that with finite buffers a local fairness in
-transaction our protocol will have this property, but more work is needed. 
+initial Coq-based proofs that with finite buffers a local fairness condition
+holds for our protocol, but more work is needed. 
 
 %% We illustrated a direct realization of our proposed proof framework for a
 %% concrete MSI cache coherence protocol implementation codifying the intuition
