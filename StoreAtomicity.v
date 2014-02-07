@@ -29,6 +29,10 @@ Module Type StoreAtomicity (dt: DataTypes) (l1B: L1InputTypes dt).
     forall {r1 r2}, fst (labelR r1) = fst (labelR r2) ->
                     snd (labelR r1) < snd (labelR r2) -> ~ timeR r1 > timeR r2.
 
+  Axiom allPrevious:
+    forall {r1 i}, i < snd (labelR r1) -> exists r2, fst (labelR r2) = fst (labelR r1) /\
+                                                     snd (labelR r2) = i.
+
   Axiom storeAtomicity:
     forall {r},
       let q := reqFn (fst (labelR r)) (snd (labelR r)) in

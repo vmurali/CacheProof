@@ -173,6 +173,15 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     simpl; omega.
   Qed.
 
+  Theorem reqGeConv: forall {c t1 t2}, req (sys oneBeh t1) c < req (sys oneBeh t2) c -> t1 < t2.
+  Proof.
+    intros c t1 t2 reqEq.
+    assert (t1 >= t2 \/ t1 < t2) by omega.
+    destruct H.
+    pose proof (@reqGe c _ _ H) as contra; omega.
+    assumption.
+  Qed.
+
   Theorem reqGt: forall {c i t1 t2}, t1 < t2 -> deqR c i t1 ->
                                      req (sys oneBeh t2) c > i.
   Proof.
@@ -236,6 +245,104 @@ Module mkL1Axioms : L1Axioms mkDataTypes.
     omega.
     destruct deq1 as [_ u2].
     omega.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+    intuition.
+  Qed.
+
+  Theorem incReqImpDeq: forall {c t i},
+                           req (sys oneBeh t) c > i ->
+                           exists t', t' < t /\ deqR c i t'.
+  Proof.
+    intros c t i reqEq.
+    induction t.
+    pose proof (init oneBeh) as sth.
+    rewrite sth in reqEq; clear sth.
+    unfold initGlobalState in *; simpl in *.
+    omega.
+    assert (inc:req (sys oneBeh (S t)) c = req (sys oneBeh t) c \/
+                req (sys oneBeh (S t)) c = S (req (sys oneBeh t) c)).
+    destruct (trans oneBeh t).
+    simpl in *.
+    destruct (decTree c c0).
+    right.
+    intuition.
+    left.
+    intuition.
+    simpl in *.
+    destruct (decTree c c0).
+    right.
+    intuition.
+    left.
+    intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+    simpl in *; left; intuition.
+
+    destruct inc.
+    rewrite H in reqEq.
+    specialize (IHt reqEq).
+    destruct IHt as [t' [t'_lt_t deq]].
+    exists t'.
+    assert (t' < S t) by omega; intuition.
+    rewrite H in reqEq.
+    assert (opts: req (sys oneBeh t) c > i \/ req (sys oneBeh t) c = i) by omega.
+    destruct H.
+    destruct opts.
+    specialize (IHt H).
+    destruct IHt as [t' [t'_lt_t deq]].
+    exists t'.
+    constructor.
+    omega.
+    assumption.
+    rewrite <- H in *; clear H.
+    exists t.
+    constructor.
+    omega.
+    unfold deqR.
+    destruct (trans oneBeh t).
+    simpl in *.
+    destruct (decTree c c0).
+    constructor; auto.
+    omega.
+    simpl in *.
+    destruct (decTree c c0).
+    constructor; auto.
+    omega.
+    simpl in *; omega.
+    simpl in *; omega.
+    simpl in *; omega.
+    simpl in *; omega.
+    simpl in *; omega.
+    simpl in *; omega.
+    simpl in *; omega.
+    simpl in *; omega.
+  Qed.
+
+  Theorem deqImpDeqBefore: forall {c i1 i2 t},
+                             deqR c i1 t -> i2 < i1 -> exists t', deqR c i2 t'.
+  Proof.
+    intros c i1 i2 t deq i2_lt_i1.
+    unfold deqR in deq.
+    destruct (trans oneBeh t).
+    destruct deq as [eq sth].
+    rewrite eq in *.
+    rewrite <- sth in *.
+    pose proof (incReqImpDeq i2_lt_i1) as [x [_ y]]; exists x; intuition.
+    destruct deq as [eq sth].
+    rewrite eq in *.
+    rewrite <- sth in *.
+    pose proof (incReqImpDeq i2_lt_i1) as [x [_ y]]; exists x; intuition.
     intuition.
     intuition.
     intuition.

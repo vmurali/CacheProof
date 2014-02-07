@@ -129,6 +129,37 @@ Module mkTop.
       apply (deqOrder d1 d2 lblLt tLt).
     Qed.
 
+    Theorem allPrevious:
+      forall {r1 i}, i < snd (labelR r1) -> exists r2, fst (labelR r2) = fst (labelR r1) /\
+                                                       snd (labelR r2) = i.
+    Proof.
+      intros r1 i i_lt_r1t.
+      destruct r1.
+      destruct labelR0.
+      simpl in *.
+      destruct defR0.
+
+      pose proof (enqLdImpDeq e) as [deq _].
+      pose proof (deqImpDeqBefore deq i_lt_r1t) as [t' deq2].
+      pose proof (deqImpEnq deq2) as stf.
+      destruct (desc (reqFn c i)).
+      exists (Build_RespSet (c,i) (mkDataTypes.data c (loc (reqFn c i)) t') t'
+                            (inl stf)).
+      simpl; intuition.
+      exists (Build_RespSet (c,i) (initData zero) t' (inr stf)).
+      simpl; intuition.
+
+      pose proof (enqStImpDeq e) as [deq _].
+      pose proof (deqImpDeqBefore deq i_lt_r1t) as [t' deq2].
+      pose proof (deqImpEnq deq2) as stf.
+      destruct (desc (reqFn c i)).
+      exists (Build_RespSet (c,i) (mkDataTypes.data c (loc (reqFn c i)) t') t'
+                            (inl stf)).
+      simpl; intuition.
+      exists (Build_RespSet (c,i) (initData zero) t' (inr stf)).
+      simpl; intuition.
+    Qed.
+
     Theorem storeAtomicity:
       forall {r},
         let q := reqFn (fst (labelR r)) (snd (labelR r)) in

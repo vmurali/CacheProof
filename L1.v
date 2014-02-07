@@ -25,6 +25,8 @@ Module Type L1Axioms (dt: DataTypes).
   Axiom enqLdImpDeq: forall {c i st t}, enqLd c i st t -> deqR c i t /\ desc (reqFn c i) = Ld /\
                                                           data c (loc (reqFn c i)) t = st.
   Axiom enqStImpDeq: forall {c i t}, enqSt c i t -> deqR c i t /\ desc (reqFn c i) = St.
+  Axiom deqImpDeqBefore: forall {c i1 i2 t},
+                           deqR c i1 t -> i2 < i1 -> exists t', deqR c i2 t'.
 End L1Axioms.
 
 Module Type L1Theorems (dt: DataTypes).
