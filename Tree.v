@@ -220,35 +220,3 @@ Definition treeNthName nm ls := forall n,
                                                    end.
 
 
-Inductive BaseTree := B: list BaseTree -> BaseTree.
-
-Fixpoint getC b nm :=
-  C nm match b with
-         | B bs => (fst (fold_left (
-                             fun (x: (list Tree * nat)) y =>
-                               let (cs, next) := x in
-                               ((getC y (next :: nm))::cs, next - 1)
-                           ) bs (nil, (length bs - 1))))
-  end.
-
-(*
-Print fold_left.
-Theorem treeName2 {b} {p} (desc: descendent p (getC b nil)):
-  match p with
-    | C x ls => treeNthName x ls
-  end.
-Proof.
-  unfold treeNthName.
-  destruct p as [nm cs].
-  intros n n_lt_csLen.
-  remember (C nm cs) as p.
-  remember (getC b nil) as orig.
-  induction desc.
-  unfold parent in H.
-  destruct y as [nm' cs'].
-  unfold getC in Heqorig.
-  destruct b.
-  simpl in Heqorig.
-  induction desc.
-  dependent desc.
-*)
