@@ -105,6 +105,46 @@ Section ListProp.
     specialize (IHl i H2).
     assumption.
   Qed.
+
+  Theorem inListInAppa {a b: A} {l}: In a l -> In a (l ++ b :: nil).
+  Proof.
+    intros inl.
+    induction l.
+    simpl in *.
+    intuition.
+    unfold app.
+    fold (app l (a :: nil)).
+    simpl in *.
+    destruct inl.
+    left; auto.
+    right; intuition.
+  Qed.
+
+  Theorem aInAppList {a: A} {l}: In a (l ++ a :: nil).
+  Proof.
+    induction l.
+    simpl.
+    left; reflexivity.
+    unfold app.
+    fold (app l (a :: nil)).
+    simpl.
+    right; intuition.
+  Qed.
+
+  Theorem inListInRev {a: A} {l}: In a l -> In a (rev l).
+  Proof.
+    intros inl.
+    induction l.
+    simpl.
+    intuition.
+    unfold rev.
+    fold (rev l).
+    destruct inl.
+    rewrite H.
+    apply (aInAppList).
+    specialize (IHl H).
+    apply (inListInAppa IHl).
+  Qed.
 End ListProp.
 
 
@@ -192,6 +232,22 @@ Fixpoint getCs nm b :=
   end.
 
 Definition getC nm b := C nm (getCs nm b).
+
+Theorem parentTreeName {c p}: parent c p ->
+                              (exists np bp, p = getC np bp) ->
+                              exists nc bc, c = getC nc bc.
+Proof.
+  intros c_p [np [bp pEq]].
+  unfold parent in *; unfold getC in *.
+  destruct p.
+  injection pEq as lEqNp l0Eq.
+  rewrite lEqNp in *; rewrite l0Eq in *; clear lEqNp l0Eq.
+  clear pEq.
+  destruct bp.
+  simpl in c_p.
+  unfold getCs in c_p.
+  destruct bp.
+  fold getCs.
 
 Theorem treeNameHelp nm b:
   match getC nm b with
