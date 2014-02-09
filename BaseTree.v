@@ -107,61 +107,115 @@ Section ListProp.
   Qed.
 End ListProp.
 
-Fixpoint makeList l :=
-  match l with
-    | 0 => nil
-    | S n => n :: (makeList n)
+
+Section Strange.
+  Context (nm: list nat).
+
+  Fixpoint mkNameList ls :=
+    match ls with
+      | nil => nil
+      | x :: xs => (C (length xs :: nm) x) :: mkNameList xs
+    end.
+
+  Theorem mkNameListLength ls: length (mkNameList ls) = length ls.
+  Proof.
+    induction ls.
+    simpl.
+    auto.
+    simpl.
+    f_equal.
+    auto.
+  Qed.
+
+  Theorem posValue: forall {ls i}, i < length ls -> match nth i (mkNameList ls) (C nil nil) with
+                                                      | C x _ => x = (length ls - S i) :: nm
+                                                    end.
+  Proof.
+    intros ls.
+    induction ls.
+    intros i i_lt_l.
+    simpl in i_lt_l.
+    omega.
+    intros i i_lt_l.
+    simpl in i_lt_l.
+    unfold mkNameList.
+    fold mkNameList.
+    destruct i.
+    simpl.
+    assert (H: length ls - 0 = length ls) by omega.
+    rewrite H; clear H.
+    auto.
+    simpl.
+    assert (H: i < length ls) by omega.
+    apply (IHls i H).
+  Qed.
+
+  Theorem posValueRev': forall {ls i}, i < length ls ->
+                                       match nth (length ls - S i) (rev (mkNameList ls)) (C nil nil) with
+                                         | C x _ => x = (length ls - S i) :: nm
+                                       end.
+  Proof.
+    intros ls i i_lt_n.
+    pose proof (posValue i_lt_n) as gdOne.
+    pose proof (mkNameListLength ls) as t1.
+    rewrite <- t1 in i_lt_n.
+    pose proof (revProp (C nil nil) i_lt_n) as bdOne.
+    rewrite t1 in bdOne.
+    rewrite bdOne in gdOne.
+    auto.
+  Qed.
+
+  Theorem posValueRev: forall {ls i}, i < length ls ->
+                                      match nth i (rev (mkNameList ls)) (C nil nil) with
+                                        | C x _ => x = i :: nm
+                                      end.
+  Proof.
+    intros ls i i_lt_n.
+    assert (sth: length ls - S i < length ls) by omega.
+    pose proof (posValueRev' sth) as sth2.
+    assert (H: length ls - S (length ls - S i) = i) by omega.
+    rewrite H in sth2.
+    assumption.
+  Qed.
+End Strange.
+
+Axiom cheat: forall {t}, t.
+
+Fixpoint getCs nm b :=
+  match b with
+    | B bs => (rev (mkNameList nm
+                               (fst (fold_left
+                                       (fun (x: list (list Tree) * nat) y =>
+                                          ((getCs (snd x :: nm) y) :: fst x, S (snd x)))
+                                       bs (nil, 0)))
+              ))
   end.
 
-Theorem makeListLength l: length (makeList l) = l.
-Proof.
-  induction l.
-  simpl.
-  auto.
-  simpl.
-  f_equal.
-  auto.
-Qed.
+Definition getC nm b := C nm (getCs nm b).
 
-Theorem isRevN: forall {l i}, i < l -> nth i (makeList l) 0 = l - S i.
+Theorem treeNameHelp nm b:
+  match getC nm b with
+    | C x ls => treeNthName x ls
+  end.
 Proof.
-  intros l.
-  induction l.
-  intros i i_lt_l.
-  omega.
-  intros i i_lt_l.
-  unfold makeList.
-  fold makeList.
-  destruct i.
+  unfold treeNthName.
+  unfold getC.
+  destruct b.
   simpl.
-  omega.
-  simpl.
-  assert (i < l) by omega.
-  apply (IHl i H).
-Qed.
-  
-Theorem isN: forall {n i}, i < n -> nth (n - S i) (rev (makeList n)) 0 = (n - S i).
-Proof.
-  intros n i i_lt_n.
-  pose proof (isRevN i_lt_n) as gdOne.
-  pose proof (makeListLength n) as t1.
-  rewrite <- t1 in i_lt_n.
-  pose proof (revProp 0 i_lt_n) as bdOne.
-  rewrite t1 in bdOne.
-  rewrite gdOne in bdOne.
-  auto.
-Qed.
-
-Theorem isN2: forall {n i}, i < n -> nth i (rev (makeList n)) 0 = i.
-Proof.
-  intros n i i_lt_n.
-  assert (sth: n - S i < n) by omega.
-  pose proof (isN sth) as sth2.
-  assert (n - S (n - S i) = i) by omega.
-  rewrite H in sth2.
+  intros n n_lt_len.
+  apply posValueRev.
+  remember  (fst
+        (fold_left
+           (fun (x : list (list Tree) * nat) (y : BaseTree) =>
+            (getCs (snd x :: nm) y :: fst x, S (snd x))) l 
+           (nil, 0))) as sth.
+  clear Heqsth.
+  pose proof (mkNameListLength nm sth) as H.
+  pose proof (revLen (mkNameList nm sth)) as H0.
+  rewrite H in H0.
+  rewrite <- H0 in n_lt_len.
   assumption.
 Qed.
-  
 
 Fixpoint getX b nm :=
   match b with
@@ -189,7 +243,7 @@ Proof.
   unfold getC.
   intros n n_lt_len.
   induction n.
-  destruct b.
+ destruct b.
   destruct l.
   simpl in *.
   omega.
