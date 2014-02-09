@@ -217,73 +217,21 @@ Proof.
   assumption.
 Qed.
 
-Fixpoint getX b nm :=
-  match b with
-    | B bs => fold_left (
-                  fun x y =>
-                    (getX y ((fst x)::nm)) :: (snd x))
-
-Fixpoint getX b nm :=
-  match b with
-    | B bs => (fst (fold_left (
-                        fun (x: (list Tree * nat)) y =>
-                          let (cs, next) := x in
-                          ((C (next :: nm) (getX y (next :: nm)))::cs, next - 1)
-                      ) bs (nil, (length bs - 1))))
-  end.
-
-Definition getC b nm := C nm (getX b nm).
-
-Theorem treeNameHelp b nm:
-  match getC b nm with
-    | C x ls => treeNthName x ls
-  end.
+Theorem descImpGetc {p c}: descendent c p ->
+                           (exists np bp, p = getC np bp) ->
+                           exists nc bc, c = getC nc bc.
 Proof.
-  unfold treeNthName.
-  unfold getC.
-  intros n n_lt_len.
-  induction n.
- destruct b.
-  destruct l.
-  simpl in *.
-  omega.
-  unfold getX.
-  fold getX.
-  admit.
-  simpl.
-  simpl.
-  fold
-  simpl.
-  unfold
-  simpl.
-  unfold nth.
-  destruct b.
-  induction 
-  simpl.
-
-Theorem treeName2 {b} {p} (desc: descendent p (getC b nil)):
-  match p with
-    | C x ls => treeNthName x ls
-  end.
-Proof.
-  unfold treeNthName.
-  remember (getC b nil) as hier.
+  intros desc.
   induction desc.
-  admit.
-  admit.
-  rewrite Heqhier in H; clear Heqhier.
+  intros [np [bp pEq]].
   unfold parent in H.
-  destruct desc.
-  destruct p as [nm cs].
-  intros n n_lt_csLen.
-  remember (C nm cs) as p.
-  remember (getC b nil) as orig.
-  induction desc.
-  unfold parent in H.
-  destruct y as [nm' cs'].
-  unfold getC in Heqorig.
-  destruct b.
-  simpl in Heqorig.
-  induction desc.
-  dependent desc.
-*)
+  unfold getC in pEq.
+  unfold getCs in pEq.
+  admit.
+  intros [np [bp pEq]].
+  exists np; exists bp; intuition.
+  intros use.
+  specialize (IHdesc2 use).
+  specialize (IHdesc1 IHdesc2).
+  assumption.
+Qed.
