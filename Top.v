@@ -27,7 +27,7 @@ Module mkTop.
       destruct defR0; destruct defR1; simpl in *.
       pose proof (enqLdImpDeq e) as [q1 [f1 v1]]; pose proof (enqLdImpDeq e0) as [q2 [f2 v2]].
       pose proof (uniqDeqProc2 q1 q2) as H; rewrite H in *.
-      rewrite v1 in v2; firstorder.
+      rewrite v1 in v2; intuition.
       pose proof (enqLdImpDeq e) as [q1 [f1 v1]]; pose proof (enqStImpDeq e0) as [q2 f2].
       rewrite f1 in f2; discriminate.
       pose proof (enqLdImpDeq e0) as [q1 [f1 v1]]; pose proof (enqStImpDeq e) as [q2 f2].
@@ -200,14 +200,17 @@ Module mkTop.
       unfold not; intros r' cond1 [addrEq isSt].
       destruct r'; destruct labelR0; simpl in *.
 
+      destruct H as [_ H].
       destruct defR0.
       pose proof (enqLdImpDeq e0) as [deq1 _].
       pose proof (deqDef deq1) as df1.
-      generalize H cond1 df1 deq1 addrEq isSt; clear; firstorder.
+      specialize (H timeR1 cond1 c0 i0 df1).
+      generalize H addrEq isSt deq1; clear; intuition.
 
       pose proof (enqStImpDeq e0) as [deq1 _].
       pose proof (deqDef deq1) as df1.
-      generalize H cond1 df1 deq1 addrEq isSt; clear; firstorder.
+      specialize (H timeR1 cond1 c0 i0 df1).
+      generalize H addrEq isSt deq1; clear; intuition.
 
 
       right.
@@ -223,14 +226,17 @@ Module mkTop.
       unfold not; intros r' cond1 [addrEq isSt'].
       destruct r'; destruct labelR0; simpl in *.
 
+      destruct rest as [_ rest].
       destruct defR0.
       pose proof (enqLdImpDeq e0) as [deq1 _].
       pose proof (deqDef deq1) as df1.
-      generalize rest cond1 df1 deq1 addrEq isSt'; clear; firstorder.
+      specialize (rest timeR1 cond1 c0 i0 df1).
+      generalize rest deq1 addrEq isSt'; clear; intuition.
 
       pose proof (enqStImpDeq e0) as [deq1 _].
       pose proof (deqDef deq1) as df1.
-      generalize rest cond1 df1 deq1 addrEq isSt'; clear; firstorder.
+      specialize (rest timeR1 cond1 c0 i0 df1).
+      generalize rest deq1 addrEq isSt'; clear; intuition.
 
 
 
