@@ -8,7 +8,7 @@ Proof.
   induction t.
   unfold labelCh in *.
   unfold In in inI.
-  firstorder.
+  intuition.
   unfold labelCh in inI; fold labelCh in inI.
   destruct (trans oneBeh t).
   specialize (IHt inI); omega.
@@ -112,7 +112,7 @@ Proof.
   intros n n_lt i i_lt.
   unfold labelCh in n_lt.
   simpl in n_lt.
-  assert False by omega; firstorder.
+  assert False by omega; intuition.
 
   intros n n_lt i i_lt.
   unfold labelCh in n_lt; fold labelCh in n_lt. unfold labelCh; fold labelCh.
@@ -121,7 +121,7 @@ Proof.
                nth n (t :: labelCh t s p c) 0 < nth i (t :: labelCh t s p c) 0).
   intros n_lt'.
   destruct n.
-  assert False by omega; firstorder.
+  assert False by omega; intuition.
   assert (n_lt'': n < length (labelCh t s p c)) by
       (unfold length in n_lt'; fold (length (labelCh t s p c)) in n_lt'; omega).
   unfold nth.
@@ -215,7 +215,7 @@ Theorem msgIdTime: forall {s p c m t}, mark s p c t m -> msgId m = t.
 Proof.
   intros s p c m t markm.
   unfold mark in markm.
-  destruct (trans oneBeh t);firstorder.
+  destruct (trans oneBeh t);intuition.
 Qed.
 
 Theorem enqGreater: forall {s p c m t i s'}, mark s p c t m ->
@@ -248,8 +248,8 @@ Proof.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
   unfold length; f_equal; assumption.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -258,15 +258,15 @@ Proof.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
   unfold length; f_equal; assumption.
-  firstorder.
-  destruct (decTree c c0); firstorder.
+  intuition.
+  destruct (decTree c c0); intuition.
   destruct (decTree p c0) as [ez|hd].
   rewrite <- ez in *.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
   apply (eqLen (ch (sys oneBeh t) rch p c) (labelCh t rch p c) IHt).
-  firstorder.
-  destruct (decTree c p0); firstorder.
+  intuition.
+  destruct (decTree c p0); intuition.
 
 
   simpl in *.
@@ -276,9 +276,9 @@ Proof.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -286,10 +286,10 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
-  unfold length; firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  unfold length; intuition.
+  intuition.
+  intuition.
+  intuition.
 
 
 
@@ -299,26 +299,26 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
-  unfold length; firstorder.
+  unfold length; intuition.
   destruct (decTree c p).
   rewrite <- e0 in *.
   destruct (decTree c p0);
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   destruct (decTree p p0).
   rewrite <- e0 in *.
   destruct (decTree c c0).
   rewrite <- e1 in *.
   destruct (decTree c p).
   rewrite <- e2 in *.
-  firstorder.
+  intuition.
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
   destruct (decTree c p);
-  firstorder.
+  intuition.
   destruct (decTree c p0).
-  firstorder.
-  destruct (decTree c c0); firstorder.
-  firstorder.
+  intuition.
+  destruct (decTree c c0); intuition.
+  intuition.
   
 
 
@@ -329,9 +329,9 @@ Proof.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 
 
   simpl in *.
@@ -340,10 +340,10 @@ Proof.
   rewrite <- ez in *.
   destruct (decTree c p0) as [y|ny].
   rewrite <- y in *.
-  unfold length; firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  unfold length; intuition.
+  intuition.
+  intuition.
+  intuition.
 
 
   simpl in *.
@@ -353,9 +353,9 @@ Proof.
   destruct (decTree c c0) as [y|ny].
   rewrite <- y in *.
   apply (eqLen (ch (sys oneBeh t) mch p c) (labelCh t mch p c) IHt).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 Qed.
 
 Theorem inImpSend: forall {s p c b l t},
@@ -371,11 +371,11 @@ Proof.
   intros s p c b l t inComb notInComb.
   unfold mark; simpl in *.
   destruct (trans oneBeh t).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
 
   simpl in *.
-  destruct s. firstorder.
+  destruct s. intuition.
   destruct (decTree p c0) as [pEq | pNeq].
   rewrite <- pEq in *.
   destruct (decTree c p0) as [cEq | cNeq].
@@ -386,11 +386,11 @@ Proof.
                           fromB := st (sys oneBeh t) p a;
                           toB := x;
                           addrB := a;
-                          dataBM := initData zero; type := rch |}, t)) by firstorder.
+                          dataBM := initData zero; type := rch |}, t)) by intuition.
   pose proof (eachProd L) as [L1 L2].
-  rewrite L1; rewrite L2; simpl; firstorder.
-  firstorder.
-  firstorder.
+  rewrite L1; rewrite L2; simpl; intuition.
+  intuition.
+  intuition.
 
 
 
@@ -408,11 +408,11 @@ Proof.
                           fromB := dirSt (sys oneBeh t) p c a;
                           toB := toB r;
                           addrB := a;
-                          dataBM := dt (sys oneBeh t) p a; type := mch |}, t)) by firstorder.
+                          dataBM := dt (sys oneBeh t) p a; type := mch |}, t)) by intuition.
   pose proof (eachProd L) as [L1 L2]; clear L.
-  rewrite L1; rewrite L2; simpl; firstorder.
-  firstorder.
-  destruct (decTree c c0) as [easy|hard]; firstorder.
+  rewrite L1; rewrite L2; simpl; intuition.
+  intuition.
+  destruct (decTree c c0) as [easy|hard]; intuition.
 
   destruct (decTree p c0) as [pEq | pNeq].
   rewrite <- pEq in *.
@@ -423,9 +423,9 @@ Proof.
   rewrite <- sthEq in inComb.
   pose proof (notInRemove (b, l) (combine (ch (sys oneBeh t) rch p c) (labelCh t rch p c))
                           inComb) as H.
-  firstorder.
-  firstorder.
-  destruct (decTree c p0) as [ez|hd]; firstorder.
+  intuition.
+  intuition.
+  destruct (decTree c p0) as [ez|hd]; intuition.
 
 
   simpl in *.
@@ -438,10 +438,10 @@ Proof.
   rewrite <- sthEq in inComb.
   pose proof (notInRemove (b, l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c))
                           inComb) as H.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 
 
   simpl in *.
@@ -456,12 +456,12 @@ Proof.
                           fromB := dirSt (sys oneBeh t) p c a;
                           toB := x;
                           addrB := a;
-                          dataBM := initData zero; type := rch |}, t)) by firstorder.
+                          dataBM := initData zero; type := rch |}, t)) by intuition.
   pose proof (eachProd L) as [L1 L2]; clear L.
-  rewrite L1; rewrite L2; simpl; firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  rewrite L1; rewrite L2; simpl; intuition.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   assert (rew: r = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto;
@@ -477,34 +477,34 @@ Proof.
                           fromB := st (sys oneBeh t) c0 a;
                           toB := toB r;
                           addrB := a;
-                          dataBM := dt (sys oneBeh t) c0 a; type := mch |}, t)) by firstorder.
+                          dataBM := dt (sys oneBeh t) c0 a; type := mch |}, t)) by intuition.
   pose proof (eachProd L) as [L1 L2]; clear L.
-  rewrite L1; rewrite L2; simpl; firstorder.
+  rewrite L1; rewrite L2; simpl; intuition.
   destruct (decTree c c0) as [ceq | cneq].
   destruct (decTree c0 p0) as [peq | pneq].
   rewrite <- pEq in *; rewrite ceq in *; rewrite peq in *.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
   destruct (decTree p p0) as [ez|hd].
   rewrite <- ez in *.
   destruct (decTree c c0) as [mu|su].
   rewrite <- mu in *.
   destruct (decTree c p) as [alf|bet].
   rewrite alf in *.
-  firstorder.
+  intuition.
   pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as sthEq.
   rewrite <- sthEq in inComb.
   pose proof (notInRemove (b, l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c))
                           inComb) as H.
-  firstorder.
-  destruct (decTree c p) as [yes|no]; firstorder.
+  intuition.
+  destruct (decTree c p) as [yes|no]; intuition.
 
   destruct (decTree c p0).
-  firstorder.
+  intuition.
   destruct (decTree c c0);
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   
 
   simpl in *.
@@ -516,10 +516,10 @@ Proof.
   pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as H.
   rewrite <- H in inComb.
   pose proof (notInRemove (b,l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) inComb) as H2.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -533,12 +533,12 @@ Proof.
                           fromB := st (sys oneBeh t) p a;
                           toB := x;
                           addrB := a;
-                          dataBM := dt (sys oneBeh t) p a; type := mch |}, t)) by firstorder.
+                          dataBM := dt (sys oneBeh t) p a; type := mch |}, t)) by intuition.
   pose proof (eachProd L) as [L1 L2]; clear L.
-  rewrite L1; rewrite L2; simpl; firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  rewrite L1; rewrite L2; simpl; intuition.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -549,10 +549,10 @@ Proof.
   pose proof (removeCombine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) as H.
   rewrite <- H in inComb.
   pose proof (notInRemove (b,l) (combine (ch (sys oneBeh t) mch p c) (labelCh t mch p c)) inComb) as H2.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 Qed.
 
   Theorem lastByRemove: forall {b l ty src dst t},
@@ -583,7 +583,7 @@ Qed.
     pose proof (removeCombine (ch (sys oneBeh t) ty src dst)
                               (labelCh t ty src dst)) as dist3.
     rewrite dist3.
-    constructor; firstorder.
+    constructor; intuition.
   Qed.
 
 Theorem notInImpRecv: forall {s p c b l t},
@@ -629,10 +629,10 @@ Proof.
   destruct (decTree c p0).
   rewrite <- e0 in *; rewrite <- e1 in *.
   pose proof (lastByRemove notIn isIn) as u.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   destruct (decTree c p0);
-  firstorder.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -640,10 +640,10 @@ Proof.
   destruct (decTree c c0).
   rewrite <- e0 in *; rewrite <- e1 in *.
   pose proof (lastByRemove notIn isIn) as u.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -653,9 +653,9 @@ Proof.
   unfold combine in notIn.
   unfold In in notIn.
   intuition.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -669,20 +669,20 @@ Proof.
   rewrite <- e1 in *.
   destruct (decTree p p0).
   rewrite <- e2 in *.
-  assert (c = p) by auto; firstorder.
-  firstorder.
-  firstorder.
+  assert (c = p) by auto; intuition.
+  intuition.
+  intuition.
   destruct (decTree p p0).
   destruct (decTree c c0).
   destruct (decTree c p0).
   rewrite <- e0 in *; rewrite <- e1 in *; rewrite <- e2 in *.
-  firstorder.
+  intuition.
   rewrite <- e0 in *; rewrite <- e1 in *.
   pose proof (lastByRemove notIn isIn) as u.
-  firstorder.
-  destruct (decTree c p0); firstorder.
-  destruct (decTree c p0); destruct (decTree c c0); firstorder.
-  firstorder.
+  intuition.
+  destruct (decTree c p0); intuition.
+  destruct (decTree c p0); destruct (decTree c c0); intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -690,10 +690,10 @@ Proof.
   destruct (decTree c p0).
   rewrite <- e0 in *; rewrite <- e1 in *.
   pose proof (lastByRemove notIn isIn) as u.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -701,10 +701,10 @@ Proof.
   destruct (decTree c p0).
   unfold combine in notIn.
   unfold In in notIn.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 
   simpl in *.
   destruct s.
@@ -712,10 +712,10 @@ Proof.
   destruct (decTree c c0).
   rewrite <- e0 in *; rewrite <- e1 in *.
   pose proof (lastByRemove notIn isIn) as u.
-  firstorder.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
+  intuition.
 Qed.
 
 Theorem notInImpExRecv:
@@ -778,8 +778,8 @@ Proof.
   rewrite <- u1 in *; rewrite <- u2 in *;
   rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
   reflexivity.
-  assert (c = p0) by auto; firstorder.
-  assert (p = c0) by auto; firstorder.
+  assert (c = p0) by auto; intuition.
+  assert (p = c0) by auto; intuition.
 
   simpl.
   destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
@@ -792,8 +792,8 @@ Proof.
   rewrite <- u1 in *; rewrite <- u2 in *;
   rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
   reflexivity.
-  assert (c = c0) by auto; firstorder.
-  assert (p = p0) by auto; firstorder.
+  assert (c = c0) by auto; intuition.
+  assert (p = p0) by auto; intuition.
   discriminate.
 
   intuition.
@@ -808,8 +808,8 @@ Proof.
   rewrite <- u1 in *; rewrite <- u2 in *;
   rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
   reflexivity.
-  assert (c = c0) by auto; firstorder.
-  assert (p = p0) by auto; firstorder.
+  assert (c = c0) by auto; intuition.
+  assert (p = p0) by auto; intuition.
 
   simpl.
   destruct markm as [u1 [u2 [u3 [u4 [u5 [u6 [u7 u8]]]]]]].
@@ -822,8 +822,8 @@ Proof.
   rewrite <- u1 in *; rewrite <- u2 in *;
   rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
   reflexivity.
-  assert (c = p0) by auto; firstorder.
-  assert (p = c0) by auto; firstorder.
+  assert (c = p0) by auto; intuition.
+  assert (p = c0) by auto; intuition.
   discriminate.
 
   intuition.
@@ -837,8 +837,8 @@ Proof.
   rewrite <- u1 in *; rewrite <- u2 in *;
   rewrite <- u4 in *. rewrite u5 in *; rewrite u6 in *; rewrite u7 in *; rewrite u8 in *.
   reflexivity.
-  assert (c = p0) by auto; firstorder.
-  assert (p = c0) by auto; firstorder.
+  assert (c = p0) by auto; intuition.
+  assert (p = c0) by auto; intuition.
   discriminate.
 
   intuition.
@@ -927,9 +927,9 @@ Proof.
   unfold recv.
   intros s p c m t recvm. unfold recvc.
   destruct (trans oneBeh t).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
   destruct recvm as [u1 [u2 [u3 [use1 [use2 [use3 [use4 use5]]]]]]].
   pose proof (@lenEq rch p c t) as H.
   rewrite <- u1 in *; rewrite <- u2 in *.
@@ -949,7 +949,7 @@ Proof.
   pose proof (lenEqLastCombine _ _ dmy n lft (msgId m)
                                (labelCh t mch p0 c0) 0 H use5) as almost.
   assumption.
-  firstorder.
+  intuition.
   destruct recvm as [u1 [u2 [u3 [use1 [use2 [use3 [use4 use5]]]]]]].
   pose proof (@lenEq mch p c t) as H.
   rewrite <- u1 in *; rewrite <- u2 in *.
@@ -968,7 +968,7 @@ Proof.
   pose proof (lenEqLastCombine _ _ dmy n lft (msgId m)
                                (labelCh t mch c0 p0) 0 H use5) as almost.
   assumption.
-  firstorder.
+  intuition.
   destruct recvm as [u1 [u2 [u3 [use1 [use2 [use3 [use4 use5]]]]]]].
   pose proof (@lenEq mch p c t) as H.
   rewrite <- u1 in *; rewrite <- u2 in *.
@@ -988,7 +988,7 @@ Proof.
   pose proof (init oneBeh) as sth.
   rewrite sth in *; clear sth.
   unfold initGlobalState in *; simpl in *.
-  firstorder.
+  intuition.
   assert (sth: 0 < S t) by omega.
   assert (sth3: ~ In ({|
             fromB := from m;
@@ -1020,7 +1020,7 @@ Proof.
   intros s p c m t recvm.
   pose proof recvImpSend' recvm as [t' [cond sendm]].
   assert (t' <= t) by omega.
-  exists t'; firstorder.
+  exists t'; intuition.
 Qed.
 
 Theorem enqC2P: forall {s p c t}, parent c p -> ch (sys oneBeh t) s c p <> nil ->
@@ -1033,20 +1033,20 @@ Proof.
   assert (gd2: combine (ch (sys oneBeh t) s c p) (labelCh t s c p) <> nil).
   pose proof (@lenEq s c p t) as gd.
   destruct (ch (sys oneBeh t) s c p).
-  firstorder.
+  intuition.
   destruct (labelCh t s c p).
   simpl in *.
   discriminate.
   simpl.
   unfold not; intros; discriminate.
-  firstorder.
+  intuition.
   pose proof (@lastIn (BaseMesg * nat) (combine (ch (sys oneBeh t) s c p) (labelCh t s c p))
              (dmy, 0) gd2) as use.
   destruct t.
   pose proof (init oneBeh) as sth.
   rewrite sth in *; clear sth.
   unfold initGlobalState in *; simpl in *.
-  firstorder.
+  intuition.
   assert (sth: 0 < S t) by omega.
   assert (sth3: ~ In (last (combine (ch (sys oneBeh (S t)) s c p) (labelCh (S t) s c p))
              (dmy, 0))
@@ -1126,21 +1126,21 @@ Proof.
   intros s p c t m1 m2 recvm1 markm2.
   unfold recv in *. unfold mark in *.
   destruct (trans oneBeh t).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
   pose proof (enqC2P p1 n) as ty; rewrite ty in recvm1.
   destruct recvm1 as [_ [_ [u1 _]]]; destruct markm2 as [_ [_ [u2 _]]].
   rewrite u1 in u2; discriminate.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   assert (H: r = last (ch (sys oneBeh t) mch p0 c0) dmy) by auto.
   rewrite <- H in recvm1; rewrite e in recvm1.
   destruct recvm1 as [_ [_ [u1 _]]]; destruct markm2 as [_ [_ [u2 _]]].
   rewrite u1 in u2; discriminate.
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 Qed.
 
 Section Local.
@@ -1288,13 +1288,13 @@ Theorem useful: forall {s p c t1 t2 m1 m2},
   intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
   pose proof (noCycle p1 p3).
-  firstorder.
+  intuition.
   pose proof (enqC2P p1 n).
   pose proof (enqC2P p3 n0).
   rewrite <- H2 in *; rewrite H16 in *; rewrite H13 in *; discriminate.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3;
   pose proof (noCycle p1 p3).
-  firstorder.
+  intuition.
 Qed.
 
 Theorem recvNotIn: forall {s p c t m}, recv s p c t m ->
@@ -1324,9 +1324,9 @@ Proof.
   simpl in *.
   assumption.
   pose proof (posNeq gd).
-  firstorder.
-  firstorder.
-  destruct (decTree c p0); firstorder.
+  intuition.
+  intuition.
+  destruct (decTree c p0); intuition.
 
   simpl in isIn.
   destruct (decTree p p0).
@@ -1342,9 +1342,9 @@ Proof.
   simpl in *.
   assumption.
   pose proof (posNeq gd).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 
   intuition.
 
@@ -1355,16 +1355,16 @@ Proof.
   rewrite <- e1 in *.
   destruct recvm as [u1 [u2 _]].
   pose proof (noParentChild u2 p1).
-  firstorder.
+  intuition.
   destruct (decTree c p).
   rewrite <- e1 in *.
   destruct (decTree p p0).
   rewrite <- e2 in *.
-  firstorder.
+  intuition.
   destruct (decTree c p0).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
   destruct (decTree p p0).
   rewrite <- e0 in *.
   destruct (decTree c c0).
@@ -1372,7 +1372,7 @@ Proof.
   destruct (decTree c p).
   rewrite <- e2 in *.
   pose proof (noParentChild eq_refl p1).
-  firstorder.
+  intuition.
   assert (gd: In (last (ch (sys oneBeh t) mch p c) dmy, last (labelCh t mch p c) 0)
                  (combine (removelast (ch (sys oneBeh t) mch p c)) (removelast (labelCh t mch p c)))).
   destruct recvm as [_ [_ [u1 [u2 [u3 [u4 [ u5 u6]]]]]]].
@@ -1382,11 +1382,11 @@ Proof.
   simpl in *.
   assumption.
   pose proof (posNeq gd).
-  firstorder.
+  intuition.
   destruct (decTree c p).
-  firstorder.
-  firstorder.
-  destruct (decTree c p0); destruct (decTree c c0); firstorder.
+  intuition.
+  intuition.
+  destruct (decTree c p0); destruct (decTree c c0); intuition.
 
   simpl in isIn.
   destruct (decTree p c0).
@@ -1402,9 +1402,9 @@ Proof.
   simpl in *.
   assumption.
   pose proof (posNeq gd).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 
 
   intuition.
@@ -1423,9 +1423,9 @@ Proof.
   simpl in *.
   assumption.
   pose proof (posNeq gd).
-  firstorder.
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
+  intuition.
 Qed.
 
 Theorem recvLast: forall {s p c t m}, recv s p c t m ->
@@ -1549,7 +1549,7 @@ Proof.
 
   pose proof (recvLast recvm1) as H.
   rewrite H in eq.
-  firstorder.
+  intuition.
 
 
   pose proof (combLength (@lenEq (recvc t1) p c t1)) as H0.
@@ -1602,8 +1602,8 @@ Proof.
   intros s p c m n t markm markn.
   unfold mark in *.
   destruct (trans oneBeh t).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
 
   destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
   destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
@@ -1627,7 +1627,7 @@ Proof.
   rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
   reflexivity.
 
-  firstorder.
+  intuition.
 
   destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
   destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
@@ -1651,7 +1651,7 @@ Proof.
   rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
   reflexivity.
 
-  firstorder.
+  intuition.
 
   destruct markm as [_ [_ [_ [fromm [tom [addrm [datam idm]]]]]]].
   destruct markn as [_ [_ [_ [fromn [ton [addrn [datan idn]]]]]]].
@@ -1664,7 +1664,7 @@ Proof.
   rewrite fromn; rewrite ton; rewrite addrn; rewrite datan; rewrite idn.
   reflexivity.
 
-  firstorder.
+  intuition.
 Qed.
 
 Theorem uniqMark2: forall {s p c m t1 t2}, mark s p c t1 m -> mark s p c t2 m -> t1 = t2.
@@ -1673,126 +1673,126 @@ Proof.
   unfold mark in *.
 
   destruct (trans oneBeh t1).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
 
   destruct (trans oneBeh t2).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
-  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
-    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
-    rewrite u1 in u2; assumption.
-
-  firstorder.
-
-  destruct (trans oneBeh t2).
-  firstorder.
-  firstorder.
-  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
-    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
-    rewrite u1 in u2; assumption.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
 
-  firstorder.
-  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
-    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
-    rewrite u1 in u2; assumption.
-  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
-    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
-    rewrite u1 in u2; assumption.
-  firstorder.
-  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
-    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
-    rewrite u1 in u2; assumption.
-  firstorder.
-
-  firstorder.
+  intuition.
 
   destruct (trans oneBeh t2).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
+
+  intuition.
 
   destruct (trans oneBeh t2).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
-
-  firstorder.
+  intuition.
 
   destruct (trans oneBeh t2).
-  firstorder.
-  firstorder.
+  intuition.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
   destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
     destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
     rewrite u1 in u2; assumption.
-  firstorder.
+  intuition.
 
-  firstorder.
+  intuition.
+
+  destruct (trans oneBeh t2).
+  intuition.
+  intuition.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  intuition.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  intuition.
+  destruct markm1 as [_ [_ [_ [_ [_ [_ [_ u1]]]]]]];
+    destruct markm2 as [_ [_ [_ [_ [_ [_ [_ u2]]]]]]];
+    rewrite u1 in u2; assumption.
+  intuition.
+
+  intuition.
 Qed.
 
 Theorem toCSameCh: forall {x1 x2 p c t1 t2 m r}, parent c p ->
@@ -1805,21 +1805,21 @@ Proof.
   unfold markc; unfold recvc.
   destruct (trans oneBeh t1); destruct (trans oneBeh t2); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p1); firstorder.
+  pose proof (noCycle c_p p1); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p1); firstorder.
+  pose proof (noCycle c_p p1); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p3); firstorder.
+  pose proof (noCycle c_p p3); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p1); firstorder.
+  pose proof (noCycle c_p p1); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p3); firstorder.
+  pose proof (noCycle c_p p3); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p3); firstorder.
+  pose proof (noCycle c_p p3); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p3); firstorder.
+  pose proof (noCycle c_p p3); intuition.
   rewrite H in p1; rewrite H1 in p3; rewrite H3 in p1; rewrite H0 in p3.
-  pose proof (noCycle c_p p3); firstorder.
+  pose proof (noCycle c_p p3); intuition.
 Qed.  
 
 
@@ -1833,7 +1833,7 @@ Proof.
   assert (t1 = t2 \/ t1 < t2) by omega; clear t1_le_t2.
   destruct H as [eq | t1_lt_t2].
   rewrite eq in *.
-  pose proof (noEnqMR markm markr); firstorder.
+  pose proof (noEnqMR markm markr); intuition.
   pose proof (enqImpIn markm) as inm.
   pose proof (recvImpSend' recvr) as [tx [tx_le_t3 mark'r]].
   unfold send in mark'r.
@@ -1874,7 +1874,7 @@ Proof.
   assert (t1 = t2 \/ t1 < t2) by omega; clear t1_le_t2.
   destruct H as [eq | t1_lt_t2].
   rewrite eq in *.
-  pose proof (noEnqMR markr markm); firstorder.
+  pose proof (noEnqMR markr markm); intuition.
   pose proof (enqImpIn markm) as inm.
   pose proof (recvImpSend' recvr) as [tx [tx_le_t3 mark'r]].
   unfold send in mark'r.
@@ -1919,11 +1919,11 @@ Proof.
 
   pose proof (enqC2P p1 n).
   rewrite H in recvm.
-  firstorder.
+  intuition.
 
   unfold m0 in e.
   rewrite e in recvm.
-  firstorder.
+  intuition.
 
   intuition.
 
@@ -1933,7 +1933,7 @@ Proof.
 
   pose proof (enqC2P p1 n).
   rewrite H in recvm.
-  firstorder.
+  intuition.
 
   intuition.
 

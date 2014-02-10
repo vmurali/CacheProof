@@ -1,17 +1,12 @@
-Require Import MsiState Tree.
+Require Import MsiState Tree BaseTree.
 
 Export Tree.
 
-Parameter hier: Tree.
+Definition hier := getC nil bHier.
 
 Axiom treeName1: match hier with
                    | C x _ => x = nil
                  end.
-
-Axiom treeName2: forall {p}, descendent p hier ->
-                             match p with
-                               | C x ls => treeNthName x ls
-                             end.
 
 Parameter Addr: Set.
 Parameter zero: Addr.

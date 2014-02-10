@@ -1,4 +1,4 @@
-Require Import DataTypes List Tree Coq.Relations.Relation_Operators Omega.
+Require Import DataTypes List Tree Coq.Relations.Relation_Operators Omega BaseTree.
 
 Module mkHierProperties (dt: DataTypes).
   Import dt.

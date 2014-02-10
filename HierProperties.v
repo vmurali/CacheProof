@@ -1,4 +1,4 @@
-Require Import Tree DataTypes List Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties Useful Coq.Logic.Classical.
+Require Import Tree DataTypes List Coq.Relations.Relation_Operators Coq.Relations.Operators_Properties Useful Coq.Logic.Classical BaseTree.
 
 Section SubList.
   Context {A: Type}.

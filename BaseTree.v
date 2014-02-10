@@ -106,49 +106,26 @@ Section ListProp.
     assumption.
   Qed.
 
-(*
-  Theorem inListInAppa {a b: A} {l}: In a l -> In a (l ++ b :: nil).
-  Proof.
-    intros inl.
-    induction l.
-    simpl in *.
-    intuition.
-    unfold app.
-    fold (app l (a :: nil)).
-    simpl in *.
-    destruct inl.
-    left; auto.
-    right; intuition.
-  Qed.
-
-  Theorem aInAppList {a: A} {l}: In a (l ++ a :: nil).
-  Proof.
-    induction l.
-    simpl.
-    left; reflexivity.
-    unfold app.
-    fold (app l (a :: nil)).
-    simpl.
-    right; intuition.
-  Qed.
-
-  Theorem inListInRev {a: A} {l}: In a l -> In a (rev l).
-  Proof.
-    intros inl.
-    induction l.
-    simpl.
-    intuition.
-    unfold rev.
-    fold (rev l).
-    destruct inl.
-    rewrite H.
-    apply (aInAppList).
-    specialize (IHl H).
-    apply (inListInAppa IHl).
-  Qed.
-*)
+  Section EqLen.
+    Context (l: list A).
+    Context {B: Type}.
+    Context (f: A -> list A -> B).
+    Fixpoint trans ls :=
+      match ls with
+        | nil => nil
+        | x :: xs => f x xs :: trans xs
+      end.
+    Theorem eqLen: length (trans l) = length l.
+    Proof.
+      induction l.
+      simpl.
+      reflexivity.
+      simpl.
+      f_equal.
+      assumption.
+    Qed.
+  End EqLen.
 End ListProp.
-
 
 Section Strange.
   Context (nm: list nat).
@@ -221,25 +198,23 @@ Section Strange.
   Qed.
 End Strange.
 
-Axiom cheat: forall {t}, t.
-
 Fixpoint getCs nm b :=
   match b with
-    | B bs => (rev (mkNameList nm
-                               (fst (fold_left
-                                       (fun (x: list (list Tree) * nat) y =>
-                                          ((getCs (snd x :: nm) y) :: fst x, S (snd x)))
-                                       bs (nil, 0)))
-              ))
+    | B bs => rev (mkNameList nm
+                              ((fix addC bs :=
+                                  match bs with
+                                    | nil => nil
+                                    | b' :: bs' => getCs (length bs' :: nm) b' :: addC bs'
+                                  end) bs))
   end.
 
 Definition getC nm b := C nm (getCs nm b).
 
-Theorem parentTreeName {c p}: parent c p ->
-                              (exists np bp, p = getC np bp) ->
+Theorem parentTreeName {c p np bp}: parent c p ->
+                                    p = getC np bp ->
                               exists nc bc, c = getC nc bc.
 Proof.
-  intros c_p [np [bp pEq]].
+  intros c_p pEq.
   unfold parent in *; unfold getC in *.
   destruct p.
   injection pEq as lEqNp l0Eq.
@@ -254,32 +229,18 @@ Proof.
           destruct sth;
           intuition); clear sth.
   pose proof (In_rev _ _ _ c_p) as inp; clear In_rev c_p l0 l.
-
-  assert (useful:
-          forall ls v, (forall x, In x ls -> exists nx bx, x = getCs nx bx) ->
-                       In c
-                          (mkNameList np
-                                      (fst
-                                         (fold_left
-                                            (fun (x : list (list Tree) * nat) (y : BaseTree) =>
-                                               (getCs (snd x :: np) y :: fst x, S (snd x))) l1
-                                            (ls, v)))) -> exists nc bc, c = C nc (getCs nc bc)).
-  intros ls v cond use.
   induction l1.
-  simpl in use.
-  induction ls.
   simpl in *.
   intuition.
-  specialize (cond ls).
-*)
-  induction l1.
   simpl in inp.
-  intuition.
-  simpl in inp.
-  
-  unfold getCs in c_p.
-  destruct bp.
-  fold getCs.
+  pose proof (eqLen l1 (fun x y => getCs (length y :: np) x)) as sth.
+  unfold trans in sth.
+  rewrite sth in inp.
+  destruct inp.
+  exists (length l1 :: np); exists a; auto.
+  specialize (IHl1 H).
+  assumption.
+Qed.
 
 Theorem treeNameHelp nm b:
   match getC nm b with
@@ -292,11 +253,11 @@ Proof.
   simpl.
   intros n n_lt_len.
   apply posValueRev.
-  remember  (fst
-        (fold_left
-           (fun (x : list (list Tree) * nat) (y : BaseTree) =>
-            (getCs (snd x :: nm) y :: fst x, S (snd x))) l 
-           (nil, 0))) as sth.
+  remember  ((fix addC (bs : list BaseTree) : list (list Tree) :=
+         match bs with
+         | nil => nil
+         | b' :: bs' => getCs (length bs' :: nm) b' :: addC bs'
+         end) l) as sth.
   clear Heqsth.
   pose proof (mkNameListLength nm sth) as H.
   pose proof (revLen (mkNameList nm sth)) as H0.
@@ -312,14 +273,26 @@ Proof.
   intros desc.
   induction desc.
   intros [np [bp pEq]].
-  unfold parent in H.
-  unfold getC in pEq.
-  unfold getCs in pEq.
-  admit.
+  apply (parentTreeName H pEq).
   intros [np [bp pEq]].
   exists np; exists bp; intuition.
   intros use.
   specialize (IHdesc2 use).
   specialize (IHdesc1 IHdesc2).
   assumption.
+Qed.
+
+Parameter bHier : BaseTree.
+
+Theorem treeName2: forall {p}, descendent p (getC nil bHier) ->
+                               match p with
+                                 | C x ls => treeNthName x ls
+                               end.
+Proof.
+  intros p desc.
+  remember (getC nil bHier) as y.
+  assert (sth: exists np bp, y = getC np bp) by (exists nil; exists bHier; intuition).
+  pose proof (descImpGetc desc sth) as [nc [bc cEq]].
+  rewrite cEq.
+  apply (treeNameHelp nc bc).
 Qed.
