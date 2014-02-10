@@ -106,6 +106,7 @@ Section ListProp.
     assumption.
   Qed.
 
+(*
   Theorem inListInAppa {a b: A} {l}: In a l -> In a (l ++ b :: nil).
   Proof.
     intros inl.
@@ -145,6 +146,7 @@ Section ListProp.
     specialize (IHl H).
     apply (inListInAppa IHl).
   Qed.
+*)
 End ListProp.
 
 
@@ -245,6 +247,36 @@ Proof.
   clear pEq.
   destruct bp.
   simpl in c_p.
+  pose proof @In_rev as sth.
+  assert (In_rev: forall A l (x: A), In x (rev l) -> In x l) by
+         (generalize sth; clear;
+          intros sth A l x inl; specialize (sth A l x);
+          destruct sth;
+          intuition); clear sth.
+  pose proof (In_rev _ _ _ c_p) as inp; clear In_rev c_p l0 l.
+
+  assert (useful:
+          forall ls v, (forall x, In x ls -> exists nx bx, x = getCs nx bx) ->
+                       In c
+                          (mkNameList np
+                                      (fst
+                                         (fold_left
+                                            (fun (x : list (list Tree) * nat) (y : BaseTree) =>
+                                               (getCs (snd x :: np) y :: fst x, S (snd x))) l1
+                                            (ls, v)))) -> exists nc bc, c = C nc (getCs nc bc)).
+  intros ls v cond use.
+  induction l1.
+  simpl in use.
+  induction ls.
+  simpl in *.
+  intuition.
+  specialize (cond ls).
+*)
+  induction l1.
+  simpl in inp.
+  intuition.
+  simpl in inp.
+  
   unfold getCs in c_p.
   destruct bp.
   fold getCs.
